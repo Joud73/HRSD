@@ -17,10 +17,10 @@ const Login = () => {
     navigate("/login-local", { replace: false });
   };
 
-  const handleGuestAccess = () => {
-    localStorage.setItem("authRole", "guest");
-    navigate("/dashboard", { replace: false });
-  };
+  // const handleGuestAccess = () => {
+  //   localStorage.setItem("authRole", "guest");
+  //   navigate("/dashboard", { replace: false });
+  // };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -106,7 +106,7 @@ const Login = () => {
                 <span>تسجيل الدخول باستخدام اسم المستخدم وكلمة المرور</span>
               </button>
 
-              {/* Guest Access Button - Tertiary */}
+              {/* Guest Access Button - Tertiary
               <button
                 type="button"
                 onClick={handleGuestAccess}
@@ -120,7 +120,7 @@ const Login = () => {
               >
                 <Eye size={20} />
                 <span>المتابعة كضيف</span>
-              </button>
+              </button> */}
 
               {/* Links */}
               <div className="flex items-center justify-center gap-4 pt-6 mt-6 border-t border-gray-100">
