@@ -89,16 +89,13 @@ const TrainingCard = ({
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3 mt-auto">
         <Button
-          onClick={onEnroll}
-          disabled={isEnrolled}
-          className={`h-11 flex-1 font-hrsd-semibold rounded-lg min-h-[44px] ${
-            isEnrolled
-              ? "bg-muted text-muted-foreground cursor-not-allowed"
-              : "bg-primary hover:bg-primary/90 text-white"
-          }`}
-          aria-label={isEnrolled ? "أنت ملتحق بهذا البرنامج" : `الالتحاق ببرنامج ${title}`}
+          asChild
+          className="h-11 flex-1 font-hrsd-semibold rounded-lg min-h-[44px] bg-primary hover:bg-primary/90 text-white"
+          aria-label={`الالتحاق ببرنامج ${title}`}
         >
-          {isEnrolled ? "ملتحق ✓" : "الالتحاق بالبرنامج"}
+          <a href="https://phpstack-1518564-5838964.cloudwaysapps.com/">
+            الالتحاق بالبرنامج
+          </a>
         </Button>
         <Button
           onClick={onDetails}

@@ -16,6 +16,9 @@ import Settings from "./pages/Settings";
 import TechnicalEvaluationIndicators from "./pages/TechnicalEvaluationIndicators";
 import TrainingStage from "./pages/TrainingStage";
 import ContactUs from "./pages/ContactUs";
+import IndividualsJourney from "./pages/IndividualsJourney";
+import UnderReview from "./pages/UnderReview";
+import Certificate from "./pages/Certificate";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,13 +31,11 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/nafath-auth" element={<NafathAuth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/login-local" element={<LoginLocal />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/login-local" element={<LoginLocal />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/nafath-auth" element={<NafathAuth />} />
             <Route path="/register" element={<Register />} />
             <Route
               path="/dashboard"
@@ -60,7 +61,32 @@ const App = () => (
                 </ProtectedRoute>
               }
               />
+            <Route
+              path="/training-stage"
+              element={
+                <ProtectedRoute>
+                  <TrainingStage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/contact-us" element={<ContactUs />} />
+            <Route path="/individuals-journey" element={<IndividualsJourney />} />
+            <Route
+              path="/under-review"
+              element={
+                <ProtectedRoute>
+                  <UnderReview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/certificate/:organizationId"
+              element={
+                <ProtectedRoute>
+                  <Certificate />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

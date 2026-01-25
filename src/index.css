@@ -224,7 +224,7 @@
   }
   
   /* Side decorative lines pattern */
-  .side-pattern-left {
+  /* .side-pattern-left {
     position: fixed;
     left: 0;
     top: 50%;
@@ -256,7 +256,7 @@
       hsl(175, 75%, 30%, 0.1) 10px
     );
     z-index: 5;
-  }
+  } */
   
   /* Floating side badge */
   .side-badge {

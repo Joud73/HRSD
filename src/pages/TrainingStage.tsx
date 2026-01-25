@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import OrganizationJourney from "@/components/OrganizationJourney";
 import TrainingBreadcrumb from "@/components/training/TrainingBreadcrumb";
 import TrainingHero from "@/components/training/TrainingHero";
 import TrainingCard from "@/components/training/TrainingCard";
@@ -206,6 +207,12 @@ const TrainingStage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header - using platform header */}
       <Header />
+      
+      {/* Spacer for fixed header */}
+      <div className="h-20" />
+      
+      {/* Organization Journey */}
+      <OrganizationJourney />
 
       {/* Breadcrumb */}
       <TrainingBreadcrumb />

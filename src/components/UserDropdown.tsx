@@ -38,7 +38,7 @@ const UserDropdown = ({ isScrolled = false }: UserDropdownProps) => {
         }`}
       >
         <User className="w-5 h-5" />
-        <span>مرحبا: مفوض المنظمة</span>
+        <span>مرحبا مفوض المنظمة</span>
       </button>
 
       {isOpen && (
