@@ -50,7 +50,7 @@ const Certificate = () => {
   if (!isCertified) {
     return (
       <div dir="rtl" className="min-h-screen flex flex-col bg-background">
-        <Header />
+        <Header variant="org" />
         <main className="flex-1 flex items-center justify-center p-6">
           <Card className="max-w-md w-full shadow-lg">
             <CardContent className="p-8 text-center">
@@ -123,7 +123,7 @@ const Certificate = () => {
 
   return (
     <div dir="rtl" className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <Header variant="org" />
       
       {/* Fixed header spacer */}
       <div className="h-20 print:hidden" />
@@ -141,10 +141,43 @@ const Certificate = () => {
             ref={certificateRef}
             className="relative print:shadow-none"
           >
-            <Card className="relative overflow-hidden border border-emerald-200/60 shadow-xl rounded-2xl print:shadow-none print:border print:rounded-none bg-white">
+            <Card className="relative overflow-hidden border border-emerald-100/80 shadow-lg rounded-2xl print:shadow-none print:border print:rounded-none bg-white">
+              {/* Wave background pattern for entire card */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <svg 
+                  className="absolute bottom-0 left-0 w-full h-full" 
+                  viewBox="0 0 800 600" 
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id="cardWaveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="white" />
+                      <stop offset="100%" stopColor="hsl(152, 60%, 97%)" />
+                    </linearGradient>
+                  </defs>
+                  <rect fill="url(#cardWaveGrad)" width="100%" height="100%" />
+                  {/* Subtle flowing waves */}
+                  <path 
+                    d="M0,500 C150,520 300,480 450,500 C600,520 750,490 800,510 L800,600 L0,600 Z" 
+                    fill="hsl(152, 50%, 94%)" 
+                    opacity="0.5"
+                  />
+                  <path 
+                    d="M0,530 C200,560 400,510 600,540 C700,555 800,530 800,550 L800,600 L0,600 Z" 
+                    fill="hsl(152, 45%, 91%)" 
+                    opacity="0.4"
+                  />
+                  <path 
+                    d="M0,560 C100,575 250,550 400,570 C550,590 700,560 800,580 L800,600 L0,600 Z" 
+                    fill="hsl(152, 40%, 88%)" 
+                    opacity="0.3"
+                  />
+                </svg>
+              </div>
+
               {/* Subtle geometric pattern overlay */}
               <div 
-                className="absolute inset-0 opacity-[0.02] pointer-events-none"
+                className="absolute inset-0 opacity-[0.015] pointer-events-none"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23065f46' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
                 }}
@@ -206,52 +239,15 @@ const Certificate = () => {
                   </p>
                 </div>
 
-                {/* Final Result - Soft green gradient with wave background */}
+              {/* Final Result - Simple inline typography */}
                 {finalResultValue && (
-                  <div className="flex justify-center mb-12">
-                    <div className="relative overflow-hidden rounded-2xl shadow-md w-full max-w-sm">
-                      {/* Wave background pattern */}
-                      <div className="absolute inset-0">
-                        <svg 
-                          className="absolute bottom-0 left-0 w-full h-full" 
-                          viewBox="0 0 400 200" 
-                          preserveAspectRatio="none"
-                        >
-                          <defs>
-                            <linearGradient id="waveGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="hsl(152, 60%, 92%)" />
-                              <stop offset="100%" stopColor="hsl(152, 55%, 88%)" />
-                            </linearGradient>
-                          </defs>
-                          <rect fill="url(#waveGrad1)" width="100%" height="100%" />
-                          <path 
-                            d="M0,120 C80,160 160,100 240,130 C320,160 400,100 400,120 L400,200 L0,200 Z" 
-                            fill="hsl(152, 50%, 85%)" 
-                            opacity="0.5"
-                          />
-                          <path 
-                            d="M0,150 C100,180 200,120 300,160 C350,180 400,150 400,170 L400,200 L0,200 Z" 
-                            fill="hsl(152, 45%, 80%)" 
-                            opacity="0.4"
-                          />
-                          <path 
-                            d="M0,170 C120,190 240,150 360,180 C380,185 400,175 400,180 L400,200 L0,200 Z" 
-                            fill="hsl(152, 40%, 75%)" 
-                            opacity="0.3"
-                          />
-                        </svg>
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="relative py-10 px-8 text-center">
-                        <p className="text-sm text-emerald-700/80 font-hrsd-medium mb-3">
-                          النتيجة النهائية
-                        </p>
-                        <p className="text-5xl md:text-6xl font-hrsd-bold text-emerald-800 tracking-wide">
-                          {finalResultValue}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="text-center mb-12">
+                    <p className="text-sm text-emerald-700/70 font-hrsd-medium mb-2">
+                      النتيجة النهائية
+                    </p>
+                    <p className="text-2xl md:text-3xl font-hrsd-bold text-emerald-800">
+                      {finalResultValue}
+                    </p>
                   </div>
                 )}
 

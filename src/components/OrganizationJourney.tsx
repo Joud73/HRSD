@@ -15,7 +15,7 @@ const steps = [
   { id: 1, title: "التسجيل", description: "تسجيل الدخول", icon: UserPlus, path: "/login" },
   { id: 2, title: "التقييم الذاتي", description: "التقييم الذكي ورفع الشواهد", icon: ClipboardCheck, path: "/dashboard" },
   { id: 3, title: "اختيار الدورات", description: "اختيار الدورات والتدريب", icon: BookOpen, path: "/training-stage" },
-  { id: 4, title: "مراجعة الإدارة", description: "اعتماد النتائج", icon: Users, path: null },
+  { id: 4, title: "مراجعة الإدارة", description: "اعتماد النتائج", icon: Users, path: "/under-review" },
   { id: 5, title: "النتيجة النهائية", description: "إصدار الشهادة", icon: Award, path: "/certificate/:organizationId" },
 ];
 
