@@ -596,8 +596,8 @@ const coursesData: Course[] = [
     ],
   },
   {
-    slug: "altaathir",
-    name: "التأثير",
+    slug: "albaramij ",
+    name: "البرامج",
     criteria: [
       {
         id: "impact-c1",
@@ -804,8 +804,8 @@ const coursesData: Course[] = [
   },
 
   {
-    slug: "albaramij",
-    name: "البرامج",
+    slug: "altaathir",
+    name: "التأثير",
     criteria: [
       {
         id: "prog-c1",
