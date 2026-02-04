@@ -1,193 +1,32 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import {
-  GraduationCap,
-  FileText,
-  Award,
-  Target,
-  BookOpen,
-  Users,
-  Laptop,
-  TrendingUp,
-} from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import OrganizationJourney from "@/components/OrganizationJourney";
-import TrainingBreadcrumb from "@/components/training/TrainingBreadcrumb";
 import TrainingHero from "@/components/training/TrainingHero";
 import TrainingCard from "@/components/training/TrainingCard";
 import OutputCard from "@/components/training/OutputCard";
 import TrainingProgramModal from "@/components/training/TrainingProgramModal";
 import CategoryFilter from "@/components/training/CategoryFilter";
-
-// Categories for filtering
-const categories = [
-  "جميع البرامج",
-  "القيادة والإدارة",
-  "المهارات المهنية",
-  "التقنية والابتكار",
-];
-
-// Training programs data with categories
-const trainingPrograms = [
-  {
-    id: 1,
-    title: "أساسيات القيادة الإدارية",
-    description:
-      "برنامج شامل يغطي المفاهيم الأساسية للقيادة الفعالة وإدارة الفرق في بيئة العمل الحديثة. يتضمن البرنامج تدريبات عملية ودراسات حالة.",
-    duration: "4 أسابيع",
-    type: "تفاعلي",
-    deliveryMode: "عن بُعد",
-    category: "القيادة والإدارة",
-    icon: Users,
-    objectives: [
-      "فهم أساليب القيادة المختلفة",
-      "تطوير مهارات اتخاذ القرار",
-      "بناء فرق عمل فعالة",
-      "إدارة التغيير في المؤسسات",
-    ],
-    requirements: ["إتمام مرحلة التسجيل", "الالتزام بالحضور"],
-    instructor: "د. أحمد الفهد",
-    startDate: "15 يناير 2026",
-  },
-  {
-    id: 2,
-    title: "مهارات التواصل المهني",
-    description:
-      "تعلم فنون التواصل الفعال في بيئة العمل، بما في ذلك العروض التقديمية والتفاوض وإدارة الاجتماعات بكفاءة عالية.",
-    duration: "3 أسابيع",
-    type: "تطبيقي",
-    deliveryMode: "حضوري",
-    category: "المهارات المهنية",
-    icon: BookOpen,
-    objectives: [
-      "إتقان فن العرض والإلقاء",
-      "تطوير مهارات الاستماع الفعال",
-      "التفاوض وحل النزاعات",
-    ],
-    requirements: ["لا يوجد متطلبات مسبقة"],
-    instructor: "أ. سارة المحمد",
-    startDate: "22 يناير 2026",
-  },
-  {
-    id: 3,
-    title: "التخطيط الاستراتيجي",
-    description:
-      "برنامج متقدم في التخطيط الاستراتيجي وتحديد الأهداف وقياس مؤشرات الأداء الرئيسية للمؤسسات الحكومية والخاصة.",
-    duration: "5 أسابيع",
-    type: "تفاعلي",
-    deliveryMode: "مدمج",
-    category: "القيادة والإدارة",
-    icon: Target,
-    objectives: [
-      "وضع الخطط الاستراتيجية",
-      "تحديد مؤشرات الأداء الرئيسية",
-      "تحليل البيئة الداخلية والخارجية",
-    ],
-    requirements: ["إتمام برنامج أساسيات القيادة"],
-    instructor: "د. خالد العمري",
-    startDate: "1 فبراير 2026",
-  },
-  {
-    id: 4,
-    title: "إدارة المشاريع الاحترافية",
-    description:
-      "برنامج معتمد في إدارة المشاريع وفق أفضل الممارسات والمعايير العالمية مع شهادة معتمدة عند الإتمام.",
-    duration: "6 أسابيع",
-    type: "تطبيقي",
-    deliveryMode: "عن بُعد",
-    category: "المهارات المهنية",
-    icon: TrendingUp,
-    objectives: [
-      "تخطيط وتنفيذ المشاريع",
-      "إدارة الموارد والميزانيات",
-      "متابعة وتقييم الأداء",
-    ],
-    requirements: ["خبرة سابقة في العمل المؤسسي"],
-    instructor: "م. فاطمة الزهراني",
-    startDate: "15 فبراير 2026",
-  },
-  {
-    id: 5,
-    title: "الابتكار وريادة الأعمال",
-    description:
-      "اكتشف عالم الابتكار والريادة وتعلم كيفية تحويل الأفكار إلى مشاريع ناجحة ومستدامة في السوق.",
-    duration: "4 أسابيع",
-    type: "تفاعلي",
-    deliveryMode: "حضوري",
-    category: "التقنية والابتكار",
-    icon: GraduationCap,
-    objectives: [
-      "توليد الأفكار الإبداعية",
-      "بناء نموذج العمل",
-      "جذب الاستثمارات",
-    ],
-    requirements: ["شغف بالابتكار والتطوير"],
-    instructor: "أ. محمد الدوسري",
-    startDate: "1 مارس 2026",
-  },
-  {
-    id: 6,
-    title: "التحول الرقمي",
-    description:
-      "برنامج متخصص في فهم التحول الرقمي وتطبيقاته في المؤسسات الحكومية والخاصة مع أمثلة عملية.",
-    duration: "4 أسابيع",
-    type: "نظري وتطبيقي",
-    deliveryMode: "مدمج",
-    category: "التقنية والابتكار",
-    icon: Laptop,
-    objectives: [
-      "فهم استراتيجيات التحول الرقمي",
-      "تطبيق التقنيات الحديثة",
-      "إدارة التغيير التقني",
-    ],
-    requirements: ["معرفة أساسية بالتقنية"],
-    instructor: "د. نورة السعيد",
-    startDate: "15 مارس 2026",
-  },
-];
-
-// Outputs data - removed برامج متقدمة، شبكة المتدربين، فرص التوظيف
-const outputs = [
-  {
-    id: 1,
-    title: "شهادة إتمام المرحلة",
-    description: "شهادة رسمية معتمدة تثبت إتمامك لمرحلة التأهيل والتدريب بنجاح.",
-    icon: Award,
-    isComingSoon: false,
-  },
-  {
-    id: 2,
-    title: "الخطة التطويرية الشخصية",
-    description: "خطة مفصلة لتطوير مهاراتك بناءً على نتائج التقييم والتدريب.",
-    icon: Target,
-    isComingSoon: false,
-  },
-  {
-    id: 3,
-    title: "تقرير الكفاءات",
-    description: "تقرير شامل يوضح مستوى كفاءاتك ونقاط القوة والتحسين.",
-    icon: FileText,
-    isComingSoon: false,
-  },
-];
+import { trainingPrograms, outputs, categories, TrainingProgram } from "@/data/trainingPrograms";
 
 const TrainingStage = () => {
-  const [enrolledPrograms, setEnrolledPrograms] = useState<number[]>([1, 2]);
-  const [selectedProgram, setSelectedProgram] = useState<
-    (typeof trainingPrograms)[0] | null
-  >(null);
+  const navigate = useNavigate();
+  const [enrolledPrograms, setEnrolledPrograms] = useState<number[]>(() => {
+    const stored = localStorage.getItem("enrolledPrograms");
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [selectedProgram, setSelectedProgram] = useState<TrainingProgram | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("جميع البرامج");
 
   const handleEnroll = (programId: number) => {
-    if (!enrolledPrograms.includes(programId)) {
-      setEnrolledPrograms([...enrolledPrograms, programId]);
-      toast.success("تم الالتحاق بالبرنامج بنجاح!");
-    }
+    // Navigate to course detail page instead of enrolling directly
+    navigate(`/course/${programId}`);
   };
 
-  const handleOpenDetails = (program: (typeof trainingPrograms)[0]) => {
+  const handleOpenDetails = (program: TrainingProgram) => {
     setSelectedProgram(program);
     setIsModalOpen(true);
   };
@@ -195,6 +34,13 @@ const TrainingStage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedProgram(null);
+  };
+
+  const handleModalEnroll = () => {
+    if (selectedProgram) {
+      navigate(`/course/${selectedProgram.id}`);
+      handleCloseModal();
+    }
   };
 
   // Filter programs by category
@@ -206,16 +52,13 @@ const TrainingStage = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header - using platform header */}
-      <Header />
+      <Header variant="org" />
       
       {/* Spacer for fixed header */}
       <div className="h-20" />
       
       {/* Organization Journey */}
       <OrganizationJourney />
-
-      {/* Breadcrumb */}
-      <TrainingBreadcrumb />
 
       {/* Hero Section */}
       <TrainingHero />
@@ -330,11 +173,7 @@ const TrainingStage = () => {
         program={selectedProgram}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        onEnroll={() => {
-          if (selectedProgram) {
-            handleEnroll(selectedProgram.id);
-          }
-        }}
+        onEnroll={handleModalEnroll}
         isEnrolled={
           selectedProgram ? enrolledPrograms.includes(selectedProgram.id) : false
         }

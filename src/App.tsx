@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import TechnicalEvaluationIndicators from "./pages/TechnicalEvaluationIndicators";
 import TrainingStage from "./pages/TrainingStage";
+import CourseDetail from "./pages/CourseDetail";
 import ContactUs from "./pages/ContactUs";
 import IndividualsJourney from "./pages/IndividualsJourney";
 import UnderReview from "./pages/UnderReview";
@@ -66,6 +67,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <TrainingStage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/course/:courseId"
+              element={
+                <ProtectedRoute>
+                  <CourseDetail />
                 </ProtectedRoute>
               }
             />

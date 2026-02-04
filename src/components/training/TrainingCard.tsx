@@ -89,13 +89,11 @@ const TrainingCard = ({
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3 mt-auto">
         <Button
-          asChild
+          onClick={onEnroll}
           className="h-11 flex-1 font-hrsd-semibold rounded-lg min-h-[44px] bg-primary hover:bg-primary/90 text-white"
           aria-label={`الالتحاق ببرنامج ${title}`}
         >
-          <a href="https://phpstack-1518564-5838964.cloudwaysapps.com/">
-            الالتحاق بالبرنامج
-          </a>
+          الالتحاق بالبرنامج
         </Button>
         <Button
           onClick={onDetails}
