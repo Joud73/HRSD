@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      criterion_evaluations: {
+        Row: {
+          assignment_id: string
+          criterion_id: string
+          id: string
+          notes: string | null
+          score: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          criterion_id: string
+          id?: string
+          notes?: string | null
+          score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          criterion_id?: string
+          id?: string
+          notes?: string | null
+          score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "criterion_evaluations_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "evaluator_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "criterion_evaluations_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_criteria"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delegates: {
         Row: {
           created_at: string
@@ -50,11 +95,238 @@ export type Database = {
         }
         Relationships: []
       }
+      evaluation_criteria: {
+        Row: {
+          created_at: string
+          criterion_name: string
+          description: string | null
+          id: string
+          sort_order: number
+          track_name: string
+        }
+        Insert: {
+          created_at?: string
+          criterion_name: string
+          description?: string | null
+          id?: string
+          sort_order?: number
+          track_name: string
+        }
+        Update: {
+          created_at?: string
+          criterion_name?: string
+          description?: string | null
+          id?: string
+          sort_order?: number
+          track_name?: string
+        }
+        Relationships: []
+      }
+      evaluation_evidences: {
+        Row: {
+          assignment_id: string
+          criterion_id: string
+          file_name: string
+          file_url: string
+          id: string
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          assignment_id: string
+          criterion_id: string
+          file_name: string
+          file_url: string
+          id?: string
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          assignment_id?: string
+          criterion_id?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_evidences_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "evaluator_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_evidences_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_criteria"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_messages: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_messages_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "evaluator_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluator_assignments: {
+        Row: {
+          assigned_at: string
+          association_id: string
+          completion_percentage: number
+          evaluator_id: string
+          id: string
+          organization_id: string | null
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          assigned_at?: string
+          association_id: string
+          completion_percentage?: number
+          evaluator_id: string
+          id?: string
+          organization_id?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Update: {
+          assigned_at?: string
+          association_id?: string
+          completion_percentage?: number
+          evaluator_id?: string
+          id?: string
+          organization_id?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluator_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_requests: {
+        Row: {
+          delegate_email: string | null
+          delegate_id_number: string | null
+          delegate_mobile: string | null
+          delegate_name: string | null
+          email: string
+          id: string
+          notes: string | null
+          organization_name: string
+          registration_number: string
+          request_status: Database["public"]["Enums"]["request_status"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_at: string
+        }
+        Insert: {
+          delegate_email?: string | null
+          delegate_id_number?: string | null
+          delegate_mobile?: string | null
+          delegate_name?: string | null
+          email: string
+          id?: string
+          notes?: string | null
+          organization_name: string
+          registration_number: string
+          request_status?: Database["public"]["Enums"]["request_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string
+        }
+        Update: {
+          delegate_email?: string | null
+          delegate_id_number?: string | null
+          delegate_mobile?: string | null
+          delegate_name?: string | null
+          email?: string
+          id?: string
+          notes?: string | null
+          organization_name?: string
+          registration_number?: string
+          request_status?: Database["public"]["Enums"]["request_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string
+        }
+        Relationships: []
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          registration_number: string | null
+          status: string
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          registration_number?: string | null
+          status?: string
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          registration_number?: string | null
+          status?: string
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           email: string
           id: string
+          organization_id: string | null
           organization_name: string | null
           registration_number: string | null
           status: Database["public"]["Enums"]["profile_status"]
@@ -64,6 +336,7 @@ export type Database = {
           created_at?: string
           email: string
           id: string
+          organization_id?: string | null
           organization_name?: string | null
           registration_number?: string | null
           status?: Database["public"]["Enums"]["profile_status"]
@@ -73,10 +346,37 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          organization_id?: string | null
           organization_name?: string | null
           registration_number?: string | null
           status?: Database["public"]["Enums"]["profile_status"]
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -85,10 +385,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "evaluator" | "user" | "organization" | "individual"
       profile_status: "pending_verification" | "profile_incomplete" | "active"
+      request_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -216,7 +524,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "evaluator", "user", "organization", "individual"],
       profile_status: ["pending_verification", "profile_incomplete", "active"],
+      request_status: ["pending", "approved", "rejected"],
     },
   },
 } as const

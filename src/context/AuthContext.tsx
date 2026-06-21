@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { type AppRole, fetchUserRole } from "@/lib/roles";
 
 type ProfileStatus = "pending_verification" | "profile_incomplete" | "active";
 
@@ -9,6 +10,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   profileStatus: ProfileStatus | null;
+  userRole: AppRole | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, organizationName?: string, registrationNumber?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -35,30 +37,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
+  const [userRole, setUserRole] = useState<AppRole | null>(null);
 
-  // Safe profile status fetch with timeout
   const fetchProfileStatus = async (userId: string): Promise<ProfileStatus | null> => {
     try {
       const timeoutPromise = new Promise<null>((resolve) => {
-        setTimeout(() => resolve(null), 3000); // 3 second timeout
+        setTimeout(() => resolve(null), 3000);
       });
-
       const fetchPromise = supabase
         .from("profiles")
         .select("status")
         .eq("id", userId)
         .maybeSingle()
         .then(({ data, error }) => {
-          if (error) {
-            console.error("Profile status fetch failed");
-            return null;
-          }
+          if (error) return null;
           return data?.status as ProfileStatus | null;
         });
-
       return await Promise.race([fetchPromise, timeoutPromise]);
     } catch {
-      console.error("Profile status fetch error");
       return null;
     }
   };
@@ -73,54 +69,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     let mounted = true;
 
-    // Safe initialization function
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (!mounted) return;
-        
+
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Fetch profile status but don't block on it
-          const status = await fetchProfileStatus(session.user.id);
+          const [status, role] = await Promise.all([
+            fetchProfileStatus(session.user.id),
+            fetchUserRole(session.user.id),
+          ]);
           if (mounted) {
             setProfileStatus(status);
+            setUserRole(role);
           }
         }
       } catch (error) {
         console.error("Auth initialization error");
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
-    // Set up auth state listener (does NOT control initial loading state)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      async (_event, newSession) => {
         if (!mounted) return;
-        
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          // Fetch profile status in background, don't block
-          fetchProfileStatus(newSession.user.id).then((status) => {
+          Promise.all([
+            fetchProfileStatus(newSession.user.id),
+            fetchUserRole(newSession.user.id),
+          ]).then(([status, role]) => {
             if (mounted) {
               setProfileStatus(status);
+              setUserRole(role);
             }
           });
         } else {
           setProfileStatus(null);
+          setUserRole(null);
         }
       }
     );
 
-    // Initialize auth
     initAuth();
 
     return () => {
@@ -130,17 +127,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      // Log error for debugging without exposing to client
       console.error("Sign in failed");
       return { error: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
     }
-
     return { error: null };
   };
 
@@ -153,19 +144,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
+      options: { emailRedirectTo: window.location.origin },
     });
 
     if (error) {
-      // Log error for debugging without exposing to client
       console.error("Sign up failed");
       return { error: "حدث خطأ أثناء إنشاء الحساب" };
     }
 
-    // Create profile with pending_verification status
     if (data.user) {
+      // Insert profile
       const { error: profileError } = await supabase.from("profiles").insert({
         id: data.user.id,
         email: email,
@@ -175,9 +163,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (profileError) {
-        // Error logged without sensitive details for security
         console.error("Profile creation failed");
         return { error: "حدث خطأ أثناء إنشاء الحساب" };
+      }
+
+      // Insert role — registration flow is for organizations
+      const { error: roleError } = await supabase.from("user_roles").insert({
+        user_id: data.user.id,
+        role: "organization" as any,
+      });
+
+      if (roleError) {
+        console.error("Role assignment failed");
+        // Non-fatal: profile was created, admin can fix role later
       }
     }
 
@@ -189,12 +187,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(null);
     setSession(null);
     setProfileStatus(null);
+    setUserRole(null);
   };
 
   const updateProfileStatus = async (status: ProfileStatus) => {
-    if (!user) {
-      return { error: "لا يوجد مستخدم مسجل" };
-    }
+    if (!user) return { error: "لا يوجد مستخدم مسجل" };
 
     const { error } = await supabase
       .from("profiles")
@@ -202,7 +199,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       .eq("id", user.id);
 
     if (error) {
-      // Error logged without sensitive details for security
       console.error("Profile status update failed");
       return { error: "حدث خطأ أثناء تحديث حالة الحساب" };
     }
@@ -216,6 +212,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     session,
     loading,
     profileStatus,
+    userRole,
     signIn,
     signUp,
     signOut,

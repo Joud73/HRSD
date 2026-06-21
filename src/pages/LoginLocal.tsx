@@ -5,6 +5,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import loginBg from "@/assets/hero-bg.png";
+import { getDefaultRouteForRole, fetchUserRole } from "@/lib/roles";
+import { supabase } from "@/integrations/supabase/client";
 
 const LoginLocal = () => {
   const navigate = useNavigate();
@@ -39,7 +41,17 @@ const LoginLocal = () => {
         return;
       }
 
-      navigate("/dashboard", { replace: true });
+       const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setError("حدث خطأ أثناء تسجيل الدخول");
+        return;
+      }
+
+      const role = await fetchUserRole(user.id);
+
+      navigate(getDefaultRouteForRole(role), { replace: true });
+
     } catch {
       setError("حدث خطأ أثناء تسجيل الدخول");
     } finally {
