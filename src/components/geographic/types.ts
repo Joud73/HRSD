@@ -27,13 +27,13 @@ export const summaryStats = [
 
 export const totalCount = 2536;
 
-// Heatmap color scale (light mint to deep teal)
+// Heatmap scale: primary token at rising opacity (use as CSS fill / background, not SVG attributes)
 export const heatmapColors = [
-  "#E8F5E9", // Lightest - 0-20%
-  "#A5D6A7", // Light - 20-40%
-  "#66BB6A", // Medium - 40-60%
-  "#2E7D32", // Dark - 60-80%
-  "#1B5E20", // Darkest - 80-100%
+  "hsl(var(--primary) / 0.12)", // 0-20%
+  "hsl(var(--primary) / 0.3)", // 20-40%
+  "hsl(var(--primary) / 0.5)", // 40-60%
+  "hsl(var(--primary) / 0.75)", // 60-80%
+  "hsl(var(--primary))", // 80-100%
 ];
 
 export function getHeatmapColor(value: number, min: number, max: number): string {

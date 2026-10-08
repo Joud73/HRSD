@@ -1,6 +1,6 @@
 // src/pages/Login.tsx
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import Header from "@/components/Header";
+import AppHeader from "@/components/AppHeader";
 import Footer from "@/components/Footer";
 import NafathIcon from "@/components/icons/NafathIcon";
 import { User, Building2, Users } from "lucide-react";
@@ -43,7 +43,7 @@ const Login = () => {
   if (!accountType) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <AppHeader />
 
         <main
           className="flex-1 relative pt-20"
@@ -156,7 +156,7 @@ const Login = () => {
   // Step B: Login Method Selection Screen
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <AppHeader />
 
       <main
         className="flex-1 relative pt-20"

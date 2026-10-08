@@ -17,7 +17,6 @@ const PendingApproval = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader />
-      <div className="h-20" />
 
       <main
         className="flex-1 relative"

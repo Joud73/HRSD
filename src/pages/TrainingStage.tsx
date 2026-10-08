@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import Header from "@/components/Header";
+import AppHeader from "@/components/AppHeader";
 import Footer from "@/components/Footer";
 import OrganizationJourney from "@/components/OrganizationJourney";
 import TrainingHero from "@/components/training/TrainingHero";
@@ -52,10 +52,8 @@ const TrainingStage = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header - using platform header */}
-      <Header variant="org" />
+      <AppHeader />
       
-      {/* Spacer for fixed header */}
-      <div className="h-20" />
       
       {/* Organization Journey */}
       <OrganizationJourney />

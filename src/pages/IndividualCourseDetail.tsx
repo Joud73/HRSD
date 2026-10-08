@@ -45,7 +45,7 @@ const IndividualCourseDetail = () => {
   if (!program) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <AppHeader variant="individual" />
+        <AppHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center" dir="rtl">
             <h2 className="text-2xl font-hrsd-bold text-foreground mb-4">البرنامج غير موجود</h2>
@@ -61,10 +61,8 @@ const IndividualCourseDetail = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <AppHeader variant="individual" />
+      <AppHeader />
       
-      {/* Spacer for fixed header */}
-      <div className="h-20" />
 
       {/* Hero Section */}
       <section className="bg-primary py-12 md:py-16 px-4" dir="rtl">

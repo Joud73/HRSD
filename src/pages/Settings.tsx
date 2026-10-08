@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import SettingsHeader from "@/components/SettingsHeader";
+import AppHeader from "@/components/AppHeader";
 import Footer from "@/components/Footer";
 import { Building2, UserCircle } from "lucide-react";
 
@@ -9,10 +9,10 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <SettingsHeader />
+      <AppHeader />
 
       {/* Main Content */}
-      <main className="flex-1 pt-24 pb-12 relative z-10">
+      <main className="flex-1 pt-12 pb-12 relative z-10">
         <div className="max-w-[1100px] mx-auto px-8">
           {/* Breadcrumb */}
           <div className="mb-6">

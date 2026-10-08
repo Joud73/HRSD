@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import Header from "@/components/Header";
+import AppHeader from "@/components/AppHeader";
 import Footer from "@/components/Footer";
 import OrganizationJourney from "@/components/OrganizationJourney";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,10 +22,8 @@ const UnderReview = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <AppHeader />
       
-      {/* Spacer for fixed header */}
-      <div className="h-20" />
       
       <main className="flex-1" dir="rtl">
         <OrganizationJourney />

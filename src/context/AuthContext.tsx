@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   profileStatus: ProfileStatus | null;
   userRole: AppRole | null;
+  organizationName: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, organizationName?: string, registrationNumber?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -38,20 +39,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
+  const [organizationName, setOrganizationName] = useState<string | null>(null);
 
   const fetchProfileStatus = async (userId: string): Promise<ProfileStatus | null> => {
+    const profile = await fetchProfile(userId);
+    return profile?.status ?? null;
+  };
+
+  const fetchProfile = async (
+    userId: string
+  ): Promise<{ status: ProfileStatus | null; organizationName: string | null } | null> => {
     try {
       const timeoutPromise = new Promise<null>((resolve) => {
         setTimeout(() => resolve(null), 3000);
       });
       const fetchPromise = supabase
         .from("profiles")
-        .select("status")
+        .select("status, organization_name")
         .eq("id", userId)
         .maybeSingle()
         .then(({ data, error }) => {
           if (error) return null;
-          return data?.status as ProfileStatus | null;
+          return {
+            status: (data?.status as ProfileStatus | null) ?? null,
+            organizationName: data?.organization_name ?? null,
+          };
         });
       return await Promise.race([fetchPromise, timeoutPromise]);
     } catch {
@@ -78,12 +90,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          const [status, role] = await Promise.all([
-            fetchProfileStatus(session.user.id),
+          const [profile, role] = await Promise.all([
+            fetchProfile(session.user.id),
             fetchUserRole(session.user.id),
           ]);
           if (mounted) {
-            setProfileStatus(status);
+            setProfileStatus(profile?.status ?? null);
+            setOrganizationName(profile?.organizationName ?? null);
             setUserRole(role);
           }
         }
@@ -103,16 +116,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (newSession?.user) {
           Promise.all([
-            fetchProfileStatus(newSession.user.id),
+            fetchProfile(newSession.user.id),
             fetchUserRole(newSession.user.id),
-          ]).then(([status, role]) => {
+          ]).then(([profile, role]) => {
             if (mounted) {
-              setProfileStatus(status);
+              setProfileStatus(profile?.status ?? null);
+              setOrganizationName(profile?.organizationName ?? null);
               setUserRole(role);
             }
           });
         } else {
           setProfileStatus(null);
+          setOrganizationName(null);
           setUserRole(null);
         }
       }
@@ -213,6 +228,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
     profileStatus,
     userRole,
+    organizationName,
     signIn,
     signUp,
     signOut,

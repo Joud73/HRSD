@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Send, Mail } from "lucide-react";
-import Header from "@/components/Header";
+import AppHeader from "@/components/AppHeader";
 import Footer from "@/components/Footer";
 import heroBg from "@/assets/hero-bg.png";
 import { useToast } from "@/hooks/use-toast";
@@ -92,7 +92,7 @@ const ContactUs = () => {
 
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
-      <Header />
+      <AppHeader />
 
       {/* Main Content with Background */}
       <main

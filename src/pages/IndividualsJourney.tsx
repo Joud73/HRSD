@@ -57,10 +57,8 @@ const IndividualsJourneyPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <AppHeader variant="individual" />
+      <AppHeader />
       
-      {/* Spacer for fixed header */}
-      <div className="h-20" />
       
       <main className="flex-1">
         {/* Journey Timeline */}

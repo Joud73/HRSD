@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { RegionData, getHeatmapColor } from "./types";
+import { RegionData, getHeatmapColor, heatmapColors } from "./types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Accurate SVG paths for Saudi Arabia administrative regions
@@ -58,8 +58,6 @@ const SaudiHeatmapMap = ({
   return <TooltipProvider delayDuration={100}>
       <div className="relative w-full h-full flex items-center justify-center">
         <svg viewBox="0 0 730 600" className="w-full h-full max-h-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label="خريطة المملكة العربية السعودية التفاعلية">
-          {/* Background */}
-          <rect x="0" y="0" width="730" height="600" fill="#F9FAFB" rx="8" />
 
           {/* Regions */}
           {Object.entries(regionPaths).map(([id, path]) => {
@@ -70,17 +68,17 @@ const SaudiHeatmapMap = ({
           const isSelected = selectedRegion?.id === id;
           return <Tooltip key={id}>
                 <TooltipTrigger asChild>
-                  <path d={path} fill={fillColor} stroke={isSelected ? "#1D4D37" : isHovered ? "#14573A" : "#FFFFFF"} strokeWidth={isSelected ? 2.5 : isHovered ? 2 : 1} className="cursor-pointer transition-all duration-200 outline-none focus:outline-none" style={{
-                filter: isHovered || isSelected ? "brightness(0.95)" : "none"
+                  <path d={path} stroke="currentColor" strokeWidth={isSelected ? 2.5 : isHovered ? 2 : 1} className={`cursor-pointer outline-none transition-colors duration-200 focus-visible:text-ink ${isSelected || isHovered ? "text-ink" : "text-background"}`} style={{
+                fill: fillColor
               }} tabIndex={0} role="button" aria-label={`${region.name}: ${region.count} إشراف`} onMouseEnter={() => setHoveredRegion(id)} onMouseLeave={() => setHoveredRegion(null)} onClick={() => handleRegionClick(id)} onKeyDown={e => handleKeyDown(e, id)} onFocus={() => setHoveredRegion(id)} onBlur={() => setHoveredRegion(null)} />
                 </TooltipTrigger>
-                <TooltipContent side="top" className="bg-white border border-gray-200 shadow-lg px-4 py-3 rounded-lg z-50" dir="rtl">
-                  <div className="text-center">
-                    <p className="font-hrsd-bold text-[#1D4D37] text-lg mb-1">
+                <TooltipContent side="top" className="z-50 rounded-lg border border-border bg-popover px-4 py-3 shadow-md" dir="rtl">
+                  <div className="text-start">
+                    <p className="mb-1 font-hrsd-bold text-body text-ink">
                       {region.name}
                     </p>
-                    <p className="font-hrsd-medium text-gray-700">
-                      <span className="text-2xl font-hrsd-bold text-[#1B8354]">
+                    <p className="text-small font-hrsd-medium text-muted-foreground">
+                      <span className="font-hrsd-bold text-h3 text-primary">
                         {region.count}
                       </span>{" "}
                       إشراف
@@ -92,14 +90,14 @@ const SaudiHeatmapMap = ({
         </svg>
 
         {/* Legend */}
-        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-md border border-gray-100">
+        <div className="absolute bottom-3 end-3 rounded-md border border-border bg-background p-2">
           
           <div className="flex items-center gap-1">
-            {["#E8F5E9", "#A5D6A7", "#66BB6A", "#2E7D32", "#1B5E20"].map((color, i) => <div key={i} className="w-6 h-4 rounded-sm" style={{
+            {heatmapColors.map((color, i) => <div key={i} className="w-6 h-4 rounded-sm" style={{
             backgroundColor: color
           }} />)}
           </div>
-          <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-hrsd-regular">
+          <div className="mt-1 flex justify-between text-[10px] font-hrsd-regular text-muted-foreground">
             <span>أقل</span>
             <span>أكثر</span>
           </div>

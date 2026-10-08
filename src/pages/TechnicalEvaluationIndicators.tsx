@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Upload, Check, FileText, Eye, MessageSquare, Trash2, EyeOff, Pencil, Plus, X, ChevronDown } from "lucide-react";
-import Header from "@/components/Header";
+import AppHeader from "@/components/AppHeader";
 import Footer from "@/components/Footer";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1850,9 +1850,9 @@ const TechnicalEvaluationIndicators = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Header />
+      <AppHeader />
       
-      <main className="flex-1 pt-24 pb-12">
+      <main className="flex-1 pt-12 pb-12">
         {/* Side Patterns - Curved Lines */}
         <div 
           className="fixed left-0 top-0 bottom-0 w-24 pointer-events-none z-0"

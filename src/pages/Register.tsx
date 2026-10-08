@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Headphones, Check } from "lucide-react";
-import Header from "@/components/Header";
+import AppHeader from "@/components/AppHeader";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -501,7 +501,7 @@ const Register = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header - reused from homepage */}
-      <Header />
+      <AppHeader />
 
       {/* Main content with background */}
       <main

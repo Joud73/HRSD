@@ -22,6 +22,8 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          light: "hsl(var(--primary-light))",
+          "light-foreground": "hsl(var(--primary-light-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -36,8 +38,29 @@ export default {
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent-orange))",
-          foreground: "hsl(var(--accent-orange-foreground))",
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          foreground: "hsl(var(--surface-foreground))",
+        },
+        ink: "hsl(var(--ink))",
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        danger: {
+          DEFAULT: "hsl(var(--danger))",
+          foreground: "hsl(var(--danger-foreground))",
+        },
+        neutral: {
+          DEFAULT: "hsl(var(--neutral))",
+          foreground: "hsl(var(--neutral-foreground))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -47,13 +70,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // TEMP aliases until step 3 replaces bg-section-* usages
         section: {
-          light: "hsl(var(--section-light))",
-          tealLight: "hsl(var(--section-teal-light))",
-        },
-        dark: {
-          teal: "hsl(var(--dark-teal))",
-          navy: "hsl(var(--dark-navy))",
+          light: "hsl(var(--surface))",
+          tealLight: "hsl(var(--primary) / 0.08)",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -66,7 +86,18 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      // Type scale (CLAUDE.md / frontend-design skill)
+      fontSize: {
+        display: ["3rem", { lineHeight: "1.25" }], // 48/60
+        "display-sm": ["2rem", { lineHeight: "1.25" }], // 32/40
+        h2: ["1.75rem", { lineHeight: "2.25rem" }], // 28/36
+        h3: ["1.25rem", { lineHeight: "1.75rem" }], // 20/28
+        lead: ["1.125rem", { lineHeight: "1.875rem" }], // 18/30
+        body: ["1rem", { lineHeight: "1.625rem" }], // 16/26
+        small: ["0.875rem", { lineHeight: "1.25rem" }], // 14/20
+      },
       fontFamily: {
+        sans: ["HRSDGov-Medium", "Segoe UI", "Tahoma", "sans-serif"],
         hrsd: ["HRSDGov-Regular", "Segoe UI", "Tahoma", "sans-serif"],
         "hrsd-title": ["HRSDGov-Title", "HRSDGov-Bold", "Segoe UI", "Tahoma", "sans-serif"],
         "hrsd-bold": ["HRSDGov-Bold", "Segoe UI", "Tahoma", "sans-serif"],
@@ -74,9 +105,9 @@ export default {
         "hrsd-medium": ["HRSDGov-Medium", "Segoe UI", "Tahoma", "sans-serif"],
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius)", // 12px cards
+        md: "calc(var(--radius) - 4px)", // 8px buttons, inputs
+        sm: "calc(var(--radius) - 6px)",
       },
       keyframes: {
         "accordion-down": {

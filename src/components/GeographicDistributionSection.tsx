@@ -23,32 +23,30 @@ const GeographicDistributionSection = () => {
   const handleRegionSelect = (region: RegionData | null) => {
     setSelectedRegion(region);
   };
-  return <section ref={sectionRef} className="py-6 bg-white md:py-[100px]">
-      <div className="container mx-auto px-4">
+  return <section ref={sectionRef} className="bg-background py-14 lg:py-24">
+      <div className="mx-auto max-w-[1200px] px-4 md:px-6">
         {/* Section Header */}
-        <div className="mb-3 md:mb-4">
-          <h2 className="text-2xl md:text-3xl font-bold mb-2 text-right text-black" style={{
-          fontFamily: "'HRSDGov-Bold', 'Cairo', system-ui, sans-serif"
-        }}>
+        <div className="mb-8">
+          <h2 className="font-hrsd-bold text-h2 text-ink">
             التوزيع الجغرافي للإشراف الفني
           </h2>
-          <p className="text-gray-600 text-right font-hrsd-regular text-base">
+          <p className="mt-2 text-small font-hrsd-regular text-muted-foreground">
             انقر على أي منطقة لعرض التفاصيل
           </p>
         </div>
 
         {/* Map and Details Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
           {/* Map - Right side on desktop (RTL) */}
           <div className="lg:col-span-7 order-1">
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-3 md:p-4 shadow-lg border border-gray-100 h-[350px] md:h-[400px] lg:h-[420px]">
+            <div className="h-[300px] rounded-lg border border-border bg-surface p-3 md:h-[360px] md:p-4">
               <SaudiHeatmapMap regions={regions} selectedRegion={selectedRegion} onRegionSelect={handleRegionSelect} />
             </div>
           </div>
 
           {/* Details Panel - Left side on desktop (RTL) */}
           <div className="lg:col-span-5 order-2">
-            <div className="h-[350px] md:h-[400px] lg:h-[420px]">
+            <div className="lg:h-[360px]">
               <RegionDetailsPanel selectedRegion={selectedRegion} onClose={() => setSelectedRegion(null)} startCounting={startCounting} />
             </div>
           </div>

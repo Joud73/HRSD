@@ -85,7 +85,7 @@ const IndividualAuth = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader variant="main" />
+      <AppHeader />
 
       <main
         className="flex-1 relative pt-20"
