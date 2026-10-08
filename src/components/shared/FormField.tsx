@@ -47,7 +47,7 @@ export const FieldShell = ({ id, label, error, hint, labelAside, required, child
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={transition.ui}
-          className="flex items-center gap-1.5 overflow-hidden text-caption text-danger"
+          className="flex items-center gap-1.5 overflow-hidden text-[13px] leading-5 text-danger"
         >
           <AlertCircle aria-hidden className="h-3.5 w-3.5 shrink-0" />
           {error}

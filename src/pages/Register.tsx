@@ -10,11 +10,13 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AuthHeading,
+  AuthHelpLinks,
   AuthPrompt,
   AuthStatus,
   SubmitButton,
   authButtonClass,
 } from "@/components/auth/AuthParts";
+import AuthShell from "@/components/auth/AuthShell";
 import { useFieldValidation } from "@/components/auth/useFieldValidation";
 import { FieldShell, FormError, PasswordField, TextField } from "@/components/shared/FormField";
 import { Button } from "@/components/ui/button";
@@ -38,7 +40,7 @@ type Field =
 const StepIndicator = ({ current }: { current: number }) => {
   const steps = authCopy.register_steps;
   return (
-    <nav aria-label={authCopy.register_steps_label} className="mb-8 flex flex-col gap-3">
+    <nav aria-label={authCopy.register_steps_label} className="mb-6 flex flex-col gap-3">
       <p className="text-small text-muted-foreground">
         {authCopy.register_step_counter} <span className="tabular font-hrsd-medium text-ink">{formatNumber(current + 1)}</span>{" "}
         {authCopy.register_step_of} <span className="tabular">{formatNumber(steps.length)}</span>
@@ -220,22 +222,33 @@ const Register = () => {
 
   if (step === 3) {
     return (
-      <AuthStatus
-        icon={CheckCircle2}
-        tone="success"
-        title={authCopy.register_success_title}
-        description={authCopy.register_success_desc}
-      >
-        <Button type="button" onClick={() => navigate("/dashboard")} className={authButtonClass}>
-          {authCopy.register_success_action}
-          <ArrowLeft aria-hidden />
-        </Button>
-      </AuthStatus>
+      <AuthShell crumb={authCopy.register_title} width="lg" below={<AuthHelpLinks />}>
+        <AuthStatus
+          icon={CheckCircle2}
+          tone="success"
+          title={authCopy.register_success_title}
+          description={authCopy.register_success_desc}
+        >
+          <Button type="button" onClick={() => navigate("/dashboard")} className={authButtonClass}>
+            {authCopy.register_success_action}
+            <ArrowLeft aria-hidden />
+          </Button>
+        </AuthStatus>
+      </AuthShell>
     );
   }
 
   return (
-    <>
+    <AuthShell
+      crumb={authCopy.register_title}
+      width="lg"
+      below={
+        <>
+          {step === 0 && <AuthPrompt prompt={authCopy.login_prompt} to="/login" label={copy.login} />}
+          <AuthHelpLinks />
+        </>
+      }
+    >
       <AuthHeading title={authCopy.register_title} subtitle={authCopy.register_subtitle} />
       <StepIndicator current={step} />
 
@@ -243,43 +256,44 @@ const Register = () => {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={step} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={transition.ui}>
             {step === 0 && (
-              <form onSubmit={handleOrganizationNext} noValidate className="flex flex-col gap-5">
+              <form onSubmit={handleOrganizationNext} noValidate className="flex flex-col gap-6">
                 <FormError message={error} />
 
-                <FieldShell id="reg-org" label={authCopy.org_name} error={orgError} required>
-                  <Select
-                    dir="rtl"
-                    value={organizationName}
-                    onValueChange={(v) => setOrganizationName(v)}
-                  >
-                    <SelectTrigger
-                      id="reg-org"
-                      aria-invalid={orgError ? true : undefined}
-                      aria-describedby={orgError ? "reg-org-error" : undefined}
-                      className="h-12 text-body aria-[invalid=true]:border-danger"
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FieldShell id="reg-org" label={authCopy.org_name} error={orgError} required>
+                    <Select
+                      dir="rtl"
+                      value={organizationName}
+                      onValueChange={(v) => setOrganizationName(v)}
                     >
-                      <SelectValue placeholder={authCopy.org_name_placeholder} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {authCopy.org_options.map((name) => (
-                        <SelectItem key={name} value={name} className="text-body">
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FieldShell>
+                      <SelectTrigger
+                        id="reg-org"
+                        aria-invalid={orgError ? true : undefined}
+                        aria-describedby={orgError ? "reg-org-error" : undefined}
+                        className="h-12 text-body aria-[invalid=true]:border-danger"
+                      >
+                        <SelectValue placeholder={authCopy.org_name_placeholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {authCopy.org_options.map((name) => (
+                          <SelectItem key={name} value={name} className="text-body">
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldShell>
 
-                <TextField
-                  label={authCopy.reg_number}
-                  inputMode="numeric"
-                  dir="ltr"
-                  className="text-end"
-                  value={registrationNumber}
-                  onChange={(e) => setRegistrationNumber(e.target.value)}
-                />
+                  <TextField
+                    label={authCopy.reg_number}
+                    inputMode="numeric"
+                    dir="ltr"
+                    value={registrationNumber}
+                    onChange={(e) => setRegistrationNumber(e.target.value)}
+                  />
+                </div>
 
-                <Button type="submit" className={cn(authButtonClass, "mt-1")}>
+                <Button type="submit" className={cn(authButtonClass, "md:w-auto md:self-start md:px-8")}>
                   {authCopy.register_next}
                   <ArrowLeft aria-hidden />
                 </Button>
@@ -287,36 +301,37 @@ const Register = () => {
             )}
 
             {step === 1 && (
-              <form onSubmit={handleCreateAccount} noValidate className="flex flex-col gap-5">
+              <form onSubmit={handleCreateAccount} noValidate className="flex flex-col gap-6">
                 <FormError message={error} />
 
-                <TextField
-                  label={copy.login_email}
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  dir="ltr"
-                  className="text-end"
-                  placeholder={authCopy.email_placeholder}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onBlur={blur("email")}
-                  error={errors.email}
-                  required
-                />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextField
+                    label={copy.login_email}
+                    type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    dir="ltr"
+                    placeholder={authCopy.email_placeholder}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={blur("email")}
+                    error={errors.email}
+                    required
+                  />
 
-                <PasswordField
-                  label={copy.login_password}
-                  autoComplete="new-password"
-                  hint={authCopy.password_hint}
-                  value={signupPassword}
-                  onChange={(e) => setSignupPassword(e.target.value)}
-                  onBlur={blur("signupPassword")}
-                  error={errors.signupPassword}
-                  required
-                />
+                  <PasswordField
+                    label={copy.login_password}
+                    autoComplete="new-password"
+                    hint={authCopy.password_hint}
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    onBlur={blur("signupPassword")}
+                    error={errors.signupPassword}
+                    required
+                  />
+                </div>
 
-                <div className="mt-1 flex flex-col-reverse gap-3 sm:flex-row">
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
                   <Button
                     type="button"
                     variant="outline"
@@ -338,92 +353,91 @@ const Register = () => {
             )}
 
             {step === 2 && (
-              <form onSubmit={handleSaveRepresentative} noValidate className="flex flex-col gap-5">
+              <form onSubmit={handleSaveRepresentative} noValidate className="flex flex-col gap-6">
                 <FormError message={error} />
                 {!error && <p className="text-small text-muted-foreground">{authCopy.account_created_note}</p>}
 
-                <TextField
-                  label={authCopy.rep_full_name}
-                  autoComplete="name"
-                  placeholder={authCopy.rep_full_name_placeholder}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  onBlur={blur("fullName")}
-                  error={errors.fullName}
-                  required
-                />
+                <div className="grid gap-4 md:grid-cols-2">
 
-                <TextField
-                  label={authCopy.rep_id_number}
-                  inputMode="numeric"
-                  dir="ltr"
-                  className="text-end"
-                  value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value)}
-                  onBlur={blur("idNumber")}
-                  error={errors.idNumber}
-                  required
-                />
+                  <TextField
+                    label={authCopy.rep_full_name}
+                    autoComplete="name"
+                    placeholder={authCopy.rep_full_name_placeholder}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    onBlur={blur("fullName")}
+                    error={errors.fullName}
+                    required
+                  />
 
-                <TextField
-                  label={authCopy.rep_mobile}
-                  type="tel"
-                  autoComplete="tel"
-                  dir="ltr"
-                  className="text-end"
-                  placeholder={authCopy.rep_mobile_placeholder}
-                  value={mobile}
-                  onChange={(e) => setMobile(e.target.value)}
-                  onBlur={blur("mobile")}
-                  error={errors.mobile}
-                  required
-                />
+                  <TextField
+                    label={authCopy.rep_id_number}
+                    inputMode="numeric"
+                    dir="ltr"
+                    value={idNumber}
+                    onChange={(e) => setIdNumber(e.target.value)}
+                    onBlur={blur("idNumber")}
+                    error={errors.idNumber}
+                    required
+                  />
 
-                <TextField
-                  label={authCopy.rep_email}
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  dir="ltr"
-                  className="text-end"
-                  placeholder={authCopy.email_placeholder}
-                  value={delegateEmail}
-                  onChange={(e) => setDelegateEmail(e.target.value)}
-                  onBlur={blur("delegateEmail")}
-                  error={errors.delegateEmail}
-                  required
-                />
+                  <TextField
+                    label={authCopy.rep_mobile}
+                    type="tel"
+                    autoComplete="tel"
+                    dir="ltr"
+                    placeholder={authCopy.rep_mobile_placeholder}
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    onBlur={blur("mobile")}
+                    error={errors.mobile}
+                    required
+                  />
 
-                <TextField
-                  label={authCopy.rep_login_name}
-                  autoComplete="username"
-                  dir="ltr"
-                  className="text-end"
-                  value={loginName}
-                  onChange={(e) => setLoginName(e.target.value)}
-                />
+                  <TextField
+                    label={authCopy.rep_email}
+                    type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    dir="ltr"
+                    placeholder={authCopy.email_placeholder}
+                    value={delegateEmail}
+                    onChange={(e) => setDelegateEmail(e.target.value)}
+                    onBlur={blur("delegateEmail")}
+                    error={errors.delegateEmail}
+                    required
+                  />
 
-                <PasswordField
-                  label={copy.login_password}
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                  <TextField
+                    label={authCopy.rep_login_name}
+                    autoComplete="username"
+                    dir="ltr"
+                    value={loginName}
+                    onChange={(e) => setLoginName(e.target.value)}
+                  />
 
-                <PasswordField
-                  label={authCopy.confirm_password}
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  onBlur={blur("confirmPassword")}
-                  error={errors.confirmPassword}
-                />
+                  <PasswordField
+                    label={copy.login_password}
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+
+                  <PasswordField
+                    label={authCopy.confirm_password}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onBlur={blur("confirmPassword")}
+                    error={errors.confirmPassword}
+                  />
+                </div>
 
                 <SubmitButton
                   loading={isLoading}
                   label={authCopy.register_save}
                   loadingLabel={authCopy.register_saving}
-                  className="mt-1"
+                  className="md:w-auto md:self-start md:px-8"
                 />
               </form>
             )}
@@ -431,11 +445,7 @@ const Register = () => {
         </AnimatePresence>
       </div>
 
-      <div className="mt-8 flex flex-col gap-2 border-t border-border pt-6">
-        {step === 0 && <AuthPrompt prompt={authCopy.login_prompt} to="/login" label={copy.login} />}
-        <AuthPrompt prompt={authCopy.support_prompt} to="/contact-us" label={authCopy.support_link} />
-      </div>
-    </>
+    </AuthShell>
   );
 };
 

@@ -8,7 +8,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PublicLayout from "@/components/layout/PublicLayout";
 import AppShell from "@/components/layout/AppShell";
-import AuthLayout from "@/components/layout/AuthLayout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -61,8 +60,8 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Authentication: one split layout for every sign-in and status step */}
-              <Route element={<AuthLayout />}>
+              {/* Public, authentication (card on band) and individual pages */}
+              <Route element={<PublicLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/login-local" element={<Navigate to="/login" replace />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -71,10 +70,6 @@ const App = () => (
                 <Route path="/pending-approval" element={<PendingApproval />} />
                 <Route path="/individual-auth" element={<IndividualAuth />} />
                 <Route path="/under-review" element={guard(["organization"], <UnderReview />)} />
-              </Route>
-
-              {/* Public and individual pages */}
-              <Route element={<PublicLayout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/contact-us" element={<ContactUs />} />
                 <Route path="/individuals-journey" element={guard(["individual"], <IndividualsJourney />)} />

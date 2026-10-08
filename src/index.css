@@ -192,3 +192,22 @@
     transform: scaleX(1);
   }
 }
+
+/* Autofilled inputs keep the white field and ink text (Chrome/Safari paint their own yellow or blue) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+  box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+  -webkit-text-fill-color: hsl(var(--ink));
+  caret-color: hsl(var(--ink));
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* Keep the 2px primary focus ring (2px offset) on autofilled fields */
+input:-webkit-autofill:focus-visible {
+  -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset, 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+  box-shadow: 0 0 0 1000px hsl(var(--background)) inset, 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+}

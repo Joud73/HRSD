@@ -6,11 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchUserRole, getDefaultRouteForRole } from "@/lib/roles";
 import {
   AuthHeading,
+  AuthHelpLinks,
   AuthPrompt,
   FormSuccess,
   SubmitButton,
   authLinkClass,
 } from "@/components/auth/AuthParts";
+import AuthShell from "@/components/auth/AuthShell";
 import { useFieldValidation } from "@/components/auth/useFieldValidation";
 import { FormError, PasswordField, TextField } from "@/components/shared/FormField";
 import SegmentedControl from "@/components/shared/SegmentedControl";
@@ -114,7 +116,20 @@ const IndividualAuth = () => {
   const isLogin = mode === "login";
 
   return (
-    <>
+    <AuthShell
+      crumb={authCopy.individual_login_title}
+      below={
+        <>
+          <AuthPrompt prompt={authCopy.org_prompt} to="/login" label={authCopy.org_link} />
+          <AuthHelpLinks />
+        </>
+      }
+    >
+      <AuthHeading
+        title={isLogin ? authCopy.individual_login_title : authCopy.individual_register_title}
+        subtitle={isLogin ? authCopy.individual_login_subtitle : authCopy.individual_register_subtitle}
+      />
+
       <SegmentedControl<AuthMode>
         label={authCopy.individual_mode_label}
         value={mode}
@@ -123,15 +138,10 @@ const IndividualAuth = () => {
           { value: "login", label: authCopy.individual_mode_login },
           { value: "register", label: authCopy.individual_mode_register },
         ]}
-        className="mb-8"
+        className="mb-6 grid w-full grid-cols-2"
       />
 
-      <AuthHeading
-        title={isLogin ? authCopy.individual_login_title : authCopy.individual_register_title}
-        subtitle={isLogin ? authCopy.individual_login_subtitle : authCopy.individual_register_subtitle}
-      />
-
-      <form onSubmit={isLogin ? handleLogin : handleRegister} noValidate className="flex flex-col gap-5">
+      <form onSubmit={isLogin ? handleLogin : handleRegister} noValidate className="flex flex-col gap-4">
         <FormError message={error} />
         <FormSuccess message={success} />
 
@@ -141,7 +151,6 @@ const IndividualAuth = () => {
           autoComplete="email"
           inputMode="email"
           dir="ltr"
-          className="text-end"
           placeholder={authCopy.email_placeholder}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -181,14 +190,10 @@ const IndividualAuth = () => {
           loading={isLoading}
           label={isLogin ? copy.login_submit : authCopy.individual_register_submit}
           loadingLabel={isLogin ? copy.login_submitting : authCopy.individual_register_submitting}
-          className="mt-1"
+          className="mt-2"
         />
       </form>
-
-      <div className="mt-8 border-t border-border pt-6">
-        <AuthPrompt prompt={authCopy.org_prompt} to="/login" label={authCopy.org_link} />
-      </div>
-    </>
+    </AuthShell>
   );
 };
 
