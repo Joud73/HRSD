@@ -1,12 +1,9 @@
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import DashboardHeroSection from "@/components/DashboardHeroSection";
 import OrganizationJourney from "@/components/OrganizationJourney";
 
 const Dashboard = () => {
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader />
       
       
       <main className="flex-1">
@@ -14,7 +11,6 @@ const Dashboard = () => {
         <DashboardHeroSection />
       </main>
       
-      <Footer />
       
       {/* Side Badge */}
       <div
@@ -22,7 +18,7 @@ const Dashboard = () => {
         style={{
           writingMode: "vertical-rl",
           textOrientation: "mixed",
-          backgroundColor: "hsl(var(--accent-orange))",
+          backgroundColor: "hsl(var(--accent))",
           borderRadius: "0 4px 4px 0",
         }}
       >

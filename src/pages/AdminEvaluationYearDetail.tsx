@@ -10,9 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 import type { EvaluationYear } from "./AdminEvaluationYears";
 import { getYearStatus } from "./AdminEvaluationYears";
 
@@ -95,11 +93,8 @@ const AdminEvaluationYearDetail = () => {
   );
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-6">
+    <>
+        <div className="space-y-6">
           {/* Back + Title */}
           <div className="flex items-center gap-3">
             <Button size="icon" variant="ghost" onClick={() => navigate("/admin/performance/evaluation-years")}>
@@ -182,9 +177,8 @@ const AdminEvaluationYearDetail = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 };
 

@@ -95,8 +95,8 @@ const OrganizationJourney = () => {
                       style={{
                         width: "64px",
                         height: "64px",
-                        background: "linear-gradient(145deg, #e6e6e6, #ffffff)",
-                        boxShadow: "4px 4px 8px #d1d1d1, -4px -4px 8px #ffffff",
+                        background: "linear-gradient(145deg, hsl(var(--border)), hsl(var(--background)))",
+                        boxShadow: "4px 4px 8px hsl(var(--border)), -4px -4px 8px hsl(var(--background))",
                         top: "50%",
                         left: "50%",
                         transform: "translate(-50%, -50%)",

@@ -18,9 +18,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 import { useAdminAssociations } from "@/hooks/useAdminData";
 
 const AdminAssociations = () => {
@@ -56,11 +54,8 @@ const AdminAssociations = () => {
   }, [associations]);
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-7">
+    <>
+        <div className="space-y-6">
           <div>
             <h1 className="text-xl font-hrsd-title text-foreground">إدارة الجمعيات</h1>
             <p className="text-sm font-hrsd text-muted-foreground mt-1">نظرة شاملة على أداء الجهات وحالة التقييم</p>
@@ -188,9 +183,8 @@ const AdminAssociations = () => {
               </Table>
             )}
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 };
 

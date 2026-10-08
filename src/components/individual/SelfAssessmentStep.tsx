@@ -94,7 +94,7 @@ const SelfAssessmentStep = ({ onComplete, onSkip }: SelfAssessmentStepProps) => 
         <div 
           className="w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-6"
           style={{ 
-            background: `conic-gradient(${level.color} ${score}%, #e5e7eb ${score}%)`,
+            background: `conic-gradient(${level.color} ${score}%, hsl(var(--border)) ${score}%)`,
           }}
         >
           <div className="w-24 h-24 rounded-full bg-white flex flex-col items-center justify-center">

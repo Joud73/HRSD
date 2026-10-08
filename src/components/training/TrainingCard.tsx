@@ -63,14 +63,14 @@ const TrainingCard = ({
       <div className="flex flex-wrap gap-2 mb-5">
         <Badge
           variant="secondary"
-          className="flex items-center gap-1 bg-section-light text-foreground font-hrsd-medium"
+          className="flex items-center gap-1 bg-section-alt text-foreground font-hrsd-medium"
         >
           <Clock size={14} />
           <span>{duration}</span>
         </Badge>
         <Badge
           variant="secondary"
-          className="flex items-center gap-1 bg-section-tealLight text-primary font-hrsd-medium"
+          className="flex items-center gap-1 bg-primary/5 text-primary font-hrsd-medium"
         >
           <BookOpen size={14} />
           <span>{type}</span>

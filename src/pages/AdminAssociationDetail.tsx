@@ -30,9 +30,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 
 /* ══════════════════════════════════════════════════════
    MOCK DATA
@@ -198,11 +196,8 @@ const AdminAssociationDetail = () => {
   );
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-6">
+    <>
+        <div className="space-y-6">
           {/* ── Title area ── */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -542,9 +537,8 @@ const AdminAssociationDetail = () => {
               </div>
             </TabsContent>
           </Tabs>
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 };
 

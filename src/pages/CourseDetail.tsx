@@ -3,8 +3,6 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Clock, Calendar, ChevronUp, ChevronDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import { getProgramById, TrainingProgram } from "@/data/trainingPrograms";
 
 const CourseDetail = () => {
@@ -45,7 +43,6 @@ const CourseDetail = () => {
   if (!program) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <AppHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center" dir="rtl">
             <h2 className="text-2xl font-hrsd-bold text-foreground mb-4">البرنامج غير موجود</h2>
@@ -54,14 +51,12 @@ const CourseDetail = () => {
             </Button>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <AppHeader />
       
 
       {/* Hero Section */}
@@ -185,7 +180,6 @@ const CourseDetail = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

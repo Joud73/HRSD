@@ -76,8 +76,8 @@ const IndividualJourney = ({ currentStep = 1, onStepClick }: IndividualJourneyPr
                       style={{
                         width: "80px",
                         height: "80px",
-                        background: "linear-gradient(145deg, #e6e6e6, #ffffff)",
-                        boxShadow: "8px 8px 16px #d1d1d1, -8px -8px 16px #ffffff",
+                        background: "linear-gradient(145deg, hsl(var(--border)), hsl(var(--background)))",
+                        boxShadow: "8px 8px 16px hsl(var(--border)), -8px -8px 16px hsl(var(--background))",
                         top: "50%",
                         left: "50%",
                         transform: "translate(-50%, -50%)",

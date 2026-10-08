@@ -5,9 +5,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 
 /* ── Mock reviewers (mirrors main page) ── */
 const reviewersMap: Record<string, { name: string; email: string; phone: string; status: string; assignedCount: number; avgDurationDays: number; avgScorePercent: number }> = {
@@ -32,11 +30,8 @@ const AdminReviewerDetail = () => {
   const reviewer = reviewersMap[id || ""] ?? reviewersMap.r1;
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-7">
+    <>
+        <div className="space-y-6">
           {/* Back + Title */}
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/admin/reviewers")} className="text-muted-foreground hover:text-primary">
@@ -110,9 +105,8 @@ const AdminReviewerDetail = () => {
               </TableBody>
             </Table>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 };
 

@@ -1,7 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { Hourglass, LogOut } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import loginBg from "@/assets/hero-bg.png";
 
@@ -16,7 +14,6 @@ const PendingApproval = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader />
 
       <main
         className="flex-1 relative"
@@ -83,7 +80,6 @@ const PendingApproval = () => {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 };

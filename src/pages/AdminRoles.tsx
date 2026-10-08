@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -210,11 +208,8 @@ const AdminRoles = () => {
   const isGroupAllOn = (group: PermGroup) => selected ? group.items.every((i) => selected.permissions[i.key]) : false;
 
   return (
-    <div dir="rtl" className="min-h-screen" style={{ background: "hsl(220,20%,97%)" }}>
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-6">
+    <>
+        <div className="space-y-6">
           {/* header */}
           <div>
             <h1 className="text-2xl font-hrsd-bold text-foreground">إدارة الصلاحيات</h1>
@@ -390,8 +385,7 @@ const AdminRoles = () => {
               </Card>
             )}
           </div>
-        </main>
-      </div>
+        </div>
 
       {/* Create Role Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -430,7 +424,7 @@ const AdminRoles = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };
 

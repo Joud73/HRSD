@@ -22,8 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import EvaluatorLayout from "@/components/evaluator/EvaluatorLayout";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 import {
   useEvaluatorAssignments,
   statusLabelMap,
@@ -63,7 +62,7 @@ const EvaluatorAssignments = () => {
   }, [assignments, statusFilter, yearFilter]);
 
   return (
-    <EvaluatorLayout>
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-hrsd-title text-foreground">الجمعيات المكلّفة</h1>
         <p className="text-sm font-hrsd text-muted-foreground mt-1">
@@ -176,7 +175,7 @@ const EvaluatorAssignments = () => {
           </Table>
         )}
       </div>
-    </EvaluatorLayout>
+    </div>
   );
 };
 

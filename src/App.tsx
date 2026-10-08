@@ -3,8 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { MotionConfig } from "motion/react";
 import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PublicLayout from "@/components/layout/PublicLayout";
+import AppShell from "@/components/layout/AppShell";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import LoginLocal from "./pages/LoginLocal";
@@ -46,66 +49,77 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const guard = (roles: Parameters<typeof ProtectedRoute>[0]["allowedRoles"], element: React.ReactNode) => (
+  <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/login-local" element={<LoginLocal />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/nafath-auth" element={<NafathAuth />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/contact-us" element={<ContactUs />} />
-            <Route path="/pending-approval" element={<PendingApproval />} />
-            <Route path="/individual-auth" element={<IndividualAuth />} />
-            {/* Individual routes */}
-            <Route path="/individuals-journey" element={<ProtectedRoute allowedRoles={["individual"]}><IndividualsJourney /></ProtectedRoute>} />
-            <Route path="/individual-course/:courseId" element={<ProtectedRoute allowedRoles={["individual"]}><IndividualCourseDetail /></ProtectedRoute>} />
+    <MotionConfig reducedMotion="user">
+      <TooltipProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public, authentication and individual pages */}
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/login-local" element={<LoginLocal />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/nafath-auth" element={<NafathAuth />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/contact-us" element={<ContactUs />} />
+                <Route path="/pending-approval" element={<PendingApproval />} />
+                <Route path="/individual-auth" element={<IndividualAuth />} />
+                <Route path="/individuals-journey" element={guard(["individual"], <IndividualsJourney />)} />
+                <Route path="/individual-course/:courseId" element={guard(["individual"], <IndividualCourseDetail />)} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
 
-            {/* Organization routes */}
-            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["organization"]}><Dashboard /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute allowedRoles={["organization"]}><Settings /></ProtectedRoute>} />
-            <Route path="/technical-indicators/:courseSlug" element={<ProtectedRoute allowedRoles={["organization"]}><TechnicalEvaluationIndicators /></ProtectedRoute>} />
-            <Route path="/training-stage" element={<ProtectedRoute allowedRoles={["organization"]}><TrainingStage /></ProtectedRoute>} />
-            <Route path="/course/:courseId" element={<ProtectedRoute allowedRoles={["organization"]}><CourseDetail /></ProtectedRoute>} />
-            <Route path="/under-review" element={<ProtectedRoute allowedRoles={["organization"]}><UnderReview /></ProtectedRoute>} />
-            <Route path="/certificate/:organizationId" element={<ProtectedRoute allowedRoles={["organization"]}><Certificate /></ProtectedRoute>} />
+              {/* Organization */}
+              <Route element={guard(["organization"], <AppShell role="organization" />)}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/technical-indicators/:courseSlug" element={<TechnicalEvaluationIndicators />} />
+                <Route path="/training-stage" element={<TrainingStage />} />
+                <Route path="/course/:courseId" element={<CourseDetail />} />
+                <Route path="/under-review" element={<UnderReview />} />
+                <Route path="/certificate/:organizationId" element={<Certificate />} />
+              </Route>
 
-            {/* Admin routes */}
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/performance/evaluation-setup" element={<ProtectedRoute allowedRoles={["admin"]}><AdminEvaluationSetup /></ProtectedRoute>} />
-            <Route path="/admin/performance/evaluation-setup/entities" element={<ProtectedRoute allowedRoles={["admin"]}><AdminEntities /></ProtectedRoute>} />
-            <Route path="/admin/performance/evaluation-setup/rubric" element={<ProtectedRoute allowedRoles={["admin"]}><AdminRubric /></ProtectedRoute>} />
-            <Route path="/admin/performance/evaluation-years" element={<ProtectedRoute allowedRoles={["admin"]}><AdminEvaluationYears /></ProtectedRoute>} />
-            <Route path="/admin/performance/evaluation-years/:yearId" element={<ProtectedRoute allowedRoles={["admin"]}><AdminEvaluationYearDetail /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><AdminUsers /></ProtectedRoute>} />
-            <Route path="/admin/roles" element={<ProtectedRoute allowedRoles={["admin"]}><AdminRoles /></ProtectedRoute>} />
-            <Route path="/admin/associations" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAssociations /></ProtectedRoute>} />
-            <Route path="/admin/associations/:id" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAssociationDetail /></ProtectedRoute>} />
-            <Route path="/admin/reviewers" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReviewers /></ProtectedRoute>} />
-            <Route path="/admin/reviewers/:id" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReviewerDetail /></ProtectedRoute>} />
-            <Route path="/admin/organization-requests" element={<ProtectedRoute allowedRoles={["admin"]}><AdminOrganizationRequests /></ProtectedRoute>} />
-            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReports /></ProtectedRoute>} />
-            <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={["admin"]}><AdminProfile /></ProtectedRoute>} />
+              {/* Admin */}
+              <Route element={guard(["admin"], <AppShell role="admin" />)}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/performance/evaluation-setup" element={<AdminEvaluationSetup />} />
+                <Route path="/admin/performance/evaluation-setup/entities" element={<AdminEntities />} />
+                <Route path="/admin/performance/evaluation-setup/rubric" element={<AdminRubric />} />
+                <Route path="/admin/performance/evaluation-years" element={<AdminEvaluationYears />} />
+                <Route path="/admin/performance/evaluation-years/:yearId" element={<AdminEvaluationYearDetail />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/roles" element={<AdminRoles />} />
+                <Route path="/admin/associations" element={<AdminAssociations />} />
+                <Route path="/admin/associations/:id" element={<AdminAssociationDetail />} />
+                <Route path="/admin/reviewers" element={<AdminReviewers />} />
+                <Route path="/admin/reviewers/:id" element={<AdminReviewerDetail />} />
+                <Route path="/admin/organization-requests" element={<AdminOrganizationRequests />} />
+                <Route path="/admin/reports" element={<AdminReports />} />
+                <Route path="/admin/profile" element={<AdminProfile />} />
+              </Route>
 
-            {/* Evaluator routes */}
-            <Route path="/evaluator" element={<ProtectedRoute allowedRoles={["evaluator"]}><EvaluatorDashboard /></ProtectedRoute>} />
-            <Route path="/evaluator/assignments" element={<ProtectedRoute allowedRoles={["evaluator"]}><EvaluatorAssignments /></ProtectedRoute>} />
-            <Route path="/evaluator/assignment/:assignmentId" element={<ProtectedRoute allowedRoles={["evaluator"]}><EvaluationDetails /></ProtectedRoute>} />
-            <Route path="/evaluator/profile" element={<ProtectedRoute allowedRoles={["evaluator"]}><EvaluatorProfile /></ProtectedRoute>} />
-
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
+              {/* Evaluator */}
+              <Route element={guard(["evaluator"], <AppShell role="evaluator" />)}>
+                <Route path="/evaluator" element={<EvaluatorDashboard />} />
+                <Route path="/evaluator/assignments" element={<EvaluatorAssignments />} />
+                <Route path="/evaluator/assignment/:assignmentId" element={<EvaluationDetails />} />
+                <Route path="/evaluator/profile" element={<EvaluatorProfile />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </MotionConfig>
   </QueryClientProvider>
 );
 

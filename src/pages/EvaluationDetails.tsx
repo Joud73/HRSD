@@ -22,8 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import StatusBadge from "@/components/admin/StatusBadge";
-import EvaluatorLayout from "@/components/evaluator/EvaluatorLayout";
+import StatusBadge from "@/components/shared/StatusBadge";
 import { statusLabelMap } from "@/hooks/useEvaluatorAssignments";
 
 /* ── Types ── */
@@ -232,11 +231,11 @@ const EvaluationDetails = () => {
   /* ── Guards ── */
   if (loadingAssignment) {
     return (
-      <EvaluatorLayout>
+      <div className="space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </EvaluatorLayout>
+      </div>
     );
   }
 
@@ -255,7 +254,7 @@ const EvaluationDetails = () => {
     (evidences || []).filter((e: any) => e.criterion_id === criterionId);
 
   return (
-    <EvaluatorLayout>
+    <div className="space-y-6">
       {/* Back button + title */}
       <div className="flex items-center gap-3">
         <Button
@@ -451,7 +450,7 @@ const EvaluationDetails = () => {
           </Button>
         </div>
       </div>
-    </EvaluatorLayout>
+    </div>
   );
 };
 

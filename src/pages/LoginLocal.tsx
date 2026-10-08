@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import loginBg from "@/assets/hero-bg.png";
 import { getDefaultRouteForRole, fetchUserRole } from "@/lib/roles";
@@ -62,7 +60,6 @@ const LoginLocal = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader />
 
       <main
         className="flex-1 relative pt-20"
@@ -191,7 +188,6 @@ const LoginLocal = () => {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 };

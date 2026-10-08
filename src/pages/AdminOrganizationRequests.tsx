@@ -2,10 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
 import KpiCard from "@/components/admin/KpiCard";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,11 +132,8 @@ const AdminOrganizationRequests = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen" style={{ background: "hsl(220,20%,97%)" }}>
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-6">
+    <>
+        <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-hrsd-bold text-foreground">طلبات تسجيل الجمعيات</h1>
             <p className="text-sm text-muted-foreground font-hrsd mt-1">مراجعة طلبات التسجيل والموافقة عليها أو رفضها</p>
@@ -223,8 +218,7 @@ const AdminOrganizationRequests = () => {
               )}
             </CardContent>
           </Card>
-        </main>
-      </div>
+        </div>
 
       {/* Detail Dialog */}
       <Dialog open={!!detailTarget} onOpenChange={() => setDetailTarget(null)}>
@@ -291,7 +285,7 @@ const AdminOrganizationRequests = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };
 

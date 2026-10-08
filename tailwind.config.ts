@@ -53,6 +53,7 @@ export default {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          ink: "hsl(var(--warning-ink))",
         },
         danger: {
           DEFAULT: "hsl(var(--danger))",
@@ -70,11 +71,7 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // TEMP aliases until step 3 replaces bg-section-* usages
-        section: {
-          light: "hsl(var(--surface))",
-          tealLight: "hsl(var(--primary) / 0.08)",
-        },
+        "section-alt": "hsl(var(--section-alt))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -86,15 +83,44 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
-      // Type scale (CLAUDE.md / frontend-design skill)
+      // Type scale (brief principle 4)
       fontSize: {
-        display: ["3rem", { lineHeight: "1.25" }], // 48/60
-        "display-sm": ["2rem", { lineHeight: "1.25" }], // 32/40
-        h2: ["1.75rem", { lineHeight: "2.25rem" }], // 28/36
-        h3: ["1.25rem", { lineHeight: "1.75rem" }], // 20/28
-        lead: ["1.125rem", { lineHeight: "1.875rem" }], // 18/30
-        body: ["1rem", { lineHeight: "1.625rem" }], // 16/26
-        small: ["0.875rem", { lineHeight: "1.25rem" }], // 14/20
+        display: ["3rem", { lineHeight: "3.75rem" }], // 48/60
+        h1: ["2.25rem", { lineHeight: "3rem" }], // 36/48
+        h2: ["1.75rem", { lineHeight: "2.5rem" }], // 28/40
+        h3: ["1.25rem", { lineHeight: "1.875rem" }], // 20/30
+        body: ["1rem", { lineHeight: "1.75rem" }], // 16/28
+        small: ["0.875rem", { lineHeight: "1.375rem" }], // 14/22
+        caption: ["0.75rem", { lineHeight: "1.125rem" }], // 12/18
+      },
+      maxWidth: {
+        container: "1440px",
+      },
+      boxShadow: {
+        // One shadow level, for floating layers only. Cards use a border.
+        none: "none",
+        sm: "none",
+        DEFAULT: "none",
+        md: "var(--shadow-float)",
+        lg: "var(--shadow-float)",
+        xl: "var(--shadow-float)",
+        "2xl": "var(--shadow-float)",
+        float: "var(--shadow-float)",
+      },
+      // tailwindcss-animate defaults (menus, dialogs, sheets, tooltips)
+      animationDuration: {
+        DEFAULT: "240ms",
+      },
+      animationTimingFunction: {
+        DEFAULT: "cubic-bezier(0.2, 0, 0, 1)",
+      },
+      transitionTimingFunction: {
+        standard: "cubic-bezier(0.2, 0, 0, 1)",
+      },
+      transitionDuration: {
+        micro: "150ms",
+        ui: "240ms",
+        reveal: "420ms",
       },
       fontFamily: {
         sans: ["HRSDGov-Medium", "Segoe UI", "Tahoma", "sans-serif"],
@@ -118,20 +144,10 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-in": {
-          from: { opacity: "0", transform: "translateY(10px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        "count-up": {
-          from: { opacity: "0", transform: "translateY(20px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-out forwards",
-        "count-up": "count-up 0.6s ease-out forwards",
+        "accordion-down": "accordion-down 240ms cubic-bezier(0.2, 0, 0, 1)",
+        "accordion-up": "accordion-up 240ms cubic-bezier(0.2, 0, 0, 1)",
       },
     },
   },

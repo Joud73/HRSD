@@ -61,8 +61,6 @@ import {
   DropdownMenuTrigger } from
 "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
 import KpiCard from "@/components/admin/KpiCard";
 
 /* ── Mock Data ── */
@@ -143,7 +141,6 @@ const statusColors: Record<string, string> = {
 };
 
 const chartStyle = {
-  fontFamily: "HRSDGov-Medium",
   fontSize: 12,
   borderRadius: 10,
   border: "1px solid hsl(210,15%,90%)"
@@ -222,11 +219,8 @@ const AdminReports = () => {
   trackCompData2025;
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-7">
+    <>
+        <div className="space-y-6">
           {/* Title */}
           <div>
             <h1 className="text-xl font-hrsd-title text-foreground">التقارير والتحليلات</h1>
@@ -351,7 +345,7 @@ const AdminReports = () => {
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={trackPerfData} barSize={28}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,93%)" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fontFamily: "HRSDGov-Regular" }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={chartStyle} formatter={(v: number) => [`${v}%`, "متوسط الأداء"]} />
                       <Bar dataKey="value" fill="hsl(175,75%,30%)" radius={[6, 6, 0, 0]} />
@@ -443,7 +437,7 @@ const AdminReports = () => {
                     <BarChart data={evalDurationData} barSize={28} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,93%)" horizontal={false} />
                       <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} unit=" يوم" />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontFamily: "HRSDGov-Regular" }} axisLine={false} tickLine={false} width={80} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
                       <Tooltip contentStyle={chartStyle} formatter={(v: number) => [`${v} يوم`, "المدة"]} />
                       <Bar dataKey="value" fill="hsl(175,75%,30%)" radius={[0, 6, 6, 0]} />
                     </BarChart>
@@ -455,7 +449,7 @@ const AdminReports = () => {
                     <BarChart data={evalScoreData} barSize={28} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,93%)" horizontal={false} />
                       <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} unit="%" />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontFamily: "HRSDGov-Regular" }} axisLine={false} tickLine={false} width={80} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
                       <Tooltip contentStyle={chartStyle} formatter={(v: number) => [`${v}%`, "الدرجة"]} />
                       <Bar dataKey="value" fill="hsl(35,91%,54%)" radius={[0, 6, 6, 0]} />
                     </BarChart>
@@ -512,10 +506,10 @@ const AdminReports = () => {
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={yearCompData} barSize={22}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,93%)" vertical={false} />
-                      <XAxis dataKey="metric" tick={{ fontSize: 11, fontFamily: "HRSDGov-Regular" }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="metric" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={chartStyle} />
-                      <Legend wrapperStyle={{ fontFamily: "HRSDGov-Medium", fontSize: 11 }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar dataKey="2025" fill="hsl(210,15%,80%)" radius={[6, 6, 0, 0]} name="2025" />
                       <Bar dataKey="2026" fill="hsl(175,75%,30%)" radius={[6, 6, 0, 0]} name="2026" />
                     </BarChart>
@@ -546,10 +540,10 @@ const AdminReports = () => {
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={currentTrackComp} barSize={20}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(210,15%,93%)" vertical={false} />
-                      <XAxis dataKey="track" tick={{ fontSize: 11, fontFamily: "HRSDGov-Regular" }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="track" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={chartStyle} />
-                      <Legend wrapperStyle={{ fontFamily: "HRSDGov-Medium", fontSize: 11 }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
                       {(trackCompMode === "dual" || year === 2025) &&
                       <Bar dataKey="2025" fill="hsl(210,15%,80%)" radius={[6, 6, 0, 0]} name="2025" />
                       }
@@ -562,8 +556,7 @@ const AdminReports = () => {
               </div>
             </TabsContent>
           </Tabs>
-        </main>
-      </div>
+        </div>
 
       {/* Share Modal */}
       <Dialog open={shareOpen} onOpenChange={setShareOpen}>
@@ -648,7 +641,7 @@ const AdminReports = () => {
           }
         </DialogContent>
       </Dialog>
-    </div>);
+    </>);
 
 };
 

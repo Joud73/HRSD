@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Send, Mail } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import heroBg from "@/assets/hero-bg.png";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -92,7 +90,6 @@ const ContactUs = () => {
 
   return (
     <div className="min-h-screen flex flex-col" dir="rtl">
-      <AppHeader />
 
       {/* Main Content with Background */}
       <main
@@ -233,7 +230,6 @@ const ContactUs = () => {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 };

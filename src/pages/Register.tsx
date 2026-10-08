@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Headphones, Check } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import loginBg from "@/assets/hero-bg.png";
@@ -140,9 +138,9 @@ const Register = () => {
       // On success screen (step 4), all steps are completed (grey)
       if (currentStep === 4) {
         return {
-          bg: "#e5e7eb",
-          text: "#6b7280",
-          labelColor: "#6b7280"
+          bg: "hsl(var(--border))",
+          text: "hsl(var(--muted-foreground))",
+          labelColor: "hsl(var(--muted-foreground))"
         };
       }
       
@@ -163,9 +161,9 @@ const Register = () => {
       } else {
         // Inactive step - gray
         return {
-          bg: "#e5e7eb",
-          text: "#9ca3af",
-          labelColor: "#9ca3af"
+          bg: "hsl(var(--border))",
+          text: "hsl(var(--neutral))",
+          labelColor: "hsl(var(--neutral))"
         };
       }
     };
@@ -501,7 +499,6 @@ const Register = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header - reused from homepage */}
-      <AppHeader />
 
       {/* Main content with background */}
       <main
@@ -589,7 +586,6 @@ const Register = () => {
       </main>
 
       {/* Footer - reused from homepage */}
-      <Footer />
     </div>
   );
 };

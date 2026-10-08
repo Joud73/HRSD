@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import loginBg from "@/assets/hero-bg.png";
 
@@ -68,7 +66,6 @@ const ForgotPassword = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader />
 
       <main
         className="flex-1 relative pt-20"
@@ -202,7 +199,6 @@ const ForgotPassword = () => {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 };

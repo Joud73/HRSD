@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import OrganizationJourney from "@/components/OrganizationJourney";
 import TrainingHero from "@/components/training/TrainingHero";
 import TrainingCard from "@/components/training/TrainingCard";
@@ -52,7 +50,6 @@ const TrainingStage = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header - using platform header */}
-      <AppHeader />
       
       
       {/* Organization Journey */}
@@ -70,8 +67,7 @@ const TrainingStage = () => {
         <div className="container mx-auto">
           {/* Section Header */}
           <div className="mb-6 md:mb-8">
-            <h2 className="section-title">المسار التدريبي</h2>
-            <div className="section-title-underline" />
+            <h2 className="text-h2 text-primary">المسار التدريبي</h2>
             <p className="mt-4 text-muted-foreground max-w-2xl font-hrsd-medium">
               اختر من بين مجموعة متنوعة من البرامج التدريبية المصممة لتطوير
               مهاراتك وتعزيز قدراتك المهنية.
@@ -119,8 +115,7 @@ const TrainingStage = () => {
         <div className="container mx-auto">
           {/* Section Header */}
           <div className="mb-8 md:mb-12">
-            <h2 className="section-title">مخرجات المرحلة</h2>
-            <div className="section-title-underline" />
+            <h2 className="text-h2 text-primary">مخرجات المرحلة</h2>
             <p className="mt-4 text-muted-foreground max-w-2xl font-hrsd-medium">
               عند إتمام مرحلة التأهيل والتدريب، ستحصل على مجموعة من المخرجات
               القيمة التي تدعم مسيرتك المهنية.
@@ -164,7 +159,6 @@ const TrainingStage = () => {
       </section>
 
       {/* Footer - using platform footer */}
-      <Footer />
 
       {/* Program Details Modal */}
       <TrainingProgramModal

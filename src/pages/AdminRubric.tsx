@@ -16,8 +16,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
 import { cn } from "@/lib/utils";
 
 /* ── Types ── */
@@ -461,11 +459,8 @@ const AdminRubric = () => {
   };
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-7">
+    <>
+        <div className="space-y-6">
           <div>
             <h1 className="text-xl font-hrsd-title text-foreground">تهيئة نموذج التقييم</h1>
             <p className="text-sm font-hrsd text-muted-foreground mt-1">
@@ -574,9 +569,8 @@ const AdminRubric = () => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 };
 

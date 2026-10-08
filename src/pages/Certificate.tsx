@@ -2,8 +2,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import OrganizationJourney from "@/components/OrganizationJourney";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,7 +48,6 @@ const Certificate = () => {
   if (!isCertified) {
     return (
       <div dir="rtl" className="min-h-screen flex flex-col bg-background">
-        <AppHeader />
         <main className="flex-1 flex items-center justify-center p-6">
           <Card className="max-w-md w-full shadow-lg">
             <CardContent className="p-8 text-center">
@@ -67,7 +64,6 @@ const Certificate = () => {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -81,7 +77,7 @@ const Certificate = () => {
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: "#ffffff",
+        backgroundColor: "hsl(var(--background))",
         logging: false,
       });
 
@@ -123,7 +119,6 @@ const Certificate = () => {
 
   return (
     <div dir="rtl" className="min-h-screen flex flex-col bg-background">
-      <AppHeader />
       
       {/* Fixed header spacer */}
       <div className="h-20 print:hidden" />
@@ -339,7 +334,6 @@ const Certificate = () => {
       </main>
 
       <div className="print:hidden">
-        <Footer />
       </div>
 
       {/* Print Styles - Critical for proper A4 printing */}

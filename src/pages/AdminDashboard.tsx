@@ -5,10 +5,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
 import KpiCard from "@/components/admin/KpiCard";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 import { useAdminDashboardStats } from "@/hooks/useAdminData";
 
 const AdminDashboard = () => {
@@ -19,11 +17,8 @@ const AdminDashboard = () => {
     toast({ title: "قريبًا", description: "سيتم توفير هذه الميزة لاحقًا" });
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-7">
+    <>
+        <div className="space-y-6">
           <div>
             <h1 className="text-xl font-hrsd-title text-foreground">لوحة التحكم</h1>
             <p className="text-sm font-hrsd text-muted-foreground mt-1">نظرة شاملة وفورية عن حالة المنصة</p>
@@ -80,9 +75,8 @@ const AdminDashboard = () => {
               </div>
             </>
           )}
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 };
 

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import NafathIcon from "@/components/icons/NafathIcon";
 import loginBg from "@/assets/hero-bg.png";
 
@@ -22,7 +20,6 @@ const NafathAuth = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader />
 
       <main
         className="flex-1 relative pt-20"
@@ -155,7 +152,6 @@ const NafathAuth = () => {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 };

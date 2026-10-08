@@ -31,7 +31,7 @@ const DonutChart = ({ percentage, size = 120, strokeWidth = 12 }: DonutChartProp
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#e5e7eb"
+          stroke="hsl(var(--border))"
           strokeWidth={strokeWidth}
         />
         {/* Progress circle */}
@@ -40,7 +40,7 @@ const DonutChart = ({ percentage, size = 120, strokeWidth = 12 }: DonutChartProp
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#148287"
+          stroke="hsl(var(--primary))"
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
@@ -50,7 +50,7 @@ const DonutChart = ({ percentage, size = 120, strokeWidth = 12 }: DonutChartProp
       </svg>
       {/* Percentage text */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xl font-hrsd-bold" style={{ color: "#148287" }}>{Math.round(animatedPercentage)}%</span>
+        <span className="text-xl font-hrsd-bold" style={{ color: "hsl(var(--primary))" }}>{Math.round(animatedPercentage)}%</span>
       </div>
     </div>
   );
@@ -204,7 +204,7 @@ const DashboardHeroSection = () => {
           {/* إجمالي التقييم Summary Block */}
           <div 
             className="rounded-lg p-6 mb-8"
-            style={{ backgroundColor: "#fef9e7" }}
+            style={{ backgroundColor: "hsl(var(--accent) / 0.08)" }}
           >
             <div className="flex flex-col md:flex-row gap-6">
               {/* Left side - Status list */}
@@ -218,7 +218,7 @@ const DashboardHeroSection = () => {
                     <div className="flex-1 h-5 bg-white rounded overflow-hidden">
                       <AnimatedBar 
                         percentage={(summaryData.incomplete / totalItems) * 100}
-                        color="#9ca3af"
+                        color="hsl(var(--neutral))"
                         delay={0}
                       />
                     </div>
@@ -227,12 +227,12 @@ const DashboardHeroSection = () => {
 
                   {/* بحاجة إلى تحسين كبير */}
                   <div className="flex items-center gap-3 transition-all duration-200 hover:bg-white/50 rounded px-2 py-1 cursor-default">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#f5961e" }} />
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: "hsl(var(--primary-light))" }} />
                     <span className="text-sm font-hrsd-medium text-foreground w-32">بحاجة إلى تحسين كبير</span>
                     <div className="flex-1 h-5 bg-white rounded overflow-hidden">
                       <AnimatedBar 
                         percentage={(summaryData.needsMajorImprovement / totalItems) * 100}
-                        color="#f5961e"
+                        color="hsl(var(--primary-light))"
                         delay={100}
                       />
                     </div>
@@ -241,12 +241,12 @@ const DashboardHeroSection = () => {
 
                   {/* بحاجة إلى تحسين بسيط */}
                   <div className="flex items-center gap-3 transition-all duration-200 hover:bg-white/50 rounded px-2 py-1 cursor-default">
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#22c55e" }} />
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "hsl(var(--success))" }} />
                     <span className="text-sm font-hrsd-medium text-foreground w-32">بحاجة إلى تحسين بسيط</span>
                     <div className="flex-1 h-5 bg-white rounded overflow-hidden">
                       <AnimatedBar 
                         percentage={(summaryData.needsMinorImprovement / totalItems) * 100}
-                        color="#22c55e"
+                        color="hsl(var(--success))"
                         delay={200}
                       />
                     </div>
@@ -255,12 +255,12 @@ const DashboardHeroSection = () => {
 
                   {/* مكتمل */}
                   <div className="flex items-center gap-3 transition-all duration-200 hover:bg-white/50 rounded px-2 py-1 cursor-default">
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#148287" }} />
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "hsl(var(--primary))" }} />
                     <span className="text-sm font-hrsd-medium text-foreground w-32">مكتمل</span>
                     <div className="flex-1 h-5 bg-white rounded overflow-hidden">
                       <AnimatedBar 
                         percentage={(summaryData.complete / totalItems) * 100}
-                        color="#148287"
+                        color="hsl(var(--primary))"
                         delay={300}
                       />
                     </div>
@@ -271,18 +271,18 @@ const DashboardHeroSection = () => {
 
               {/* Right side - Title and total percentage */}
               <div className="flex flex-col items-end order-1 md:order-2 md:w-56">
-                <h2 className="text-xl font-hrsd-bold mb-3" style={{ color: "#f5961e" }}>
+                <h2 className="text-xl font-hrsd-bold mb-3" style={{ color: "hsl(var(--primary-light))" }}>
                   إجمالي التقييم
                 </h2>
                 <div className="flex items-center gap-3 w-full">
                   <div className="flex-1 h-6 bg-white rounded overflow-hidden">
                     <AnimatedBar 
                       percentage={summaryData.totalPercentage}
-                      color="#f5961e"
+                      color="hsl(var(--primary-light))"
                       delay={400}
                     />
                   </div>
-                  <span className="text-2xl font-hrsd-bold" style={{ color: "#148287" }}>
+                  <span className="text-2xl font-hrsd-bold" style={{ color: "hsl(var(--primary))" }}>
                     %{summaryData.totalPercentage}
                   </span>
                 </div>
@@ -296,12 +296,12 @@ const DashboardHeroSection = () => {
               <div
                 key={index}
                 className="rounded-lg p-5 transition-all duration-300 hover:shadow-md cursor-pointer"
-                style={{ backgroundColor: "#e8f5f3" }}
+                style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}
               >
                 {/* Card Title */}
                 <h3 
                   className="text-lg font-hrsd-bold text-right mb-4"
-                  style={{ color: "#148287" }}
+                  style={{ color: "hsl(var(--primary))" }}
                 >
                   {card.title}
                 </h3>
@@ -321,24 +321,24 @@ const DashboardHeroSection = () => {
                     <div className="flex items-center justify-between gap-2 transition-all duration-200 hover:bg-white/40 rounded px-1 py-0.5">
                       <span className="text-sm font-hrsd-semibold w-4">{card.statuses.needsMajorImprovement}</span>
                       <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className="text-xs font-hrsd" style={{ color: "#f5961e" }}>بحاجة لتحسين كبير</span>
-                        <AlertCircle className="w-3 h-3" style={{ color: "#f5961e" }} />
+                        <span className="text-xs font-hrsd" style={{ color: "hsl(var(--primary-light))" }}>بحاجة لتحسين كبير</span>
+                        <AlertCircle className="w-3 h-3" style={{ color: "hsl(var(--primary-light))" }} />
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-2 transition-all duration-200 hover:bg-white/40 rounded px-1 py-0.5">
                       <span className="text-sm font-hrsd-semibold w-4">{card.statuses.needsMinorImprovement}</span>
                       <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className="text-xs font-hrsd" style={{ color: "#22c55e" }}>بحاجة لتحسين بسيط</span>
-                        <CheckCircle2 className="w-3 h-3" style={{ color: "#22c55e" }} />
+                        <span className="text-xs font-hrsd" style={{ color: "hsl(var(--success))" }}>بحاجة لتحسين بسيط</span>
+                        <CheckCircle2 className="w-3 h-3" style={{ color: "hsl(var(--success))" }} />
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-2 transition-all duration-200 hover:bg-white/40 rounded px-1 py-0.5">
                       <span className="text-sm font-hrsd-semibold w-4">{card.statuses.complete}</span>
                       <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className="text-xs font-hrsd" style={{ color: "#148287" }}>مكتمل</span>
-                        <CheckCircle2 className="w-3 h-3" style={{ color: "#148287" }} />
+                        <span className="text-xs font-hrsd" style={{ color: "hsl(var(--primary))" }}>مكتمل</span>
+                        <CheckCircle2 className="w-3 h-3" style={{ color: "hsl(var(--primary))" }} />
                       </div>
                     </div>
                   </div>
@@ -356,13 +356,13 @@ const DashboardHeroSection = () => {
                   <div className="flex items-center gap-2">
                     <span
                       className="px-2 py-0.5 rounded-full text-xs font-hrsd-bold text-white"
-                      style={{ backgroundColor: "#22c55e" }}
+                      style={{ backgroundColor: "hsl(var(--success))" }}
                     >
                       {card.newNotes}
                     </span>
                     <span
                       className="text-sm font-hrsd-medium"
-                      style={{ color: "#22c55e" }}
+                      style={{ color: "hsl(var(--success))" }}
                     >
                       ملاحظات جديدة
                     </span>
@@ -372,7 +372,7 @@ const DashboardHeroSection = () => {
                   <button
                     onClick={() => handleCourseClick(card.title)}
                     className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110 cursor-pointer"
-                    style={{ backgroundColor: "#148287" }}
+                    style={{ backgroundColor: "hsl(var(--primary))" }}
                   >
                     <ClipboardCheck className="w-4 h-4" />
                     تقييم المساق
@@ -384,22 +384,22 @@ const DashboardHeroSection = () => {
             {/* Send Evaluation Block - Beige Info Box (in grid) */}
             <div 
               className="rounded-lg p-5 shadow-sm"
-              style={{ backgroundColor: "#f5f0e1" }}
+              style={{ backgroundColor: "hsl(var(--accent) / 0.08)" }}
             >
               {/* Top sentence - Blue text */}
-              <p className="text-sm font-hrsd-semibold text-right mb-3" style={{ color: "#148287" }}>
+              <p className="text-sm font-hrsd-semibold text-right mb-3" style={{ color: "hsl(var(--primary))" }}>
                 حتى تتمكن من ارسال تقييمك الذاتي للمراجعة بواسطة مقيم الوزارة :
               </p>
               
               {/* Thin green line */}
-              <div className="h-0.5 mb-4" style={{ backgroundColor: "#148287" }} />
+              <div className="h-0.5 mb-4" style={{ backgroundColor: "hsl(var(--primary))" }} />
               
               {/* Transparent white text area */}
               <div 
                 className="rounded-lg p-4 mb-4"
                 style={{ backgroundColor: "rgba(255, 255, 255, 0.7)" }}
               >
-                <div className="space-y-1.5 text-right" style={{ color: "#148287" }}>
+                <div className="space-y-1.5 text-right" style={{ color: "hsl(var(--primary))" }}>
                   <p className="text-xs font-hrsd-medium">
                     اولا: ضرورة احتساب نتيجة تقييم كافة المؤشرات لجميع المساقات
                   </p>
@@ -418,7 +418,7 @@ const DashboardHeroSection = () => {
               {/* Send Evaluation Button */}
               <button
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-hrsd-semibold text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
-                style={{ backgroundColor: "#148287" }}
+                style={{ backgroundColor: "hsl(var(--primary))" }}
               >
                 <Send className="w-4 h-4" />
                 إرسال التقييم

@@ -1,6 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import OrganizationJourney from "@/components/OrganizationJourney";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +20,6 @@ const UnderReview = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <AppHeader />
       
       
       <main className="flex-1" dir="rtl">
@@ -105,7 +102,6 @@ const UnderReview = () => {
         </div>
       </main>
       
-      <Footer />
       
       {/* Side Badge */}
       <div
@@ -113,7 +109,7 @@ const UnderReview = () => {
         style={{
           writingMode: "vertical-rl",
           textOrientation: "mixed",
-          backgroundColor: "hsl(var(--accent-orange))",
+          backgroundColor: "hsl(var(--accent))",
           borderRadius: "0 4px 4px 0",
         }}
       >

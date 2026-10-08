@@ -1,6 +1,4 @@
 import { useState } from "react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import IndividualJourney from "@/components/IndividualJourney";
 import SelfAssessmentStep from "@/components/individual/SelfAssessmentStep";
 import SuggestedCoursesStep from "@/components/individual/SuggestedCoursesStep";
@@ -57,7 +55,6 @@ const IndividualsJourneyPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <AppHeader />
       
       
       <main className="flex-1">
@@ -88,7 +85,6 @@ const IndividualsJourneyPage = () => {
         </section>
       </main>
       
-      <Footer />
       
       {/* Side Badge */}
       <div
@@ -96,7 +92,7 @@ const IndividualsJourneyPage = () => {
         style={{
           writingMode: "vertical-rl",
           textOrientation: "mixed",
-          backgroundColor: "hsl(var(--accent-orange))",
+          backgroundColor: "hsl(var(--accent))",
           borderRadius: "0 4px 4px 0",
         }}
       >

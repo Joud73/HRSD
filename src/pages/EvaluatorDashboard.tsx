@@ -6,9 +6,8 @@ import {
   FileCheck,
   MessageSquare,
 } from "lucide-react";
-import EvaluatorLayout from "@/components/evaluator/EvaluatorLayout";
 import KpiCard from "@/components/admin/KpiCard";
-import StatusBadge from "@/components/admin/StatusBadge";
+import StatusBadge from "@/components/shared/StatusBadge";
 import { useEvaluatorStats, statusLabelMap } from "@/hooks/useEvaluatorAssignments";
 
 const EvaluatorDashboard = () => {
@@ -16,11 +15,11 @@ const EvaluatorDashboard = () => {
 
   if (isLoading) {
     return (
-      <EvaluatorLayout>
+      <div className="space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </EvaluatorLayout>
+      </div>
     );
   }
 
@@ -32,7 +31,7 @@ const EvaluatorDashboard = () => {
   ];
 
   return (
-    <EvaluatorLayout>
+    <div className="space-y-6">
       {/* Page title */}
       <div>
         <h1 className="text-xl font-hrsd-title text-foreground">لوحة تحكم المقيّم</h1>
@@ -107,7 +106,7 @@ const EvaluatorDashboard = () => {
           </p>
         </div>
       </div>
-    </EvaluatorLayout>
+    </div>
   );
 };
 

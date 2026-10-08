@@ -10,8 +10,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import AdminHeader from "@/components/admin/AdminHeader";
-import AdminSidebar from "@/components/admin/AdminSidebar";
 
 interface EntityType {
   id: string;
@@ -99,11 +97,8 @@ const AdminEntities = () => {
   };
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-[hsl(220,20%,97%)]">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto px-8 py-7 space-y-7">
+    <>
+        <div className="space-y-6">
           <div>
             <h1 className="text-xl font-hrsd-title text-foreground">تعريف الكيانات الأهلية</h1>
             <p className="text-sm font-hrsd text-muted-foreground mt-1">
@@ -203,9 +198,8 @@ const AdminEntities = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </main>
-      </div>
-    </div>
+        </div>
+    </>
   );
 };
 

@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import { Building2, UserCircle } from "lucide-react";
 
 const Settings = () => {
@@ -9,7 +7,6 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <AppHeader />
 
       {/* Main Content */}
       <main className="flex-1 pt-12 pb-12 relative z-10">
@@ -21,16 +18,16 @@ const Settings = () => {
                 العودة إلى لوحة التحكم
               </Link>
               <span className="mx-2">&gt;</span>
-              <span style={{ color: "#f5961e" }}>بيانات المنظمة</span>
+              <span style={{ color: "hsl(var(--primary-light))" }}>بيانات المنظمة</span>
             </p>
-            <div className="mt-3 h-0.5 w-full" style={{ backgroundColor: "#148287" }} />
+            <div className="mt-3 h-0.5 w-full" style={{ backgroundColor: "hsl(var(--primary))" }} />
           </div>
 
           {/* Two Column Layout - RTL */}
           <div className="flex gap-6">
             {/* Right Sidebar - Tab Navigation */}
             <div className="w-56 flex-shrink-0">
-              <div className="bg-[#f5f5f5] rounded-lg p-2 space-y-2">
+              <div className="bg-[hsl(var(--section-alt))] rounded-lg p-2 space-y-2">
                 <button
                   onClick={() => setActiveTab("organization")}
                   className={`w-full flex items-center justify-end gap-3 px-4 py-3 rounded-md font-hrsd-medium text-sm transition-all ${
@@ -38,10 +35,10 @@ const Settings = () => {
                       ? "text-white"
                       : "bg-white text-foreground hover:bg-gray-100"
                   }`}
-                  style={activeTab === "organization" ? { backgroundColor: "#148287" } : {}}
+                  style={activeTab === "organization" ? { backgroundColor: "hsl(var(--primary))" } : {}}
                 >
                   <span>بيانات المنظمة</span>
-                  <Building2 className="w-5 h-5" style={{ color: activeTab === "organization" ? "white" : "#f5961e" }} />
+                  <Building2 className="w-5 h-5" style={{ color: activeTab === "organization" ? "white" : "hsl(var(--primary-light))" }} />
                 </button>
                 <button
                   onClick={() => setActiveTab("representative")}
@@ -50,19 +47,19 @@ const Settings = () => {
                       ? "text-white"
                       : "bg-white text-foreground hover:bg-gray-100"
                   }`}
-                  style={activeTab === "representative" ? { backgroundColor: "#148287" } : {}}
+                  style={activeTab === "representative" ? { backgroundColor: "hsl(var(--primary))" } : {}}
                 >
                   <span>بيانات ممثل المنظمة</span>
-                  <UserCircle className="w-5 h-5" style={{ color: activeTab === "representative" ? "white" : "#f5961e" }} />
+                  <UserCircle className="w-5 h-5" style={{ color: activeTab === "representative" ? "white" : "hsl(var(--primary-light))" }} />
                 </button>
               </div>
             </div>
 
             {/* Left Content - Form Panel */}
             <div className="flex-1">
-              <div className="bg-[#f5f5f5] rounded-lg overflow-hidden">
+              <div className="bg-[hsl(var(--section-alt))] rounded-lg overflow-hidden">
                 {/* Form Header */}
-                <div className="px-6 py-4" style={{ backgroundColor: "#148287" }}>
+                <div className="px-6 py-4" style={{ backgroundColor: "hsl(var(--primary))" }}>
                   <h2 className="text-white font-hrsd-semibold text-lg text-right">
                     {activeTab === "organization" ? "بيانات المنظمة" : "بيانات ممثل المنظمة"}
                   </h2>
@@ -80,7 +77,6 @@ const Settings = () => {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 };

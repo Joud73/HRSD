@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Upload, Check, FileText, Eye, MessageSquare, Trash2, EyeOff, Pencil, Plus, X, ChevronDown } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
-import Footer from "@/components/Footer";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -1188,15 +1186,15 @@ const getResultLabel = (result: ResultType): string => {
 const getResultColor = (result: ResultType): string => {
   switch (result) {
     case "needs_minor":
-      return "#22c55e";
+      return "hsl(var(--success))";
     case "needs_major":
-      return "#f5961e";
+      return "hsl(var(--primary-light))";
     case "complete":
-      return "#148287";
+      return "hsl(var(--primary))";
     case "incomplete":
-      return "#9ca3af";
+      return "hsl(var(--neutral))";
     default:
-      return "#9ca3af";
+      return "hsl(var(--neutral))";
   }
 };
 
@@ -1551,10 +1549,10 @@ const TechnicalEvaluationIndicators = () => {
     const indicatorTasks = improvementTasks.filter((t) => t.indicatorId === indicatorId);
 
     return (
-      <div className="mt-4 rounded-lg overflow-hidden" style={{ backgroundColor: "#e8f5f3" }}>
+      <div className="mt-4 rounded-lg overflow-hidden" style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}>
         <div className="p-4">
           {/* Panel Title */}
-          <h4 className="text-lg font-hrsd-semibold mb-2" style={{ color: "#f5961e" }}>
+          <h4 className="text-lg font-hrsd-semibold mb-2" style={{ color: "hsl(var(--primary-light))" }}>
             بنود التحسين
           </h4>
           <div className="h-px bg-gray-300 mb-4" />
@@ -1568,7 +1566,7 @@ const TechnicalEvaluationIndicators = () => {
               {/* Table Header */}
               <div
                 className="flex items-center text-sm font-hrsd-semibold text-white"
-                style={{ backgroundColor: "#148287" }}
+                style={{ backgroundColor: "hsl(var(--primary))" }}
               >
                 <div className="w-16 py-3 text-center border-l border-white/20">النوع</div>
                 <div className="flex-1 py-3 px-4 border-l border-white/20">المهمة</div>
@@ -1606,14 +1604,14 @@ const TechnicalEvaluationIndicators = () => {
                           handleStatusChange(task.id, e.target.value as "تحت التنفيذ" | "تم")
                         }
                         className="appearance-none text-xs font-hrsd px-2 py-1 rounded border border-gray-200 bg-white pr-6"
-                        style={{ color: "#148287" }}
+                        style={{ color: "hsl(var(--primary))" }}
                       >
                         <option value="تحت التنفيذ">تحت التنفيذ</option>
                         <option value="تم">تم</option>
                       </select>
                       <ChevronDown
                         className="absolute left-1 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none"
-                        style={{ color: "#148287" }}
+                        style={{ color: "hsl(var(--primary))" }}
                       />
                     </div>
                     {/* Edit button */}
@@ -1622,7 +1620,7 @@ const TechnicalEvaluationIndicators = () => {
                       className="p-1.5 rounded hover:bg-gray-100 transition-colors"
                       title="تعديل"
                     >
-                      <Pencil className="w-4 h-4" style={{ color: "#148287" }} />
+                      <Pencil className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                     </button>
                     {/* Delete button (only for manual) */}
                     <button
@@ -1632,12 +1630,12 @@ const TechnicalEvaluationIndicators = () => {
                       }`}
                       title={task.isAuto ? "لا يمكن حذف البنود التلقائية" : "حذف"}
                     >
-                      <Trash2 className="w-4 h-4" style={{ color: "#148287" }} />
+                      <Trash2 className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                     </button>
                     {/* Plus icon for auto tasks */}
                     {task.isAuto && (
                       <span className="p-1.5">
-                        <Plus className="w-4 h-4" style={{ color: "#148287" }} />
+                        <Plus className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                       </span>
                     )}
                   </div>
@@ -1651,7 +1649,7 @@ const TechnicalEvaluationIndicators = () => {
             <button
               onClick={() => openAddTaskModal(indicatorId)}
               className="px-6 py-2 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
-              style={{ backgroundColor: "#148287" }}
+              style={{ backgroundColor: "hsl(var(--primary))" }}
             >
               إضافة مهمة رئيسية
             </button>
@@ -1666,10 +1664,10 @@ const TechnicalEvaluationIndicators = () => {
     const indicatorEvidence = evidenceRecords.filter((e) => e.indicatorId === indicatorId);
     
     return (
-      <div className="mt-4 rounded-lg overflow-hidden" style={{ backgroundColor: "#e8f5f3" }}>
+      <div className="mt-4 rounded-lg overflow-hidden" style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}>
         <div className="p-4">
           {/* Panel Title */}
-          <h4 className="text-lg font-hrsd-semibold mb-2" style={{ color: "#f5961e" }}>
+          <h4 className="text-lg font-hrsd-semibold mb-2" style={{ color: "hsl(var(--primary-light))" }}>
             الشواهد
           </h4>
           <div className="h-px bg-gray-300 mb-4" />
@@ -1683,7 +1681,7 @@ const TechnicalEvaluationIndicators = () => {
               {/* Table Header */}
               <div 
                 className="flex items-center text-sm font-hrsd-semibold text-white"
-                style={{ backgroundColor: "#148287" }}
+                style={{ backgroundColor: "hsl(var(--primary))" }}
               >
                 <div className="flex-1 py-3 px-4 border-l border-white/20">
                   الشاهد
@@ -1723,9 +1721,9 @@ const TechnicalEvaluationIndicators = () => {
                       title={evidence.hidden ? "إظهار" : "إخفاء"}
                     >
                       {evidence.hidden ? (
-                        <EyeOff className="w-4 h-4" style={{ color: "#148287" }} />
+                        <EyeOff className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                       ) : (
-                        <Eye className="w-4 h-4" style={{ color: "#148287" }} />
+                        <Eye className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                       )}
                     </button>
                     <button
@@ -1733,7 +1731,7 @@ const TechnicalEvaluationIndicators = () => {
                       className="p-1.5 rounded hover:bg-gray-100 transition-colors"
                       title="حذف"
                     >
-                      <Trash2 className="w-4 h-4" style={{ color: "#148287" }} />
+                      <Trash2 className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                     </button>
                   </div>
                 </div>
@@ -1746,7 +1744,7 @@ const TechnicalEvaluationIndicators = () => {
             <button
               onClick={() => generalEvidenceInputRef.current[indicatorId]?.click()}
               className="px-6 py-2 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
-              style={{ backgroundColor: "#148287" }}
+              style={{ backgroundColor: "hsl(var(--primary))" }}
             >
               إضافة شاهد
             </button>
@@ -1767,10 +1765,10 @@ const TechnicalEvaluationIndicators = () => {
     const indicatorNotes = notes.filter((n) => n.indicatorId === indicatorId);
 
     return (
-      <div className="mt-4 rounded-lg overflow-hidden" style={{ backgroundColor: "#e8f5f3" }}>
+      <div className="mt-4 rounded-lg overflow-hidden" style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}>
         <div className="p-4">
           {/* Panel Title */}
-          <h4 className="text-lg font-hrsd-semibold mb-2" style={{ color: "#f5961e" }}>
+          <h4 className="text-lg font-hrsd-semibold mb-2" style={{ color: "hsl(var(--primary-light))" }}>
             ملاحظات التقييم
           </h4>
           <div className="h-px bg-gray-300 mb-4" />
@@ -1780,7 +1778,7 @@ const TechnicalEvaluationIndicators = () => {
             {/* Table Header */}
             <div
               className="flex items-center text-sm font-hrsd-semibold text-white"
-              style={{ backgroundColor: "#148287" }}
+              style={{ backgroundColor: "hsl(var(--primary))" }}
             >
               <div className="flex-1 py-3 px-4 border-l border-white/20">
                 الملاحظة
@@ -1838,7 +1836,7 @@ const TechnicalEvaluationIndicators = () => {
             <button
               onClick={() => handleSaveNote(indicatorId)}
               className="px-8 py-2 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
-              style={{ backgroundColor: "#148287" }}
+              style={{ backgroundColor: "hsl(var(--primary))" }}
             >
               حفظ
             </button>
@@ -1850,7 +1848,6 @@ const TechnicalEvaluationIndicators = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <AppHeader />
       
       <main className="flex-1 pt-12 pb-12">
         {/* Side Patterns - Curved Lines */}
@@ -1889,7 +1886,7 @@ const TechnicalEvaluationIndicators = () => {
             {/* Course Title (Orange) */}
             <h1 
               className="text-2xl font-hrsd-bold mb-6"
-              style={{ color: "#f5961e" }}
+              style={{ color: "hsl(var(--primary-light))" }}
             >
               مساق: {currentCourse.name}
             </h1>
@@ -1904,18 +1901,18 @@ const TechnicalEvaluationIndicators = () => {
                     {/* Circle with number */}
                     <div 
                       className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: "#e8f5f3" }}
+                      style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}
                     >
-                      <span className="text-sm font-hrsd-bold" style={{ color: "#f5961e" }}>
+                      <span className="text-sm font-hrsd-bold" style={{ color: "hsl(var(--primary-light))" }}>
                         {criterion.number}
                       </span>
                     </div>
                     {/* Criterion name badge */}
                     <div 
                       className="px-4 py-2 rounded-md"
-                      style={{ backgroundColor: "#e8f5f3" }}
+                      style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}
                     >
-                      <span className="text-sm font-hrsd-semibold" style={{ color: "#f5961e" }}>
+                      <span className="text-sm font-hrsd-semibold" style={{ color: "hsl(var(--primary-light))" }}>
                         {criterion.name}
                       </span>
                     </div>
@@ -1930,7 +1927,7 @@ const TechnicalEvaluationIndicators = () => {
                       {/* Indicator Title (Blue) */}
                       <h3 
                         className="text-base font-hrsd-medium mb-4"
-                        style={{ color: "#148287" }}
+                        style={{ color: "hsl(var(--primary))" }}
                       >
                         {indicator.title}
                       </h3>
@@ -1940,7 +1937,7 @@ const TechnicalEvaluationIndicators = () => {
                         {/* Table Header */}
                         <div 
                           className="flex items-center text-sm font-hrsd-semibold text-white"
-                          style={{ backgroundColor: "#148287" }}
+                          style={{ backgroundColor: "hsl(var(--primary))" }}
                         >
                           <div className="w-16 py-3 text-center border-l border-white/20">
                             اختر
@@ -2008,7 +2005,7 @@ const TechnicalEvaluationIndicators = () => {
                         <button
                           onClick={() => calculateIndicatorResult(indicator)}
                           className="flex items-center gap-2 px-6 py-2 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
-                          style={{ backgroundColor: "#22c55e" }}
+                          style={{ backgroundColor: "hsl(var(--success))" }}
                         >
                           احتساب نتيجة المؤشر
                         </button>
@@ -2033,7 +2030,7 @@ const TechnicalEvaluationIndicators = () => {
                           onClick={() => handleButtonClick(indicator.id, "plan")}
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
                           style={{ 
-                            backgroundColor: activeButtons[indicator.id] === "plan" ? "#f5961e" : "#148287" 
+                            backgroundColor: activeButtons[indicator.id] === "plan" ? "hsl(var(--primary-light))" : "hsl(var(--primary))" 
                           }}
                         >
                           <FileText className="w-4 h-4" />
@@ -2048,7 +2045,7 @@ const TechnicalEvaluationIndicators = () => {
                           onClick={() => handleButtonClick(indicator.id, "evidence")}
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
                           style={{ 
-                            backgroundColor: activeButtons[indicator.id] === "evidence" ? "#f5961e" : "#148287" 
+                            backgroundColor: activeButtons[indicator.id] === "evidence" ? "hsl(var(--primary-light))" : "hsl(var(--primary))" 
                           }}
                         >
                           <Eye className="w-4 h-4" />
@@ -2063,7 +2060,7 @@ const TechnicalEvaluationIndicators = () => {
                           onClick={() => handleButtonClick(indicator.id, "notes")}
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
                           style={{ 
-                            backgroundColor: activeButtons[indicator.id] === "notes" ? "#f5961e" : "#148287" 
+                            backgroundColor: activeButtons[indicator.id] === "notes" ? "hsl(var(--primary-light))" : "hsl(var(--primary))" 
                           }}
                         >
                           <MessageSquare className="w-4 h-4" />
@@ -2097,7 +2094,7 @@ const TechnicalEvaluationIndicators = () => {
       <Dialog open={isAddTaskModalOpen} onOpenChange={setIsAddTaskModalOpen}>
         <DialogContent className="sm:max-w-md bg-white" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="font-hrsd-semibold" style={{ color: "#148287" }}>
+            <DialogTitle className="font-hrsd-semibold" style={{ color: "hsl(var(--primary))" }}>
               إضافة مهمة رئيسية
             </DialogTitle>
           </DialogHeader>
@@ -2146,7 +2143,7 @@ const TechnicalEvaluationIndicators = () => {
                 <button
                   onClick={handleAddTeamMember}
                   className="px-3 py-2 rounded-md text-sm font-hrsd-medium text-white"
-                  style={{ backgroundColor: "#148287" }}
+                  style={{ backgroundColor: "hsl(var(--primary))" }}
                 >
                   إضافة
                 </button>
@@ -2158,7 +2155,7 @@ const TechnicalEvaluationIndicators = () => {
               <button
                 onClick={handleAddTask}
                 className="flex-1 px-4 py-2 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
-                style={{ backgroundColor: "#148287" }}
+                style={{ backgroundColor: "hsl(var(--primary))" }}
               >
                 حفظ المهمة
               </button>
@@ -2177,7 +2174,7 @@ const TechnicalEvaluationIndicators = () => {
       <Dialog open={isEditTaskModalOpen} onOpenChange={setIsEditTaskModalOpen}>
         <DialogContent className="sm:max-w-md bg-white" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="font-hrsd-semibold" style={{ color: "#148287" }}>
+            <DialogTitle className="font-hrsd-semibold" style={{ color: "hsl(var(--primary))" }}>
               تعديل المهمة
             </DialogTitle>
           </DialogHeader>
@@ -2239,7 +2236,7 @@ const TechnicalEvaluationIndicators = () => {
                 <button
                   onClick={handleAddTeamMember}
                   className="px-3 py-2 rounded-md text-sm font-hrsd-medium text-white"
-                  style={{ backgroundColor: "#148287" }}
+                  style={{ backgroundColor: "hsl(var(--primary))" }}
                 >
                   إضافة
                 </button>
@@ -2251,7 +2248,7 @@ const TechnicalEvaluationIndicators = () => {
               <button
                 onClick={handleSaveEditTask}
                 className="flex-1 px-4 py-2 rounded-md text-sm font-hrsd-medium text-white transition-all duration-200 hover:shadow-md hover:brightness-110"
-                style={{ backgroundColor: "#148287" }}
+                style={{ backgroundColor: "hsl(var(--primary))" }}
               >
                 حفظ التعديلات
               </button>
@@ -2269,7 +2266,6 @@ const TechnicalEvaluationIndicators = () => {
         </DialogContent>
       </Dialog>
 
-      <Footer />
     </div>
   );
 };
