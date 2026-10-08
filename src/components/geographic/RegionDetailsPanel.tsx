@@ -1,147 +1,131 @@
-import { X } from "lucide-react";
+import { forwardRef } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { copy } from "@/lib/copy";
+import { formatNumber, formatPercent } from "@/lib/format";
+import { transition } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { RegionData, regions, summaryStats, totalCount } from "./types";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
-import { useIsMobile } from "@/hooks/use-mobile";
-interface RegionDetailsPanelProps {
-  selectedRegion: RegionData | null;
-  onClose: () => void;
-  startCounting: boolean;
+import KpiCard from "@/components/shared/KpiCard";
+import { maxCount, national, rankOf, ranked, regions } from "./types";
+
+const byId = new Map(regions.map((r) => [r.id, r]));
+
+/** National totals, or the selected region's figures. Crossfades between the two. */
+export const RegionDetailsPanel = ({ selectedId, onClear }: { selectedId: string | null; onClear: () => void }) => {
+  const region = selectedId ? byId.get(selectedId) : null;
+
+  return (
+    <div aria-live="polite">
+      <AnimatePresence mode="wait" initial={false}>
+        {region ? (
+          <motion.div
+            key={region.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={transition.ui}
+            className="rounded-lg border border-border bg-card p-5"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-h3 text-ink">{region.name}</h3>
+                <p className="mt-1 text-small text-muted-foreground">
+                  {copy.map_rank} {formatNumber(rankOf(region.id))} {copy.map_rank_of} {formatNumber(regions.length)}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={onClear} className="shrink-0">
+                {copy.map_show_all}
+              </Button>
+            </div>
+            <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <dt className="text-caption text-muted-foreground">{copy.map_total}</dt>
+                <dd className="tabular text-h3 font-hrsd-bold text-ink">{formatNumber(region.count)}</dd>
+              </div>
+              <div>
+                <dt className="text-caption text-muted-foreground">{copy.map_association}</dt>
+                <dd className="tabular text-h3 font-hrsd-bold text-ink">{formatNumber(region.associations)}</dd>
+              </div>
+              <div>
+                <dt className="text-caption text-muted-foreground">{copy.map_foundation}</dt>
+                <dd className="tabular text-h3 font-hrsd-bold text-ink">{formatNumber(region.foundations)}</dd>
+              </div>
+              <div>
+                <dt className="text-caption text-muted-foreground">{copy.map_share}</dt>
+                <dd className="tabular text-h3 font-hrsd-bold text-ink">
+                  {formatPercent((region.count / national.total) * 100)}
+                </dd>
+              </div>
+            </dl>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="national"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={transition.ui}
+            className="grid grid-cols-3 gap-3"
+          >
+            <KpiCard size="compact" label={copy.map_total} value={national.total} />
+            <KpiCard size="compact" label={copy.map_association} value={national.associations} />
+            <KpiCard size="compact" label={copy.map_foundation} value={national.foundations} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+interface RegionRankListProps {
+  hoveredId: string | null;
+  selectedId: string | null;
+  onHover: (id: string | null) => void;
+  onSelect: (id: string | null) => void;
+  className?: string;
 }
 
-// Animated counter component
-const AnimatedCount = ({
-  value,
-  startCounting
-}: {
-  value: number;
-  startCounting: boolean;
-}) => {
-  return <span className={startCounting ? "animate-fade-in" : ""}>
-      {startCounting ? value.toLocaleString("ar-SA") : "0"}
-    </span>;
-};
-
-// Summary stats that show when no region is selected
-const SummaryView = ({
-  startCounting
-}: {
-  startCounting: boolean;
-}) => <div className="h-full flex flex-col">
-    <h3 className="mb-3 font-hrsd-bold text-h3 text-ink">
-      ملخص الإحصائيات
-    </h3>
-
-    {/* Total */}
-    <div className="mb-2 rounded-md bg-primary p-3 text-start text-primary-foreground">
-      <div className="text-h2 font-hrsd-bold">
-        +<AnimatedCount value={totalCount} startCounting={startCounting} />
-      </div>
-      <div className="text-small font-hrsd-medium text-primary-foreground/85">الإجمالي</div>
-    </div>
-
-    {/* Summary Stats */}
-    <div className="grid grid-cols-2 gap-2 mb-2">
-      {summaryStats.map((stat, idx) => <div key={idx} className="rounded-md border border-border bg-surface p-3 text-start">
-          <div className="text-h3 font-hrsd-bold text-primary">
-            +<AnimatedCount value={stat.count} startCounting={startCounting} />
-          </div>
-          <div className="text-small font-hrsd-medium text-muted-foreground">{stat.label}</div>
-        </div>)}
-    </div>
-
-    {/* Top regions list */}
-    <div className="flex-1 flex flex-col min-h-0">
-      <h4 className="mb-2 font-hrsd-semibold text-small text-ink">
-        أعلى المناطق
-      </h4>
-      <div className="space-y-1">
-        {[...regions].sort((a, b) => b.count - a.count).slice(0, 3).map((region, idx) => <div key={region.id} className="flex w-full items-center justify-between border-b border-border py-2 last:border-b-0" dir="rtl">
-              {/* RIGHT side - City name and badge */}
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-hrsd-bold text-primary-foreground">
-                  {idx + 1}
-                </span>
-                <span className="text-small font-hrsd-medium text-ink">
-                  {region.name}
-                </span>
-              </div>
-              {/* LEFT side - Count */}
-              <span className="text-small font-hrsd-bold text-primary">
-                {region.count}
+/** All 13 regions ranked: rank, name, count and a thin bar proportional to the maximum. */
+export const RegionRankList = forwardRef<HTMLOListElement, RegionRankListProps>(
+  ({ hoveredId, selectedId, onHover, onSelect, className }, ref) => (
+    <ol ref={ref} aria-label={copy.map_ranking_title} className={cn("flex flex-col", className)}>
+      {ranked.map(({ region, rank }) => {
+        const active = hoveredId === region.id;
+        const selected = selectedId === region.id;
+        const dimmed = !!selectedId && !selected;
+        return (
+          <li key={region.id} data-region={region.id}>
+            <button
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onSelect(selected ? null : region.id)}
+              onPointerEnter={() => onHover(region.id)}
+              onPointerLeave={() => onHover(null)}
+              onFocus={() => onHover(region.id)}
+              onBlur={() => onHover(null)}
+              className={cn(
+                "grid w-full grid-cols-[28px_1fr_auto] items-center gap-x-3 gap-y-1.5 rounded-md px-3 py-2.5 text-start transition-[background-color,opacity] duration-ui ease-standard",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                selected ? "bg-primary/[0.06]" : active ? "bg-section-alt" : "hover:bg-section-alt",
+                dimmed && !active && "opacity-60"
+              )}
+            >
+              <span className="tabular text-caption text-muted-foreground">{formatNumber(rank)}</span>
+              <span className={cn("truncate text-small", selected ? "font-hrsd-bold text-ink" : "font-hrsd-medium text-ink")}>
+                {region.name}
               </span>
-            </div>)}
-      </div>
-    </div>
-  </div>;
-
-// Selected region detail view
-const RegionDetailView = ({
-  region,
-  onClose
-}: {
-  region: RegionData;
-  onClose: () => void;
-}) => <div className="space-y-6">
-    <div className="flex items-start justify-between">
-      <Button variant="ghost" size="icon" onClick={onClose} aria-label="إغلاق" className="text-muted-foreground hover:text-ink">
-        <X className="h-5 w-5" />
-      </Button>
-      <h3 className="font-hrsd-bold text-h3 text-ink">{region.name}</h3>
-    </div>
-
-    {/* Main stat */}
-    <div className="rounded-md bg-primary p-6 text-start text-primary-foreground">
-      <div className="text-display-sm font-hrsd-bold">{region.count}</div>
-      <div className="text-body font-hrsd-medium text-primary-foreground/85">منظمة أهلية</div>
-    </div>
-
-    {/* Details placeholder */}
-    <div className="rounded-md border border-border bg-surface p-4">
-      <h4 className="mb-2 font-hrsd-semibold text-small text-ink">
-        تفاصيل المنطقة
-      </h4>
-      <p className="text-small font-hrsd-regular text-muted-foreground">
-        تضم منطقة {region.name} عدداً من الجهات الخاضعة للإشراف الفني من قبل
-        الوزارة، حيث يتم متابعة أدائها وتقديم الدعم اللازم لضمان جودة الخدمات
-        المقدمة.
-      </p>
-    </div>
-
-    {/* Clear selection button */}
-    <Button variant="outline" className="w-full border-primary font-hrsd-medium text-primary hover:bg-primary hover:text-primary-foreground" onClick={onClose}>
-      إظهار كل المناطق
-    </Button>
-  </div>;
-const RegionDetailsPanel = ({
-  selectedRegion,
-  onClose,
-  startCounting
-}: RegionDetailsPanelProps) => {
-  const isMobile = useIsMobile();
-
-  // Mobile: Use drawer
-  if (isMobile) {
-    return <Drawer open={!!selectedRegion} onOpenChange={open => !open && onClose()}>
-        <DrawerContent className="px-4 pb-8">
-          <DrawerHeader className="text-start">
-            <DrawerTitle className="font-hrsd-bold text-h3 text-ink">
-              {selectedRegion?.name || "تفاصيل المنطقة"}
-            </DrawerTitle>
-          </DrawerHeader>
-          {selectedRegion && <RegionDetailView region={selectedRegion} onClose={onClose} />}
-          <DrawerClose asChild>
-            <Button variant="ghost" className="absolute top-4 end-4" size="icon" aria-label="إغلاق">
-              <X className="h-5 w-5" />
-            </Button>
-          </DrawerClose>
-        </DrawerContent>
-      </Drawer>;
-  }
-
-  // Desktop: Side panel
-  return <div className="h-full rounded-lg border border-border bg-background p-4">
-      {selectedRegion ? <RegionDetailView region={selectedRegion} onClose={onClose} /> : <SummaryView startCounting={startCounting} />}
-    </div>;
-};
-export default RegionDetailsPanel;
+              <span className="tabular text-small font-hrsd-bold text-ink">{formatNumber(region.count)}</span>
+              <span aria-hidden className="col-start-2 col-end-4 h-1 overflow-hidden rounded-full bg-section-alt">
+                <span
+                  className="block h-full rounded-full bg-primary transition-[width] duration-reveal ease-standard"
+                  style={{ width: `${(region.count / maxCount) * 100}%` }}
+                />
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  )
+);
+RegionRankList.displayName = "RegionRankList";

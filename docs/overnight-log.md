@@ -9,7 +9,7 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - [x] Phase 1: Remove Lovable
 - [x] Phase 2: Foundations
 - [x] Phase 3: Public shell corrections
-- [ ] Phase 4: Home page
+- [x] Phase 4: Home page
 - [ ] Phase 5: Authentication pages
 - [ ] Phase 6: Internal app
 - [ ] Phase 7: Remaining pages sweep
@@ -38,5 +38,14 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - Phase 3: "English" shows a toast with lang_soon on desktop and in the mobile options menu.
 - Phase 3: dropdown items mark the active route with primary text, a check icon and aria-current. The underline bar animates its scale (240ms).
 - Phase 3: the radix toast had physical right/pr/space-x utilities; they are now logical (end, pe, gap).
+- Phase 4: the hero carries id="about" (targets of نبذة عن المركز and الأهداف). The secondary CTA تعرّف على المنهجية now goes to #steps (the journey), matching the منهجية التقييم nav item.
+- Phase 4: journey auto-advance is driven by a CSS keyframe on the thin indicator under the active step; `animationend` advances, `animation-play-state` pauses while hovered, focused or out of view. Under reduced motion the indicator is not rendered, so nothing auto-advances. Each illustrative fragment is captioned مثال توضيحي so its sample figures (8 of 13, 82%) are not read as real data.
+- Phase 4: tracks open their standards below the grid; header links (/#track-team …) open the matching track. Selected tile uses a primary edge; gold appears only on hover, the page's single accent.
+- Phase 4 (map): the region paths already spanned the full 730x600 box; the map looked small because its card had a fixed 360px height. The SVG now takes the full column width with a viewBox padded 2%; the card has no fixed height.
+- Phase 4 (map): the dataset had no per-region type breakdown, which the region view requires. I added an illustrative split (foundations per region) that sums exactly to the existing national totals (2463 associations, 73 foundations, 2536 total). The whole module is captioned بيانات توضيحية. **Replace with real data before production.**
+- Phase 4 (map): quantile classes (5 classes over the 13 regions, 2–3 regions each) built from the primary token at rising opacity; the legend shows numeric breaks under the scale (min … max).
+- Phase 4 (map): on desktop the data column takes the map's height (absolute inset inside the stretched grid cell); the ranked list scrolls inside its card with a bottom fade. On mobile everything flows: map, totals, list. Selecting a region scrolls its row into view.
+- Phase 4 (map): tab order north to south (تبوك, الجوف, الحدود الشمالية, حائل, القصيم, المدينة المنورة, الرياض, الشرقية, مكة المكرمة, الباحة, عسير, نجران, جازان); Enter selects, Escape clears. The outline of the hovered or selected region is drawn as a last overlay path so neighbours never cover it.
+- Phase 4: CTA band is an inset deep green panel on the section grey, so it does not merge with the green footer.
 
 ## Not finished

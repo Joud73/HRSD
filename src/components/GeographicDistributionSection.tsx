@@ -1,57 +1,65 @@
-import { useEffect, useState, useRef } from "react";
-import SaudiHeatmapMap from "./geographic/SaudiHeatmapMap";
-import RegionDetailsPanel from "./geographic/RegionDetailsPanel";
-import { regions, RegionData } from "./geographic/types";
+import { useCallback, useRef, useState } from "react";
+import { copy } from "@/lib/copy";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import Section from "@/components/layout/Section";
+import SaudiHeatmapMap from "@/components/geographic/SaudiHeatmapMap";
+import { RegionDetailsPanel, RegionRankList } from "@/components/geographic/RegionDetailsPanel";
+
+/**
+ * Geographic distribution: map (7/12) linked with national totals and the ranked list (5/12).
+ * On desktop the data column takes the map's height and the list scrolls inside it if needed.
+ */
 const GeographicDistributionSection = () => {
-  const [startCounting, setStartCounting] = useState(false);
-  const [selectedRegion, setSelectedRegion] = useState<RegionData | null>(null);
-  const sectionRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) {
-        setStartCounting(true);
-        observer.disconnect();
-      }
-    }, {
-      threshold: 0.2
-    });
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-    return () => observer.disconnect();
-  }, []);
-  const handleRegionSelect = (region: RegionData | null) => {
-    setSelectedRegion(region);
-  };
-  return <section ref={sectionRef} className="bg-background py-14 lg:py-24">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-6">
-        {/* Section Header */}
-        <div className="mb-8">
-          <h2 className="font-hrsd-bold text-h2 text-ink">
-            التوزيع الجغرافي للإشراف الفني
-          </h2>
-          <p className="mt-2 text-small font-hrsd-regular text-muted-foreground">
-            انقر على أي منطقة لعرض التفاصيل
-          </p>
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const listRef = useRef<HTMLOListElement>(null);
+  const isMobile = useIsMobile();
+  const reduced = useReducedMotion();
+
+  const select = useCallback(
+    (id: string | null) => {
+      setSelectedId(id);
+      if (!id) return;
+      // Bring the region's row into view (inside the list on desktop, the page on mobile)
+      const row = listRef.current?.querySelector<HTMLElement>(`[data-region="${id}"]`);
+      row?.scrollIntoView({ block: isMobile ? "center" : "nearest", behavior: reduced ? "auto" : "smooth" });
+    },
+    [isMobile, reduced]
+  );
+
+  return (
+    <Section id="map" tone="white" title={copy.map_title} subtitle={copy.map_subtitle} caption={copy.map_note}>
+      <div
+        className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setSelectedId(null);
+        }}
+      >
+        <div className="rounded-lg border border-border bg-card p-4 md:p-6 lg:col-span-7">
+          <SaudiHeatmapMap hoveredId={hoveredId} selectedId={selectedId} onHover={setHoveredId} onSelect={select} />
         </div>
 
-        {/* Map and Details Layout */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
-          {/* Map - Right side on desktop (RTL) */}
-          <div className="lg:col-span-7 order-1">
-            <div className="h-[300px] rounded-lg border border-border bg-surface p-3 md:h-[360px] md:p-4">
-              <SaudiHeatmapMap regions={regions} selectedRegion={selectedRegion} onRegionSelect={handleRegionSelect} />
-            </div>
-          </div>
-
-          {/* Details Panel - Left side on desktop (RTL) */}
-          <div className="lg:col-span-5 order-2">
-            <div className="lg:h-[360px]">
-              <RegionDetailsPanel selectedRegion={selectedRegion} onClose={() => setSelectedRegion(null)} startCounting={startCounting} />
+        <div className="lg:relative lg:col-span-5">
+          <div className="flex flex-col gap-4 lg:absolute lg:inset-0">
+            <RegionDetailsPanel selectedId={selectedId} onClear={() => setSelectedId(null)} />
+            <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card">
+              <h3 className="border-b border-border px-5 py-3 text-small font-hrsd-bold text-ink">{copy.map_ranking_title}</h3>
+              <div className="scrollbar-thin min-h-0 flex-1 p-2 lg:fade-bottom lg:overflow-y-auto lg:pb-6">
+                <RegionRankList
+                  ref={listRef}
+                  hoveredId={hoveredId}
+                  selectedId={selectedId}
+                  onHover={setHoveredId}
+                  onSelect={select}
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </section>;
+    </Section>
+  );
 };
+
 export default GeographicDistributionSection;

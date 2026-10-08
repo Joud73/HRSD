@@ -182,3 +182,13 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Journey auto-advance indicator: fills once over its duration; animationend advances the step */
+@keyframes progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
