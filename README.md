@@ -1,71 +1,59 @@
-## Project info
+# منصة التمكين | Tamkeen Platform
 
-**URL**: [https://tamkeen-hrsd.com/](https://www.tamkeen-hrsd.com/)
+## العربية
 
-## How can I edit this code?
+منصة التمكين هي المنصة الرقمية لمركز التمكين الفني للمنظمات غير الربحية، بإشراف وزارة الموارد البشرية والتنمية الاجتماعية. تتيح المنصة للمنظمات التسجيل والتقييم الذاتي ورفع الشواهد، وللمدققين مراجعة التقييمات واعتمادها، وللإدارة متابعة النتائج.
 
-There are several ways of editing your application.
+هذا المستودع هو النموذج الأولي الوظيفي للمنصة، والمرجع المعتمد لتنفيذها على منصة SDP التابعة للوزارة.
 
-**Use Lovable**
+### التقنيات
 
-Simply visit the [Lovable Project](https://tamkeen-hrsd.com/) and start prompting.
+Vite، React 18، TypeScript، Tailwind CSS، shadcn/ui، Motion، Supabase. الواجهة عربية أولاً باتجاه من اليمين إلى اليسار، بخط HRSDGov.
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### التشغيل محلياً
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+npm run dev   # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+### متغيرات البيئة (.env)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_PROJECT_ID`
 
-**Use GitHub Codespaces**
+### سياسة الفروع
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- لا يُدفع أي تعديل مباشرة إلى الفرع `main`.
+- يتم العمل على فروع مستقلة (مثل `demo/visual-polish`) ثم الدمج عبر طلب مراجعة.
 
-## What technologies are used for this project?
+## English
 
-This project is built with:
+Tamkeen Platform is the digital platform of the Technical Empowerment Center for Nonprofit Organizations, supervised by the Ministry of Human Resources and Social Development (HRSD). Organizations register, complete a self-assessment and upload evidence; evaluators review and approve; administrators monitor results.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This repository is the functional prototype and the reference for the HRSD SDP implementation.
 
-## How can I deploy this project?
+### Stack
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Vite, React 18, TypeScript, Tailwind CSS, shadcn/ui, Motion, Supabase. Arabic-first RTL interface using the HRSDGov typeface. Design tokens live in `src/index.css` and `tailwind.config.ts`; all interface copy lives in `src/lib/copy.ts`.
 
-## Can I connect a custom domain to my Lovable project?
+### Run locally
 
-Yes, you can!
+```sh
+npm install
+npm run dev   # http://localhost:8080
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Checks: `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint`, `npm run build`.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Environment variables (.env)
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_PROJECT_ID`
+
+### Branch policy
+
+- Never push directly to `main`.
+- Work on feature branches (for example `demo/visual-polish`) and merge through a reviewed pull request.
