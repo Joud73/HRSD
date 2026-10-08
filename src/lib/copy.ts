@@ -1,4 +1,6 @@
 // Platform copy, keyed exactly as in CLAUDE.md "## Copy". Edit there first, then here.
+// Page-level strings live in src/lib/strings/<area>.ts and are re-exported from here,
+// so every component imports copy from "@/lib/copy".
 
 const split = (value: string) => value.split(" | ");
 
@@ -212,3 +214,11 @@ export const TRACK_INDICATORS: Record<string, number> = {
   "track-programs": 14,
   "track-impact": 10,
 };
+export { homeCopy } from "@/lib/strings/home";
+export { authCopy } from "@/lib/strings/auth";
+export { orgCopy } from "@/lib/strings/org";
+export { evaluatorCopy } from "@/lib/strings/evaluator";
+export { adminCopy } from "@/lib/strings/admin";
+export { adminSetupCopy } from "@/lib/strings/adminSetup";
+export { assessmentCopy } from "@/lib/strings/assessment";
+export { pagesCopy } from "@/lib/strings/pages";

@@ -10,7 +10,7 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - [x] Phase 2: Foundations
 - [x] Phase 3: Public shell corrections
 - [x] Phase 4: Home page
-- [ ] Phase 5: Authentication pages
+- [x] Phase 5: Authentication pages
 - [ ] Phase 6: Internal app
 - [ ] Phase 7: Remaining pages sweep
 - [ ] Phase 8: Quality pass
@@ -47,5 +47,12 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - Phase 4 (map): on desktop the data column takes the map's height (absolute inset inside the stretched grid cell); the ranked list scrolls inside its card with a bottom fade. On mobile everything flows: map, totals, list. Selecting a region scrolls its row into view.
 - Phase 4 (map): tab order north to south (تبوك, الجوف, الحدود الشمالية, حائل, القصيم, المدينة المنورة, الرياض, الشرقية, مكة المكرمة, الباحة, عسير, نجران, جازان); Enter selects, Escape clears. The outline of the hovered or selected region is drawn as a last overlay path so neighbours never cover it.
 - Phase 4: CTA band is an inset deep green panel on the section grey, so it does not merge with the green footer.
+- Phase 5: AuthLayout is a standalone split screen (no gov strip, header or footer): form column 55% at the start side with the small HRSD logo, deep green panel 45% with panel_title, panel_points and the white logo. On mobile the panel becomes a 56px green strip with the logo. /under-review and /pending-approval use it too (under-review keeps its organization guard).
+- Phase 5: one field system for every form: TextField / PasswordField / FieldShell / FormError in src/components/shared/FormField.tsx (labels above, 48px inputs, inline errors that animate in, aria-invalid and aria-describedby wired). The shadcn Input lost its `md:text-sm` so form text stays 16px.
+- Phase 5: /login uses the LoginLocal sign-in sequence unchanged (signIn, getUser, fetchUserRole, getDefaultRouteForRole). Every failure shows login_error_generic inline above the form. /login-local and /nafath-auth are `<Navigate to="/login">` routes; their page files were deleted.
+- Phase 5: the Nafath simulation (same localStorage flag, same /dashboard redirect after 1.5s) now runs as an inline step inside /login (src/components/auth/NafathStep.tsx).
+- Phase 5: Register is three steps (بيانات المنظمة, بيانات الدخول, بيانات الممثل). The existing order is kept: signUp must run before the delegates insert, so step 2's button creates the account and step 3 has no Back button. Payload and calls are unchanged.
+- Phase 5: UnderReview no longer shows OrganizationJourney, an invented submission date or a disabled certificate button; it shows the organization name and the submitted status.
+- Phase 5: ForgotPassword back links now point to /login instead of the retired /login-local.
 
 ## Not finished

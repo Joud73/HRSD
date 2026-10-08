@@ -1,26 +1,90 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ChevronDown, Headphones, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { copy, authCopy } from "@/lib/copy";
+import { formatNumber } from "@/lib/format";
+import { transition } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import loginBg from "@/assets/hero-bg.png";
+import {
+  AuthHeading,
+  AuthPrompt,
+  AuthStatus,
+  SubmitButton,
+  authButtonClass,
+} from "@/components/auth/AuthParts";
+import { useFieldValidation } from "@/components/auth/useFieldValidation";
+import { FieldShell, FormError, PasswordField, TextField } from "@/components/shared/FormField";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** 0 organization, 1 sign-in data (creates the account), 2 representative, 3 done */
+type Step = 0 | 1 | 2 | 3;
+
+type Field =
+  | "organizationName"
+  | "email"
+  | "signupPassword"
+  | "fullName"
+  | "idNumber"
+  | "mobile"
+  | "delegateEmail"
+  | "confirmPassword";
+
+const StepIndicator = ({ current }: { current: number }) => {
+  const steps = authCopy.register_steps;
+  return (
+    <nav aria-label={authCopy.register_steps_label} className="mb-8 flex flex-col gap-3">
+      <p className="text-small text-muted-foreground">
+        {authCopy.register_step_counter} <span className="tabular font-hrsd-medium text-ink">{formatNumber(current + 1)}</span>{" "}
+        {authCopy.register_step_of} <span className="tabular">{formatNumber(steps.length)}</span>
+      </p>
+      <ol className="grid grid-cols-3 gap-2">
+        {steps.map((label, i) => {
+          const state = i < current ? "done" : i === current ? "current" : "upcoming";
+          return (
+            <li key={label} aria-current={state === "current" ? "step" : undefined} className="flex min-w-0 flex-col gap-2">
+              <span
+                aria-hidden
+                className={cn(
+                  "h-1 rounded-full transition-colors duration-ui",
+                  state === "upcoming" ? "bg-border" : "bg-primary"
+                )}
+              />
+              <span
+                className={cn(
+                  "text-caption",
+                  state === "current" ? "font-hrsd-medium text-ink" : "text-muted-foreground"
+                )}
+              >
+                {label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+};
 
 const Register = () => {
   const navigate = useNavigate();
   const { signUp, updateProfileStatus, user } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [step, setStep] = useState<Step>(0);
   const [organizationName, setOrganizationName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("1000");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  // verificationCode state removed - auto-confirm enabled
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Step 1 additional fields for signup
+
+  // Sign-in data (step 2), used for signUp
   const [email, setEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
-  
-  // Step 3 fields
+
+  // Representative (step 3)
   const [fullName, setFullName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [mobile, setMobile] = useState("");
@@ -29,35 +93,74 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleStep1Submit = async (e: React.FormEvent) => {
+  const { errors, check, blur, reset } = useFieldValidation<Field>(() => {
+    if (step === 0) {
+      return { organizationName: organizationName ? undefined : authCopy.error_org_required };
+    }
+    if (step === 1) {
+      return {
+        email: !email.trim()
+          ? copy.login_error_email_required
+          : !EMAIL_RE.test(email.trim())
+            ? copy.login_error_email_invalid
+            : undefined,
+        signupPassword: !signupPassword
+          ? copy.login_error_password_required
+          : signupPassword.length < 6
+            ? authCopy.error_password_short
+            : undefined,
+      };
+    }
+    return {
+      fullName: fullName ? undefined : authCopy.error_full_name_required,
+      idNumber: idNumber ? undefined : authCopy.error_id_required,
+      mobile: mobile ? undefined : authCopy.error_mobile_required,
+      delegateEmail: !delegateEmail
+        ? copy.login_error_email_required
+        : !EMAIL_RE.test(delegateEmail.trim())
+          ? copy.login_error_email_invalid
+          : undefined,
+      confirmPassword: password !== confirmPassword ? authCopy.error_password_mismatch : undefined,
+    };
+  });
+
+  // Move focus to the step content when the step changes (not on first render)
+  const stepRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const el = stepRef.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    if (el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+  }, [step]);
+
+  // A selection clears the error immediately
+  const orgError = organizationName ? undefined : errors.organizationName;
+
+  const goTo = (next: Step) => {
+    setError("");
+    reset();
+    setStep(next);
+  };
+
+  const handleOrganizationNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!check()) return;
+    goTo(1);
+  };
+
+  // Account creation: same calls as before (signUp, then profile_incomplete)
+  const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!check()) return;
     setIsLoading(true);
 
-    if (!organizationName) {
-      setError("يرجى اختيار اسم المنظمة");
-      setIsLoading(false);
-      return;
-    }
-
-    if (!email || !signupPassword) {
-      setError("يرجى إدخال البريد الإلكتروني وكلمة المرور");
-      setIsLoading(false);
-      return;
-    }
-
-    if (signupPassword.length < 6) {
-      setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
-      setIsLoading(false);
-      return;
-    }
-
-    const { error: signUpError } = await signUp(
-      email,
-      signupPassword,
-      organizationName,
-      registrationNumber
-    );
+    const { error: signUpError } = await signUp(email, signupPassword, organizationName, registrationNumber);
 
     if (signUpError) {
       setError(signUpError);
@@ -65,8 +168,7 @@ const Register = () => {
       return;
     }
 
-    // Since auto-confirm is enabled, skip verification step and proceed to step 3
-    // Update profile status to profile_incomplete and go directly to delegate info
+    // Auto-confirm is enabled: go straight to the representative step
     const { error: updateError } = await updateProfileStatus("profile_incomplete");
 
     if (updateError) {
@@ -76,27 +178,16 @@ const Register = () => {
     }
 
     setIsLoading(false);
-    setCurrentStep(3);
+    goTo(2);
   };
 
-  const handleStep3Submit = async (e: React.FormEvent) => {
+  // Representative data: same insert and status update as before
+  const handleSaveRepresentative = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!check()) return;
     setIsLoading(true);
 
-    if (!fullName || !idNumber || !mobile || !delegateEmail) {
-      setError("يرجى ملء جميع الحقول المطلوبة");
-      setIsLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("كلمتا المرور غير متطابقتين");
-      setIsLoading(false);
-      return;
-    }
-
-    // Save delegate information
     if (user) {
       const { error: delegateError } = await supabase.from("delegates").insert({
         user_id: user.id,
@@ -108,14 +199,12 @@ const Register = () => {
       });
 
       if (delegateError) {
-        // Error logged without sensitive details for security
         console.error("Delegate save failed");
-        setError("حدث خطأ أثناء حفظ البيانات");
+        setError(authCopy.error_save_failed);
         setIsLoading(false);
         return;
       }
 
-      // Update profile status to active
       const { error: updateError } = await updateProfileStatus("active");
 
       if (updateError) {
@@ -126,467 +215,227 @@ const Register = () => {
     }
 
     setIsLoading(false);
-    setCurrentStep(4); // Go to success screen
+    goTo(3);
   };
 
-  // Step indicator component - now shows 2 steps (organization data and delegate data)
-  const StepIndicator = () => {
-    // Map currentStep: 1 = step 1, 3 = step 2 (visual), 4 = success
-    const visualStep = currentStep === 1 ? 1 : currentStep >= 3 ? 2 : 1;
-    
-    const getStepStyle = (step: number) => {
-      // On success screen (step 4), all steps are completed (grey)
-      if (currentStep === 4) {
-        return {
-          bg: "hsl(var(--border))",
-          text: "hsl(var(--muted-foreground))",
-          labelColor: "hsl(var(--muted-foreground))"
-        };
-      }
-      
-      if (step === visualStep) {
-        // Active step - strong orange
-        return {
-          bg: "hsl(35, 91%, 54%)",
-          text: "white",
-          labelColor: "white"
-        };
-      } else if (step < visualStep) {
-        // Completed step - lighter orange
-        return {
-          bg: "hsl(35, 91%, 70%)",
-          text: "white",
-          labelColor: "white"
-        };
-      } else {
-        // Inactive step - gray
-        return {
-          bg: "hsl(var(--border))",
-          text: "hsl(var(--neutral))",
-          labelColor: "hsl(var(--neutral))"
-        };
-      }
-    };
-
+  if (step === 3) {
     return (
-      <div className="relative mb-8">
-        {/* Background line */}
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-200 -translate-y-1/2" />
-        
-        {/* Steps - RTL order: Step 1 on right, Step 2 on left */}
-        <div className="relative flex items-center justify-between flex-row-reverse">
-          {/* Step 1 - بيانات المنظمة (rightmost in RTL) */}
-          <div className="flex flex-col items-center">
-            <div
-              className="px-6 py-3 rounded-lg flex flex-col items-center min-w-[120px]"
-              style={{ backgroundColor: getStepStyle(1).bg }}
-            >
-              <span 
-                className="font-hrsd-bold text-lg"
-                style={{ color: getStepStyle(1).text }}
-              >
-                1
-              </span>
-              <span 
-                className="font-hrsd-medium text-sm"
-                style={{ color: getStepStyle(1).labelColor }}
-              >
-                بيانات المنظمة
-              </span>
-            </div>
-          </div>
-
-          {/* Step 2 - بيانات المفوض (leftmost in RTL) */}
-          <div className="flex flex-col items-center">
-            <div
-              className="px-6 py-3 rounded-lg flex flex-col items-center min-w-[120px]"
-              style={{ backgroundColor: getStepStyle(2).bg }}
-            >
-              <span 
-                className="font-hrsd-bold text-lg"
-                style={{ color: getStepStyle(2).text }}
-              >
-                2
-              </span>
-              <span 
-                className="font-hrsd-medium text-sm"
-                style={{ color: getStepStyle(2).labelColor }}
-              >
-                بيانات المفوض
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AuthStatus
+        icon={CheckCircle2}
+        tone="success"
+        title={authCopy.register_success_title}
+        description={authCopy.register_success_desc}
+      >
+        <Button type="button" onClick={() => navigate("/dashboard")} className={authButtonClass}>
+          {authCopy.register_success_action}
+          <ArrowLeft aria-hidden />
+        </Button>
+      </AuthStatus>
     );
-  };
-
-  // Step 1 Form
-  const Step1Form = () => (
-    <form onSubmit={handleStep1Submit} className="space-y-6">
-      {/* Error Message */}
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-right">
-          <p className="text-red-600 text-sm font-hrsd">{error}</p>
-        </div>
-      )}
-
-      {/* Organization Name Field (Dropdown) */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          اسم المنظمة
-        </label>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary flex items-center justify-between"
-          >
-            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-            <span className={organizationName ? 'text-gray-900' : 'text-gray-400'}>
-              {organizationName || 'اختر ...'}
-            </span>
-          </button>
-          
-          {isDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-              <button
-                type="button"
-                className="w-full px-4 py-3 text-right font-hrsd hover:bg-gray-50 transition-colors"
-                onClick={() => {
-                  setOrganizationName("منظمة تجريبية 1");
-                  setIsDropdownOpen(false);
-                }}
-              >
-                منظمة تجريبية 1
-              </button>
-              <button
-                type="button"
-                className="w-full px-4 py-3 text-right font-hrsd hover:bg-gray-50 transition-colors"
-                onClick={() => {
-                  setOrganizationName("منظمة تجريبية 2");
-                  setIsDropdownOpen(false);
-                }}
-              >
-                منظمة تجريبية 2
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Registration Number Field */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          رقم التسجيل
-        </label>
-        <input
-          type="text"
-          value={registrationNumber}
-          onChange={(e) => setRegistrationNumber(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          dir="ltr"
-          style={{ textAlign: "right" }}
-        />
-      </div>
-
-      {/* Email Field */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          البريد الإلكتروني
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          placeholder="example@domain.com"
-          dir="ltr"
-          style={{ textAlign: "right" }}
-          required
-        />
-      </div>
-
-      {/* Password Field */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          كلمة المرور
-        </label>
-        <input
-          type="password"
-          value={signupPassword}
-          onChange={(e) => setSignupPassword(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          dir="ltr"
-          style={{ textAlign: "right" }}
-          required
-        />
-      </div>
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full py-3 rounded-lg text-white font-hrsd-semibold text-lg transition-colors hover:opacity-90 disabled:opacity-50"
-        style={{
-          backgroundColor: "hsl(175, 75%, 30%)",
-        }}
-      >
-        {isLoading ? "جاري التسجيل..." : "التالي"}
-      </button>
-    </form>
-  );
-
-  // Step 2 is removed - auto-confirm is enabled, no fake verification
-
-  // Step 3 Form - Authorized Person Details
-  const Step3Form = () => (
-    <form onSubmit={handleStep3Submit} className="space-y-5">
-      {/* Error Message */}
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-right">
-          <p className="text-red-600 text-sm font-hrsd">{error}</p>
-        </div>
-      )}
-
-      {/* Full Name */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          الاسم الكامل
-        </label>
-        <input
-          type="text"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          placeholder="اسم ممثل المنظمة"
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-gray-400 bg-gray-50"
-        />
-      </div>
-
-      {/* ID Number */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          رقم الهوية
-        </label>
-        <input
-          type="text"
-          value={idNumber}
-          onChange={(e) => setIdNumber(e.target.value)}
-          placeholder="رقم الهوية الخاصة بممثل المنظمة"
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-gray-400 bg-gray-50"
-        />
-      </div>
-
-      {/* Mobile */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          الجوال
-        </label>
-        <input
-          type="tel"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value)}
-          placeholder="9665XXXXXXXX"
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-gray-400 bg-gray-50"
-          dir="ltr"
-          style={{ textAlign: "right" }}
-        />
-      </div>
-
-      {/* Email */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          البريد الإلكتروني
-        </label>
-        <input
-          type="email"
-          value={delegateEmail}
-          onChange={(e) => setDelegateEmail(e.target.value)}
-          placeholder="example@domain.com"
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-gray-400 bg-gray-50"
-          dir="ltr"
-          style={{ textAlign: "right" }}
-        />
-      </div>
-
-      {/* Login Name */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          اسم تسجيل الدخول
-        </label>
-        <input
-          type="text"
-          value={loginName}
-          onChange={(e) => setLoginName(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-gray-50"
-        />
-      </div>
-
-      {/* Password */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          كلمة المرور
-        </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-gray-50"
-        />
-      </div>
-
-      {/* Confirm Password */}
-      <div>
-        <label className="block text-right text-sm font-hrsd-medium mb-2 text-gray-700">
-          تأكيد كلمة المرور
-        </label>
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-right font-hrsd focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-gray-50"
-        />
-      </div>
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full py-3 rounded-lg text-white font-hrsd-semibold text-lg transition-colors hover:opacity-90 disabled:opacity-50"
-        style={{
-          backgroundColor: "hsl(175, 75%, 30%)",
-        }}
-      >
-        {isLoading ? "جاري الحفظ..." : "حفظ"}
-      </button>
-    </form>
-  );
-
-  // Success Screen
-  const SuccessScreen = () => (
-    <div className="flex flex-col items-center py-8">
-      {/* Success Icon */}
-      <div 
-        className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
-        style={{ backgroundColor: "hsl(175, 75%, 30%)" }}
-      >
-        <Check className="w-10 h-10 text-white" strokeWidth={3} />
-      </div>
-
-      {/* Success Message */}
-      <h2 className="font-hrsd-bold text-2xl text-gray-800 mb-4 text-center">
-        تم تفعيل حسابك بنجاح
-      </h2>
-      
-      <p className="font-hrsd text-gray-600 text-center mb-8 leading-relaxed max-w-md">
-        لقد قمت بإنشاء حساب ضمن أداة التقييم الفني. يمكنك الآن تسجيل الدخول باستخدام البريد الإلكتروني وكلمة المرور.
-      </p>
-
-      {/* Dashboard Button */}
-      <button
-        type="button"
-        onClick={() => navigate("/dashboard")}
-        className="w-full py-3 rounded-lg text-white font-hrsd-semibold text-lg transition-colors hover:opacity-90"
-        style={{
-          backgroundColor: "hsl(175, 75%, 30%)",
-        }}
-      >
-        الذهاب إلى لوحة التحكم
-      </button>
-    </div>
-  );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header - reused from homepage */}
+    <>
+      <AuthHeading title={authCopy.register_title} subtitle={authCopy.register_subtitle} />
+      <StepIndicator current={step} />
 
-      {/* Main content with background */}
-      <main
-        className="flex-1 relative pt-20"
-        style={{
-          backgroundImage: `url(${loginBg})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        {/* Dark teal overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: "linear-gradient(to bottom, rgba(20, 80, 85, 0.75) 0%, rgba(15, 60, 65, 0.85) 100%)",
-          }}
-        />
+      <div ref={stepRef} tabIndex={-1} className="scroll-mt-6 focus:outline-none">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={step} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={transition.ui}>
+            {step === 0 && (
+              <form onSubmit={handleOrganizationNext} noValidate className="flex flex-col gap-5">
+                <FormError message={error} />
 
-        {/* Content */}
-        <div className="relative z-10 container mx-auto px-4 py-8">
-          {/* Breadcrumb */}
-          <div className="flex items-center justify-end gap-2 mb-6 text-sm">
-            <Link
-              to="/login"
-              className="text-primary hover:underline font-hrsd-medium"
-              style={{ color: "hsl(175, 75%, 45%)" }}
-            >
-              العودة الى صفحة الدخول
-            </Link>
-            <span className="text-white/80">&gt;</span>
-            <span className="text-white font-hrsd-medium">حساب منظمة جديد</span>
-          </div>
+                <FieldShell id="reg-org" label={authCopy.org_name} error={orgError} required>
+                  <Select
+                    dir="rtl"
+                    value={organizationName}
+                    onValueChange={(v) => setOrganizationName(v)}
+                  >
+                    <SelectTrigger
+                      id="reg-org"
+                      aria-invalid={orgError ? true : undefined}
+                      aria-describedby={orgError ? "reg-org-error" : undefined}
+                      className="h-12 text-body aria-[invalid=true]:border-danger"
+                    >
+                      <SelectValue placeholder={authCopy.org_name_placeholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {authCopy.org_options.map((name) => (
+                        <SelectItem key={name} value={name} className="text-body">
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldShell>
 
-          {/* Orange line under breadcrumb */}
-          <div
-            className="w-full h-0.5 mb-8"
-            style={{ backgroundColor: "hsl(35, 91%, 54%)" }}
-          />
+                <TextField
+                  label={authCopy.reg_number}
+                  inputMode="numeric"
+                  dir="ltr"
+                  className="text-end"
+                  value={registrationNumber}
+                  onChange={(e) => setRegistrationNumber(e.target.value)}
+                />
 
-          {/* Registration Card */}
-          <div className="max-w-3xl mx-auto">
-            <div
-              className="rounded-xl p-8 shadow-lg"
-              style={{ backgroundColor: "rgba(255, 255, 255, 0.97)" }}
-            >
-              {/* Card Title */}
-              <h1
-                className="text-xl font-hrsd-title text-right mb-6"
-                style={{ color: "hsl(35, 91%, 54%)" }}
-              >
-                بيانات إنشاء حساب المنظمة
-              </h1>
-
-              {/* Step Indicator */}
-              <StepIndicator />
-
-              {/* Form Content based on current step */}
-              {currentStep === 1 && <Step1Form />}
-              {currentStep === 3 && <Step3Form />}
-              {currentStep === 4 && <SuccessScreen />}
-            </div>
-
-            {/* Contact Info Bar - hide on success screen */}
-            {currentStep !== 4 && (
-              <div
-                className="mt-6 rounded-xl p-4 flex items-center justify-between"
-                style={{ backgroundColor: "rgba(255, 255, 255, 0.9)" }}
-              >
-                <button
-                  type="button"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-hrsd-medium text-white text-sm transition-colors hover:opacity-90"
-                  style={{ backgroundColor: "hsl(175, 75%, 30%)" }}
-                >
-                  <Headphones className="w-4 h-4" />
-                  تواصل معنا
-                </button>
-                <span className="font-hrsd text-gray-600 text-sm">
-                  للاستفسارات والدعم الفني، يرجى التواصل معنا
-                </span>
-              </div>
+                <Button type="submit" className={cn(authButtonClass, "mt-1")}>
+                  {authCopy.register_next}
+                  <ArrowLeft aria-hidden />
+                </Button>
+              </form>
             )}
-          </div>
-        </div>
-      </main>
 
-      {/* Footer - reused from homepage */}
-    </div>
+            {step === 1 && (
+              <form onSubmit={handleCreateAccount} noValidate className="flex flex-col gap-5">
+                <FormError message={error} />
+
+                <TextField
+                  label={copy.login_email}
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  dir="ltr"
+                  className="text-end"
+                  placeholder={authCopy.email_placeholder}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={blur("email")}
+                  error={errors.email}
+                  required
+                />
+
+                <PasswordField
+                  label={copy.login_password}
+                  autoComplete="new-password"
+                  hint={authCopy.password_hint}
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                  onBlur={blur("signupPassword")}
+                  error={errors.signupPassword}
+                  required
+                />
+
+                <div className="mt-1 flex flex-col-reverse gap-3 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => goTo(0)}
+                    disabled={isLoading}
+                    className={cn(authButtonClass, "sm:w-auto sm:px-6")}
+                  >
+                    <ArrowRight aria-hidden />
+                    {authCopy.register_back}
+                  </Button>
+                  <SubmitButton
+                    loading={isLoading}
+                    label={authCopy.register_create}
+                    loadingLabel={authCopy.register_creating}
+                    className="sm:flex-1"
+                  />
+                </div>
+              </form>
+            )}
+
+            {step === 2 && (
+              <form onSubmit={handleSaveRepresentative} noValidate className="flex flex-col gap-5">
+                <FormError message={error} />
+                {!error && <p className="text-small text-muted-foreground">{authCopy.account_created_note}</p>}
+
+                <TextField
+                  label={authCopy.rep_full_name}
+                  autoComplete="name"
+                  placeholder={authCopy.rep_full_name_placeholder}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  onBlur={blur("fullName")}
+                  error={errors.fullName}
+                  required
+                />
+
+                <TextField
+                  label={authCopy.rep_id_number}
+                  inputMode="numeric"
+                  dir="ltr"
+                  className="text-end"
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
+                  onBlur={blur("idNumber")}
+                  error={errors.idNumber}
+                  required
+                />
+
+                <TextField
+                  label={authCopy.rep_mobile}
+                  type="tel"
+                  autoComplete="tel"
+                  dir="ltr"
+                  className="text-end"
+                  placeholder={authCopy.rep_mobile_placeholder}
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  onBlur={blur("mobile")}
+                  error={errors.mobile}
+                  required
+                />
+
+                <TextField
+                  label={authCopy.rep_email}
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  dir="ltr"
+                  className="text-end"
+                  placeholder={authCopy.email_placeholder}
+                  value={delegateEmail}
+                  onChange={(e) => setDelegateEmail(e.target.value)}
+                  onBlur={blur("delegateEmail")}
+                  error={errors.delegateEmail}
+                  required
+                />
+
+                <TextField
+                  label={authCopy.rep_login_name}
+                  autoComplete="username"
+                  dir="ltr"
+                  className="text-end"
+                  value={loginName}
+                  onChange={(e) => setLoginName(e.target.value)}
+                />
+
+                <PasswordField
+                  label={copy.login_password}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+
+                <PasswordField
+                  label={authCopy.confirm_password}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onBlur={blur("confirmPassword")}
+                  error={errors.confirmPassword}
+                />
+
+                <SubmitButton
+                  loading={isLoading}
+                  label={authCopy.register_save}
+                  loadingLabel={authCopy.register_saving}
+                  className="mt-1"
+                />
+              </form>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="mt-8 flex flex-col gap-2 border-t border-border pt-6">
+        {step === 0 && <AuthPrompt prompt={authCopy.login_prompt} to="/login" label={copy.login} />}
+        <AuthPrompt prompt={authCopy.support_prompt} to="/contact-us" label={authCopy.support_link} />
+      </div>
+    </>
   );
 };
 

@@ -2,18 +2,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { MotionConfig } from "motion/react";
 import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PublicLayout from "@/components/layout/PublicLayout";
 import AppShell from "@/components/layout/AppShell";
+import AuthLayout from "@/components/layout/AuthLayout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
-import LoginLocal from "./pages/LoginLocal";
 import ForgotPassword from "./pages/ForgotPassword";
 import Register from "./pages/Register";
-import NafathAuth from "./pages/NafathAuth";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import TechnicalEvaluationIndicators from "./pages/TechnicalEvaluationIndicators";
@@ -62,17 +61,22 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Public, authentication and individual pages */}
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<Index />} />
+              {/* Authentication: one split layout for every sign-in and status step */}
+              <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
-                <Route path="/login-local" element={<LoginLocal />} />
+                <Route path="/login-local" element={<Navigate to="/login" replace />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/nafath-auth" element={<NafathAuth />} />
+                <Route path="/nafath-auth" element={<Navigate to="/login" replace />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/contact-us" element={<ContactUs />} />
                 <Route path="/pending-approval" element={<PendingApproval />} />
                 <Route path="/individual-auth" element={<IndividualAuth />} />
+                <Route path="/under-review" element={guard(["organization"], <UnderReview />)} />
+              </Route>
+
+              {/* Public and individual pages */}
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/contact-us" element={<ContactUs />} />
                 <Route path="/individuals-journey" element={guard(["individual"], <IndividualsJourney />)} />
                 <Route path="/individual-course/:courseId" element={guard(["individual"], <IndividualCourseDetail />)} />
                 <Route path="*" element={<NotFound />} />
@@ -85,7 +89,6 @@ const App = () => (
                 <Route path="/technical-indicators/:courseSlug" element={<TechnicalEvaluationIndicators />} />
                 <Route path="/training-stage" element={<TrainingStage />} />
                 <Route path="/course/:courseId" element={<CourseDetail />} />
-                <Route path="/under-review" element={<UnderReview />} />
                 <Route path="/certificate/:organizationId" element={<Certificate />} />
               </Route>
 
