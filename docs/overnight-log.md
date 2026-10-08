@@ -13,7 +13,7 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - [x] Phase 5: Authentication pages
 - [x] Phase 6: Internal app
 - [x] Phase 7: Remaining pages sweep
-- [ ] Phase 8: Quality pass
+- [x] Phase 8: Quality pass
 
 ## Decisions
 
@@ -71,4 +71,86 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - Phase 7 (contact): all contact rows show a dash, matching the footer. The mailto submit logic is kept and an organization-name input was added (it was already in state and in the email body).
 - Phase 7: the fixed "نسخة تجريبية" side badges (inline styles, physical left) were removed from Dashboard, IndividualsJourney and UnderReview.
 
+- Phase 8: 26 shadcn primitives that nothing imported were deleted (card, table, badge, sidebar, carousel, chart, command, drawer, menubar and others), along with hero-bg.png and public/placeholder.svg. The remaining ui files use logical utilities only (sheet keeps its explicit left/right side variants by design).
+- Phase 8: the calendar now runs with dir="rtl" and the Arabic date-fns locale; react-day-picker then swaps its chevrons itself.
+- Phase 8: the page meta description was a marketing line; it now uses footer_about.
+
 ## Not finished
+
+- Hardcoded Arabic still in component files, all of it demo data or punctuation: seed records in AdminAssociationDetail and AdminReviewerDetail, ordinal labels in TechnicalEvaluationIndicators (their text is saved into evidence records, so they stay), and status-label keys used for mapping. Static indicator and training content lives in data files (src/components/assessment/indicatorsData.ts, src/data/trainingPrograms.ts), not in copy.ts.
+- Lint: 10 problems remain, all in files outside this run's scope (AuthContext, useAdminData, useEvaluatorAssignments, the tailwind.config require, two shadcn files). Baseline was 32.
+- The production bundle is one 2.3 MB chunk (670 KB gzip). Route-level code splitting would fix it; not done because it is not presentation work.
+- Nothing was checked in a browser (the brief forbids it). Every "what to check" note is unverified.
+
+## Final report
+
+Checks at the end of the run: typecheck 0 errors; lint 10 problems (baseline 32; none introduced); `npm run build` passes.
+
+### Routes
+
+| Route | Layout | Status | Notes |
+|---|---|---|---|
+| / | Public | done | Hero, interactive journey, tracks, map module, CTA band |
+| /contact-us | Public | done | Login field styling, inline validation, mailto logic kept |
+| /individuals-journey | Public, individual | done | Shared stepper; self-assessment, courses, certificate steps restyled |
+| /individual-course/:courseId | Public, individual | done | Reading column, facts strip, accordion |
+| * (NotFound) | Public | done | Calm 404 with one way home |
+| /login | Auth | done | Single sign-in, Nafath inline step, inline validation |
+| /login-local, /nafath-auth | none | done | Redirect to /login |
+| /register | Auth | done | Three steps; same payload |
+| /forgot-password | Auth | done | |
+| /individual-auth | Auth | done | |
+| /pending-approval | Auth | done | Status page |
+| /under-review | Auth, organization | done | Status page |
+| /dashboard | App shell, organization | done | Status row, 4 KPIs, 5 track ProgressRows |
+| /settings | App shell, organization | partial | Restyled; save has no persistence (toast only) |
+| /technical-indicators/:courseSlug | App shell, organization | done | Two-pane self-assessment; no submit logic exists |
+| /training-stage | App shell, organization | done | |
+| /course/:courseId | App shell, organization | done | Enrolment writes localStorage only |
+| /certificate/:organizationId | App shell, organization | done | Export logic kept |
+| /admin | App shell, admin | done | KPIs, bar chart, recent evaluations |
+| /admin/users, /roles, /associations, /reviewers, /organization-requests | App shell, admin | done | PageHeader, toolbar, DataTable, EmptyState |
+| /admin/associations/:id, /admin/reviewers/:id | App shell, admin | done | Key facts and tabs; still show demo records for any id |
+| /admin/performance/evaluation-setup (+ /entities, /rubric) | App shell, admin | done | |
+| /admin/performance/evaluation-years (+ /:yearId) | App shell, admin | done | |
+| /admin/reports | App shell, admin | done | Mock data, primary and neutral charts |
+| /admin/profile, /evaluator/profile | App shell | done | One shared AccountProfile |
+| /evaluator | App shell, evaluator | done | |
+| /evaluator/assignments | App shell, evaluator | done | Segmented status filter |
+| /evaluator/assignment/:assignmentId | App shell, evaluator | done | Two panes, sticky approve and return bar |
+
+### Open questions for you
+
+1. Map data: the per-region association and foundation splits are illustrative (they sum to the original national totals). Do real figures exist?
+2. EvaluationDetails: approve and return now replace the free status dropdown. Is limiting the evaluator to these two outcomes acceptable?
+3. Settings: the save button only shows a toast, because no save logic exists. Hide it for the demo, or keep it?
+4. Organization dashboard: cycle name and deadline have no data source and show a dash. Is there a table for them?
+5. Self-assessment has no submit action. Should one be specified for the SDP build?
+6. Contact details (email, phone, address) are missing everywhere and show a dash. Can you provide them?
+
+### Defect hunt (Phase 8.5): found and fixed
+
+- `font-hrsd-regular` was used in the header, strip, footer and hero but did not exist in Tailwind, so those texts fell back to the default face; alias added.
+- The shadcn Input forced 14px text from md up (`md:text-sm`), shrinking every form field; removed.
+- The dialog close button sat on the start side with a gold background and an English "Close" label; it is now on the end side, neutral, labelled إغلاق. Dialog headers were left-aligned and footers used `space-x`; both are now logical.
+- The Switch thumb moved the wrong way in RTL; submenu chevrons pointed right; the calendar's navigation and range rounding were physical and its "today" cell was gold.
+- The toast used physical right/pr/space-x utilities.
+- The chart tooltip formatted numbers with toLocaleString; it now uses formatNumber.
+- Self-assessment: ticking an item ticked the same item in every indicator (duplicate ids), and switching tracks could save one track's evidence under another track's key.
+- Certificate: html2canvas received an unparseable `hsl(var(--background))`, and the certificate number changed between preview and PDF.
+- IndividualsJourney: an off-by-one between the page's 3 steps and the 4-step stepper.
+- The map card had a fixed 360px height that left the country at a third of the card; the region list was clipped (fixed height plus overflow) and showed only 3 of 13 regions.
+- Typos: جمعية اهلية / مؤسسة اهلية corrected to أهلية; about 15 spelling errors fixed in the indicator text; المقيّم/مقيم unified to المدقق; مساق unified to مسار.
+- Every "+" on exact counts removed; every Arabic-Indic digit and toLocaleString replaced by formatNumber / formatDate.
+- Fixed "نسخة تجريبية" side badges with inline styles and a physical `left` overlapped content on three pages; removed.
+- Anchors: one `scroll-margin-top` rule (header height plus 16px) replaces the per-element scroll-mt values, so headings no longer hide under the sticky header.
+- Right-pointing icons were checked one by one: each is a back or previous action, which is correct in RTL.
+
+### 60-second demo path
+
+1. **Home, no login** (25s): the hero load sequence; scroll to رحلة التقييم and let it advance once, then click step 3 to show the badge moving from مرسل للمراجعة to معتمد; open a track (التوجه) to show its standards; hover a region on the map, click الرياض, then عرض كل المناطق.
+2. **/login** (5s): submit empty to show the inline errors, then sign in with an **organization** test account.
+3. **/dashboard** (10s): the status row, KPIs counting up, the five track rows; open التوجه.
+4. **/technical-indicators/altawajuh** (10s): tick two items and attach a piece of evidence to show the progress bar move.
+5. Sign out, sign in with an **evaluator** account: **/evaluator/assignments** (5s), filter by status, open a row to show the two-pane review and the approve and return bar.
+6. Optional, with an **admin** account: **/admin** (5s): KPIs and chart, then the sidebar to الجمعيات.
