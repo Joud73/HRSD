@@ -12,7 +12,7 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - [x] Phase 4: Home page
 - [x] Phase 5: Authentication pages
 - [x] Phase 6: Internal app
-- [ ] Phase 7: Remaining pages sweep
+- [x] Phase 7: Remaining pages sweep
 - [ ] Phase 8: Quality pass
 
 ## Decisions
@@ -62,5 +62,13 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - Phase 6 (terms): مساق became مسار, نوع الدليل became نوع الشاهد, and المقيّم/مقيم became المدقق everywhere, including the role label in useAdminData (a display string only).
 - Phase 6 (data): the rubric mock now uses the official 5 tracks and 15 standards. Reports keep their mock values, and the hardcoded "تراجع بنسبة 8%" is now computed from the comparison data. Detail pages still show their demo record for any id, as before.
 - Phase 6 (shared fixes I made): SegmentedControl and DataTable infer their row and value type through NoInfer, so a useState setter can be passed directly. The dialog close button moved to the end side with an Arabic label and no gold. Dialog and AlertDialog headers are start-aligned, and their footers use gap with the primary action first. The Switch thumb moves the right way in RTL. Submenu chevrons point in reading direction. Added a `font-hrsd-regular` alias (the header, footer and hero already used it), collapsible keyframes and `formatDateTime`. The old admin KpiCard was deleted.
+- Phase 7 (self-assessment): TechnicalEvaluationIndicators went from 2273 lines to about 720, with its parts split into src/components/assessment/. It shows one indicator at a time with a sticky indicator list at the start side (a Select below lg), item rows, evidence chips, and tabs for الشواهد / خطة التحسين / الملاحظات. The page has no submit or save logic and no Supabase calls (everything is localStorage), so the header has no إرسال للمراجعة or حفظ المسودة buttons rather than buttons that do nothing.
+- Phase 7 (self-assessment, bugs fixed in local state): item ids repeat across indicators in the data, so ticking one item ticked it everywhere; checked state is now keyed per indicator. Switching tracks kept the component mounted and could write one track's evidence under the next track's key; the page now remounts per track. The localStorage keys and record formats are unchanged.
+- Phase 7 (data text): about 15 spelling errors in the indicator text were corrected. Program 1's description in trainingPrograms.ts was copied from a PMP course and was rewritten to match its own objectives.
+- Phase 7 (training): CourseDetail gained a الالتحاق بالبرنامج button that writes the `enrolledPrograms` localStorage key, which TrainingStage already read but nothing ever wrote. This is new local-only behaviour.
+- Phase 7 (certificate): export logic kept. Two fixes: html2canvas received the literal "hsl(var(--background))", which it cannot parse, so the variable is now resolved first; and the certificate number and verification code are generated once per visit, so the preview and the PDF match.
+- Phase 7 (journeys): one shared JourneyStepper (src/components/shared/JourneyStepper.tsx) drives both the organization and individual journeys. IndividualsJourney had an off-by-one between its 3 steps and the 4-step stepper; registration now always shows as completed.
+- Phase 7 (contact): all contact rows show a dash, matching the footer. The mailto submit logic is kept and an organization-name input was added (it was already in state and in the email body).
+- Phase 7: the fixed "نسخة تجريبية" side badges (inline styles, physical left) were removed from Dashboard, IndividualsJourney and UnderReview.
 
 ## Not finished

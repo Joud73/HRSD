@@ -1,5 +1,6 @@
-import { LucideIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import type { LucideIcon } from "lucide-react";
+import { assessmentCopy as t } from "@/lib/copy";
+import { cn } from "@/lib/utils";
 
 interface OutputCardProps {
   title: string;
@@ -8,60 +9,27 @@ interface OutputCardProps {
   isComingSoon?: boolean;
 }
 
-const OutputCard = ({
-  title,
-  description,
-  icon: Icon,
-  isComingSoon = false,
-}: OutputCardProps) => {
-  return (
-    <div
-      className={`bg-card rounded-xl p-5 md:p-6 border border-border transition-all duration-200 ${
-        isComingSoon
-          ? "opacity-75"
-          : "hover:shadow-md hover:border-primary/30 cursor-pointer"
-      }`}
-      dir="rtl"
-      role="article"
-      aria-label={title}
+/** One stage output: icon, name and one line. Rendered inside the outputs panel, so no border of its own. */
+const OutputCard = ({ title, description, icon: Icon, isComingSoon = false }: OutputCardProps) => (
+  <div className={cn("flex items-start gap-4", isComingSoon && "opacity-70")}>
+    <span
+      className={cn(
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-md",
+        isComingSoon ? "bg-section-alt text-muted-foreground" : "bg-primary/5 text-primary"
+      )}
     >
-      {/* Icon */}
-      <div
-        className={`w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center mb-4 ${
-          isComingSoon ? "bg-muted" : "bg-primary/10"
-        }`}
-      >
-        <Icon
-          size={24}
-          className={isComingSoon ? "text-muted-foreground" : "text-primary"}
-        />
-      </div>
-
-      {/* Content */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h3
-          className={`text-base md:text-lg font-hrsd-bold ${
-            isComingSoon ? "text-muted-foreground" : "text-foreground"
-          }`}
-        >
-          {title}
-        </h3>
+      <Icon aria-hidden className="h-5 w-5" strokeWidth={1.75} />
+    </span>
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-body font-hrsd-bold text-ink">{title}</h3>
         {isComingSoon && (
-          <Badge className="bg-accent/10 text-accent border-0 shrink-0 font-hrsd-medium">
-            قريبًا
-          </Badge>
+          <span className="rounded-full bg-section-alt px-2 text-small text-muted-foreground">{t.output_soon}</span>
         )}
       </div>
-
-      <p
-        className={`text-sm leading-relaxed font-hrsd-medium ${
-          isComingSoon ? "text-muted-foreground/70" : "text-muted-foreground"
-        }`}
-      >
-        {description}
-      </p>
+      <p className="mt-1 text-small text-muted-foreground">{description}</p>
     </div>
-  );
-};
+  </div>
+);
 
 export default OutputCard;

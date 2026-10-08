@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { CheckCircle2, Download, Lock, Play } from "lucide-react";
+import { motion } from "motion/react";
+import { pagesCopy } from "@/lib/copy";
+import { formatDate, formatNumber, formatPercent } from "@/lib/format";
+import { ease } from "@/lib/motion";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import EmptyState from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Download, Play, CheckCircle2, Award, Lock } from "lucide-react";
 
 interface Course {
   id: number;
@@ -12,58 +17,47 @@ interface Course {
   completedModules: number;
 }
 
-const TrainingCertificateStep = () => {
-  const [courses, setCourses] = useState<Course[]>([
-    {
-      id: 1,
-      title: "أساسيات العمل غير الربحي",
-      progress: 100,
-      completed: true,
-      modules: 8,
-      completedModules: 8,
-    },
-    {
-      id: 2,
-      title: "مهارات التواصل الفعّال",
-      progress: 60,
-      completed: false,
-      modules: 6,
-      completedModules: 4,
-    },
-    {
-      id: 3,
-      title: "إدارة المشاريع التطوعية",
-      progress: 25,
-      completed: false,
-      modules: 12,
-      completedModules: 3,
-    },
-  ]);
+const LMS_URL = "https://phpstack-1518564-5838964.cloudwaysapps.com/";
 
-  const handleContinue = (courseId: number) => {
-    // Simulate continuing course - in real app would navigate to course content
-    window.location.href = "https://phpstack-1518564-5838964.cloudwaysapps.com/";
+const CourseGroup = ({ title, count, children }: { title: string; count: number; children: ReactNode }) => (
+  <section className="rounded-lg border border-border bg-card">
+    <h3 className="flex items-center gap-2 border-b border-border px-6 py-4 text-body font-hrsd-bold text-ink">
+      {title}
+      <span className="tabular inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-section-alt px-2 text-caption text-muted-foreground">
+        {formatNumber(count)}
+      </span>
+    </h3>
+    <ul className="divide-y divide-border">{children}</ul>
+  </section>
+);
+
+const TrainingCertificateStep = () => {
+  const reduced = useReducedMotion();
+  const [courses] = useState<Course[]>(() => pagesCopy.tc_courses.map((c) => ({ ...c })));
+
+  const handleContinue = () => {
+    // In the prototype, course content lives in the external LMS
+    window.location.href = LMS_URL;
   };
 
   const handleDownloadCertificate = (courseId: number) => {
-    // Simulate certificate download
-    const course = courses.find(c => c.id === courseId);
+    const course = courses.find((c) => c.id === courseId);
     if (course) {
       // Create a simple certificate (in production, this would be a proper PDF)
       const certificateContent = `
-        شهادة إتمام
-        
-        نشهد بأن المتدرب قد أتم بنجاح
-        دورة: ${course.title}
-        
-        تاريخ الإصدار: ${new Date().toLocaleDateString('ar-SA')}
+        ${pagesCopy.tc_cert_heading}
+
+        ${pagesCopy.tc_cert_body}
+        ${pagesCopy.tc_cert_course}: ${course.title}
+
+        ${pagesCopy.tc_cert_date}: ${formatDate(new Date())}
       `;
-      
-      const blob = new Blob([certificateContent], { type: 'text/plain;charset=utf-8' });
+
+      const blob = new Blob([certificateContent], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `شهادة_${course.title.replace(/\s/g, '_')}.txt`;
+      a.download = `${pagesCopy.tc_cert_file}_${course.title.replace(/\s/g, "_")}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -71,167 +65,96 @@ const TrainingCertificateStep = () => {
     }
   };
 
-  const completedCourses = courses.filter(c => c.completed);
-  const inProgressCourses = courses.filter(c => !c.completed);
+  const completedCourses = courses.filter((c) => c.completed);
+  const inProgressCourses = courses.filter((c) => !c.completed);
 
   return (
-    <div className="max-w-4xl mx-auto" dir="rtl">
-      <div className="text-center mb-8">
-        <h3 
-          className="text-2xl font-hrsd-title mb-3"
-          style={{ color: "hsl(175, 75%, 30%)" }}
-        >
-          التدريب وإصدار الشهادة
-        </h3>
-        <p className="text-gray-600 font-hrsd">
-          تابع تقدمك في الدورات واحصل على شهاداتك
-        </p>
+    <section aria-labelledby="tc-title" className="mx-auto max-w-[960px]">
+      <div className="mb-6">
+        <h2 id="tc-title" className="text-h3 text-ink">
+          {pagesCopy.tc_title}
+        </h2>
+        <p className="mt-1 text-body text-muted-foreground">{pagesCopy.tc_desc}</p>
       </div>
 
-      {/* Completed Courses with Certificates */}
-      {completedCourses.length > 0 && (
-        <div className="mb-10">
-          <h4 
-            className="text-lg font-hrsd-semibold mb-4 flex items-center gap-2"
-            style={{ color: "hsl(142, 71%, 45%)" }}
-          >
-            <Award className="w-5 h-5" />
-            الدورات المكتملة ({completedCourses.length})
-          </h4>
-          
-          <div className="space-y-4">
-            {completedCourses.map((course) => (
-              <div
-                key={course.id}
-                className="bg-white rounded-xl shadow-lg p-6 border-r-4"
-                style={{ borderColor: "hsl(142, 71%, 45%)" }}
-              >
-                <div className="flex items-center justify-between">
+      {courses.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState message={pagesCopy.tc_empty} icon={Play} />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-6">
+          {completedCourses.length > 0 && (
+            <CourseGroup title={pagesCopy.tc_completed} count={completedCourses.length}>
+              {completedCourses.map((course) => (
+                <li key={course.id} className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
-                    <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: "hsla(142, 71%, 45%, 0.1)" }}
-                    >
-                      <CheckCircle2 
-                        className="w-6 h-6" 
-                        style={{ color: "hsl(142, 71%, 45%)" }}
-                      />
-                    </div>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+                      <CheckCircle2 aria-hidden className="h-5 w-5" />
+                    </span>
                     <div>
-                      <h5 className="font-hrsd-semibold text-gray-800">
-                        {course.title}
-                      </h5>
-                      <p className="text-sm text-gray-500 font-hrsd">
-                        {course.completedModules} من {course.modules} وحدات
-                      </p>
+                      <p className="text-body font-hrsd-bold text-ink">{course.title}</p>
+                      <p className="text-small text-muted-foreground">{pagesCopy.tc_modules(course.completedModules, course.modules)}</p>
                     </div>
                   </div>
-                  
-                  <Button
-                    className="font-hrsd-semibold"
-                    style={{ 
-                      backgroundColor: "hsl(142, 71%, 45%)",
-                    }}
-                    onClick={() => handleDownloadCertificate(course.id)}
-                  >
-                    <Download className="w-4 h-4 ml-2" />
-                    تحميل الشهادة
+                  <Button className="h-11 px-5" onClick={() => handleDownloadCertificate(course.id)}>
+                    <Download aria-hidden />
+                    {pagesCopy.tc_download}
                   </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+                </li>
+              ))}
+            </CourseGroup>
+          )}
 
-      {/* In Progress Courses */}
-      {inProgressCourses.length > 0 && (
-        <div>
-          <h4 
-            className="text-lg font-hrsd-semibold mb-4 flex items-center gap-2"
-            style={{ color: "hsl(35, 91%, 54%)" }}
-          >
-            <Play className="w-5 h-5" />
-            الدورات قيد التدريب ({inProgressCourses.length})
-          </h4>
-          
-          <div className="space-y-4">
-            {inProgressCourses.map((course) => (
-              <div
-                key={course.id}
-                className="bg-white rounded-xl shadow-lg p-6 border-r-4"
-                style={{ borderColor: "hsl(35, 91%, 54%)" }}
-              >
-                <div className="flex items-center justify-between mb-4">
+          {inProgressCourses.length > 0 && (
+            <CourseGroup title={pagesCopy.tc_in_progress} count={inProgressCourses.length}>
+              {inProgressCourses.map((course) => (
+                <li key={course.id} className="flex flex-col gap-4 p-6">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-section-alt text-primary">
+                        <Play aria-hidden className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-body font-hrsd-bold text-ink">{course.title}</p>
+                        <p className="text-small text-muted-foreground">{pagesCopy.tc_modules(course.completedModules, course.modules)}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button variant="outline" className="h-11 px-5" disabled>
+                        <Lock aria-hidden />
+                        {pagesCopy.tc_locked}
+                      </Button>
+                      <Button className="h-11 px-5" onClick={handleContinue}>
+                        {pagesCopy.tc_continue}
+                      </Button>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-4">
-                    <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: "hsla(35, 91%, 54%, 0.1)" }}
+                    <div
+                      role="progressbar"
+                      aria-label={`${pagesCopy.tc_progress}: ${course.title}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={course.progress}
+                      className="h-2 flex-1 overflow-hidden rounded-full bg-section-alt"
                     >
-                      <Play 
-                        className="w-6 h-6" 
-                        style={{ color: "hsl(35, 91%, 54%)" }}
+                      <motion.div
+                        className="h-full rounded-full bg-primary"
+                        initial={{ width: reduced ? `${course.progress}%` : 0 }}
+                        whileInView={{ width: `${course.progress}%` }}
+                        viewport={{ once: true, amount: 0.6 }}
+                        transition={reduced ? { duration: 0 } : { duration: 0.6, ease }}
                       />
                     </div>
-                    <div>
-                      <h5 className="font-hrsd-semibold text-gray-800">
-                        {course.title}
-                      </h5>
-                      <p className="text-sm text-gray-500 font-hrsd">
-                        {course.completedModules} من {course.modules} وحدات
-                      </p>
-                    </div>
+                    <span className="tabular shrink-0 text-small text-muted-foreground">{formatPercent(course.progress)}</span>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      className="font-hrsd-semibold"
-                      disabled
-                    >
-                      <Lock className="w-4 h-4 ml-2" />
-                      الشهادة
-                    </Button>
-                    <Button
-                      className="font-hrsd-semibold bg-primary hover:bg-primary/90"
-                      onClick={() => handleContinue(course.id)}
-                    >
-                      <Play className="w-4 h-4 ml-2" />
-                      متابعة
-                    </Button>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-sm text-gray-500 mb-2 font-hrsd">
-                    <span>التقدم</span>
-                    <span>{course.progress}%</span>
-                  </div>
-                  <Progress value={course.progress} className="h-2" />
-                </div>
-              </div>
-            ))}
-          </div>
+                </li>
+              ))}
+            </CourseGroup>
+          )}
         </div>
       )}
-
-      {courses.length === 0 && (
-        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-          <div 
-            className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6"
-            style={{ backgroundColor: "hsla(175, 75%, 30%, 0.1)" }}
-          >
-            <Play className="w-10 h-10" style={{ color: "hsl(175, 75%, 30%)" }} />
-          </div>
-          <h4 className="text-xl font-hrsd-semibold text-gray-800 mb-2">
-            لا توجد دورات حالياً
-          </h4>
-          <p className="text-gray-600 font-hrsd">
-            يرجى الالتحاق بالدورات المقترحة للبدء في التدريب
-          </p>
-        </div>
-      )}
-    </div>
+    </section>
   );
 };
 

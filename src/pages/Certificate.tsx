@@ -1,70 +1,76 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { Award, CalendarDays, Download, FileText, Printer, QrCode, type LucideIcon } from "lucide-react";
+import { copy, pagesCopy } from "@/lib/copy";
+import { formatDate, formatNumber, formatPercent } from "@/lib/format";
 import OrganizationJourney from "@/components/OrganizationJourney";
-import { Card, CardContent } from "@/components/ui/card";
+import PageHeader from "@/components/shared/PageHeader";
+import EmptyState from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, Award } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 import hrsdLogo from "@/assets/logos/hrsd-colored.png";
 import visionLogo from "@/assets/logos/vision-2030-colored.png";
 
+/** html2canvas cannot read CSS variables in its options, so resolve the background token first. */
+const resolveBackground = () => {
+  const value = getComputedStyle(document.documentElement).getPropertyValue("--background").trim();
+  return value ? `hsl(${value.split(/\s+/).join(", ")})` : null;
+};
+
+const CertificateFact = ({ icon: Icon, label, value, ltr }: { icon: LucideIcon; label: string; value: string; ltr?: boolean }) => (
+  <div className="flex flex-col items-center gap-2 text-center">
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/5 text-primary">
+      <Icon aria-hidden className="h-5 w-5" strokeWidth={1.5} />
+    </span>
+    <p className="text-caption text-muted-foreground">{label}</p>
+    <p className="tabular text-body font-hrsd-bold text-ink" dir={ltr ? "ltr" : undefined}>
+      {value}
+    </p>
+  </div>
+);
+
 const Certificate = () => {
-  const { organizationId } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
   const certificateRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Mock data - in production, this would come from the database
   const isCertified = true;
-  const organizationName = "شركة التقنية المتقدمة";
-  
+  const organizationName = pagesCopy.cert_sample_org;
+
   // Final result data - supports percentage OR score format
   const finalPercentage: number | null = 87; // Example: 87%
   const finalScore: number | null = null; // Example: 87 / 100
-  
-  const issueDate = new Date().toLocaleDateString("ar-SA", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const certificateId = `CERT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
-  const verificationCode = `VRF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+  const issueDate = formatDate(new Date());
+  // Generated once per visit so the preview, the PDF and its file name agree.
+  const [certificateId] = useState(
+    () => `CERT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`
+  );
+  const [verificationCode] = useState(() => `VRF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
 
   // Get display value for final result
   const getFinalResultDisplay = () => {
     if (finalPercentage !== null && finalPercentage !== undefined) {
-      return `${finalPercentage}%`;
+      return formatPercent(finalPercentage);
     }
     if (finalScore !== null && finalScore !== undefined) {
-      return `${finalScore} / 100`;
+      return `${formatNumber(finalScore)} / ${formatNumber(100)}`;
     }
     return null;
   };
 
   const finalResultValue = getFinalResultDisplay();
 
+  const breadcrumbs = [{ label: copy.account_dashboard, to: "/dashboard" }, { label: pagesCopy.cert_page_title }];
+
   if (!isCertified) {
     return (
-      <div dir="rtl" className="min-h-screen flex flex-col bg-background">
-        <main className="flex-1 flex items-center justify-center p-6">
-          <Card className="max-w-md w-full shadow-lg">
-            <CardContent className="p-8 text-center">
-              <Award className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-xl font-hrsd-bold text-foreground mb-2">
-                الشهادة غير متاحة
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                لم يتم اعتماد المنظمة بعد. يرجى إكمال عملية التقييم أولاً.
-              </p>
-              <Button onClick={() => navigate("/dashboard")} className="bg-primary">
-                العودة للوحة التحكم
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
+      <>
+        <PageHeader title={pagesCopy.cert_page_title} breadcrumbs={breadcrumbs} />
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState message={pagesCopy.cert_unavailable} icon={Award} action={{ label: pagesCopy.cert_back, to: "/dashboard" }} />
+        </div>
+      </>
     );
   }
 
@@ -77,14 +83,14 @@ const Certificate = () => {
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: "hsl(var(--background))",
+        backgroundColor: resolveBackground(),
         logging: false,
       });
 
       // Calculate dimensions for A4 PDF
       const imgWidth = 210; // A4 width in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
+
       // Create PDF
       const pdf = new jsPDF({
         orientation: imgHeight > imgWidth ? "portrait" : "landscape",
@@ -96,7 +102,7 @@ const Certificate = () => {
       const imgData = canvas.toDataURL("image/png");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      
+
       // Center the image on the page
       const scaleFactor = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight) * 0.9;
       const scaledWidth = imgWidth * scaleFactor;
@@ -105,11 +111,20 @@ const Certificate = () => {
       const yOffset = (pdfHeight - scaledHeight) / 2;
 
       pdf.addImage(imgData, "PNG", xOffset, yOffset, scaledWidth, scaledHeight);
-      
+
       // Download the PDF
       pdf.save(`Certificate-${certificateId}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
+    }
+  };
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      await handleDownloadPDF();
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -118,232 +133,91 @@ const Certificate = () => {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen flex flex-col bg-background">
-      
-      {/* Fixed header spacer */}
-      <div className="h-20 print:hidden" />
-      
-      {/* Organization Journey */}
-      <div className="print:hidden">
+    <>
+      <PageHeader
+        className="print:hidden"
+        title={pagesCopy.cert_page_title}
+        description={pagesCopy.cert_page_desc}
+        breadcrumbs={breadcrumbs}
+        actions={
+          <>
+            <Button onClick={handleDownload} disabled={isDownloading} aria-busy={isDownloading} className="h-11 px-6">
+              <Download aria-hidden />
+              {isDownloading ? pagesCopy.cert_downloading : pagesCopy.cert_download}
+            </Button>
+            <Button variant="outline" onClick={handlePrint} className="h-11 px-6">
+              <Printer aria-hidden />
+              {pagesCopy.cert_print}
+            </Button>
+          </>
+        }
+      />
+
+      <div className="mb-8 print:hidden">
         <OrganizationJourney />
       </div>
 
-      <main className="flex-1 py-12 px-4 md:px-6 print:py-0 print:px-0">
-        <div className="max-w-4xl mx-auto print:max-w-none print:w-full">
-          {/* Certificate Card */}
-          <div 
-            id="certificate-card" 
-            ref={certificateRef}
-            className="relative print:shadow-none"
-          >
-            <Card className="relative overflow-hidden border border-emerald-100/80 shadow-lg rounded-2xl print:shadow-none print:border print:rounded-none bg-white">
-              {/* Wave background pattern for entire card */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <svg 
-                  className="absolute bottom-0 left-0 w-full h-full" 
-                  viewBox="0 0 800 600" 
-                  preserveAspectRatio="none"
-                >
-                  <defs>
-                    <linearGradient id="cardWaveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="white" />
-                      <stop offset="100%" stopColor="hsl(152, 60%, 97%)" />
-                    </linearGradient>
-                  </defs>
-                  <rect fill="url(#cardWaveGrad)" width="100%" height="100%" />
-                  {/* Subtle flowing waves */}
-                  <path 
-                    d="M0,500 C150,520 300,480 450,500 C600,520 750,490 800,510 L800,600 L0,600 Z" 
-                    fill="hsl(152, 50%, 94%)" 
-                    opacity="0.5"
-                  />
-                  <path 
-                    d="M0,530 C200,560 400,510 600,540 C700,555 800,530 800,550 L800,600 L0,600 Z" 
-                    fill="hsl(152, 45%, 91%)" 
-                    opacity="0.4"
-                  />
-                  <path 
-                    d="M0,560 C100,575 250,550 400,570 C550,590 700,560 800,580 L800,600 L0,600 Z" 
-                    fill="hsl(152, 40%, 88%)" 
-                    opacity="0.3"
-                  />
-                </svg>
-              </div>
+      {/* Preview panel */}
+      <div className="rounded-lg border border-border bg-card p-4 md:p-8 print:border-0 print:p-0">
+        {/* Certificate artwork: exported to PDF and printed as-is */}
+        <div id="certificate-card" ref={certificateRef} className="mx-auto max-w-[880px] border border-border bg-card">
+          <div className="h-1.5 bg-primary" />
 
-              {/* Subtle geometric pattern overlay */}
-              <div 
-                className="absolute inset-0 opacity-[0.015] pointer-events-none"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23065f46' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                }}
-              />
+          <div className="px-6 py-10 md:px-12 md:py-12 lg:px-16 lg:py-14">
+            {/* Logos: ministry at the start, Vision 2030 at the end */}
+            <div className="mb-10 flex items-start justify-between gap-6">
+              <img src={hrsdLogo} alt={copy.logo_alt} className="h-14 w-auto object-contain md:h-20" />
+              <img src={visionLogo} alt={copy.vision_alt} className="h-14 w-auto object-contain md:h-20" />
+            </div>
 
-              {/* Top decorative border - thin elegant line */}
-              <div className="h-1.5 bg-gradient-to-r from-emerald-500/80 via-[hsl(45,65%,60%)]/70 to-emerald-500/80" />
+            <div className="mb-10 flex flex-col items-center gap-4 text-center">
+              <p className="font-hrsd-title text-h1 text-primary md:text-display">{pagesCopy.cert_title}</p>
+              <span aria-hidden className="h-0.5 w-16 bg-accent" />
+            </div>
 
-              <CardContent className="relative p-8 md:p-12 lg:p-16">
-                {/* Header with logos */}
-                <div className="flex items-start justify-between mb-10">
-                  {/* Vision 2030 logo - left */}
-                  <img
-                    src={visionLogo}
-                    alt="رؤية 2030"
-                    className="h-16 md:h-20 object-contain"
-                  />
-                  
-                  {/* Ministry logo - right */}
-                  <img
-                    src={hrsdLogo}
-                    alt="شعار الوزارة"
-                    className="h-16 md:h-20 object-contain"
-                  />
-                </div>
+            <p className="mb-6 text-center text-body text-muted-foreground md:text-h3">{pagesCopy.cert_granting}</p>
 
-                {/* Certificate Title */}
-                <div className="text-center mb-10">
-                  <div className="inline-block">
-                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-hrsd-title text-emerald-800 mb-4">
-                      شهادة اعتماد
-                    </h1>
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="h-px w-16 bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent" />
-                      <div className="w-2 h-2 rotate-45 bg-emerald-500/60" />
-                      <div className="h-px w-16 bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent" />
-                    </div>
-                  </div>
-                </div>
+            <p className="mb-6 text-center font-hrsd-bold text-h2 text-primary md:text-h1">{organizationName}</p>
 
-                {/* Granting text */}
-                <p className="text-center text-lg md:text-xl text-muted-foreground mb-8 font-hrsd-medium">
-                  تمنح وزارة الموارد البشرية والتنمية الاجتماعية هذه الشهادة إلى
+            <p className="mx-auto mb-10 max-w-[600px] text-center text-body text-ink">{pagesCopy.cert_confirm}</p>
+
+            {finalResultValue && (
+              <div className="mb-10 flex flex-col items-center gap-1 text-center">
+                <p className="text-small text-muted-foreground">{pagesCopy.cert_result}</p>
+                <p className="tabular font-hrsd-bold text-h2 text-primary" dir="ltr">
+                  {finalResultValue}
                 </p>
+              </div>
+            )}
 
-                {/* Organization Name */}
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-hrsd-bold text-emerald-800 leading-relaxed">
-                    {organizationName}
-                  </h2>
-                </div>
+            <div aria-hidden className="mb-10 h-px bg-border" />
 
-                {/* Confirmation text */}
-                <div className="text-center mb-10 max-w-2xl mx-auto">
-                  <p className="text-lg md:text-xl text-foreground leading-relaxed font-hrsd-regular">
-                    قد استوفت جميع معايير ومتطلبات الاعتماد المهني للتدريب
-                    <br />
-                    وفقًا للمعايير المعتمدة.
-                  </p>
-                </div>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+              <CertificateFact icon={CalendarDays} label={pagesCopy.cert_issue_date} value={issueDate} />
+              <CertificateFact icon={FileText} label={pagesCopy.cert_id} value={certificateId} ltr />
+              <CertificateFact icon={QrCode} label={pagesCopy.cert_verification} value={verificationCode} ltr />
+            </div>
 
-              {/* Final Result - Simple inline typography */}
-                {finalResultValue && (
-                  <div className="text-center mb-12">
-                    <p className="text-sm text-emerald-700/70 font-hrsd-medium mb-2">
-                      النتيجة النهائية
-                    </p>
-                    <p className="text-2xl md:text-3xl font-hrsd-bold text-emerald-800">
-                      {finalResultValue}
-                    </p>
-                  </div>
-                )}
-
-                {/* Decorative divider */}
-                <div className="flex items-center justify-center gap-4 mb-10">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent to-emerald-200/60" />
-                  <div className="flex gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/60" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/60" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/60" />
-                  </div>
-                  <div className="h-px flex-1 bg-gradient-to-l from-transparent to-emerald-200/60" />
-                </div>
-
-                {/* Bottom Section - Three Columns */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                  {/* Issue Date */}
-                  <div className="space-y-2">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 mb-2">
-                      <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-muted-foreground font-hrsd-medium">تاريخ الإصدار</p>
-                    <p className="text-lg font-hrsd-semibold text-foreground">{issueDate}</p>
-                  </div>
-
-                  {/* Certificate ID */}
-                  <div className="space-y-2">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 mb-2">
-                      <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-muted-foreground font-hrsd-medium">رقم الشهادة</p>
-                    <p className="text-lg font-hrsd-semibold text-foreground font-mono tracking-wider">{certificateId}</p>
-                  </div>
-
-                  {/* Verification Code / QR */}
-                  <div className="space-y-2">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 mb-2">
-                      <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-muted-foreground font-hrsd-medium">كود التحقق</p>
-                    <p className="text-lg font-hrsd-semibold text-foreground font-mono tracking-wider">{verificationCode}</p>
-                  </div>
-                </div>
-
-                {/* Official seal placeholder */}
-                <div className="flex justify-center mt-10">
-                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-emerald-300/50 flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground text-center px-2 font-hrsd-medium">
-                      ختم الجهة
-                      <br />
-                      الرسمي
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-
-              {/* Bottom decorative border - thin elegant line */}
-              <div className="h-1.5 bg-gradient-to-r from-emerald-500/80 via-[hsl(45,65%,60%)]/70 to-emerald-500/80" />
-            </Card>
+            {/* Official seal placeholder */}
+            <div className="mt-10 flex justify-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-border px-3 text-center text-caption text-muted-foreground">
+                {pagesCopy.cert_seal}
+              </div>
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10 print:hidden">
-            <Button
-              onClick={handleDownloadPDF}
-              size="lg"
-              className="bg-primary hover:bg-primary/90 text-white px-8 py-6 text-lg font-hrsd-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
-            >
-              <Download className="w-5 h-5 ml-3" />
-              تحميل PDF
-            </Button>
-            <Button
-              onClick={handlePrint}
-              size="lg"
-              variant="outline"
-              className="border-2 border-primary text-primary hover:bg-primary/5 px-8 py-6 text-lg font-hrsd-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
-            >
-              <Printer className="w-5 h-5 ml-3" />
-              طباعة
-            </Button>
-          </div>
+          <div className="h-1.5 bg-primary" />
         </div>
-      </main>
-
-      <div className="print:hidden">
       </div>
 
-      {/* Print Styles - Critical for proper A4 printing */}
+      {/* Print styles: A4, certificate only */}
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
             margin: 15mm;
           }
-          
+
           html, body {
             height: 100%;
             margin: 0 !important;
@@ -352,54 +226,43 @@ const Certificate = () => {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          
+
           /* Hide everything by default */
           body > * {
             visibility: hidden !important;
           }
-          
+
           /* Show only the certificate container */
           #certificate-card,
           #certificate-card * {
             visibility: visible !important;
           }
-          
+
           #certificate-card {
             position: absolute !important;
-            left: 0 !important;
+            inset-inline-start: 0 !important;
             top: 0 !important;
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            padding: 0 !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
-          
+
           /* Ensure background colors print */
           #certificate-card * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          
-          /* Hide print:hidden elements */
+
           .print\\:hidden {
             display: none !important;
           }
-          
-          /* Remove shadows and rounded corners for print */
-          .shadow-2xl, .shadow-lg {
-            box-shadow: none !important;
-          }
-          
-          .rounded-3xl, .rounded-2xl, .rounded-xl {
-            border-radius: 0 !important;
-          }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 

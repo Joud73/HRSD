@@ -1,16 +1,32 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { ArrowRight, Clock, Calendar, ChevronUp, ChevronDown, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { BookX, Calendar, CalendarDays, CheckCircle2, Clock, FileText, Monitor, Users } from "lucide-react";
+import { assessmentCopy as t } from "@/lib/copy";
+import { formatNumber } from "@/lib/format";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getProgramById, TrainingProgram } from "@/data/trainingPrograms";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import PageHeader from "@/components/shared/PageHeader";
+import EmptyState from "@/components/shared/EmptyState";
+import { SkeletonPanel } from "@/components/shared/Skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getProgramById, type TrainingProgram } from "@/data/trainingPrograms";
+
+const ENROLLED_KEY = "enrolledPrograms";
+
+const readEnrolled = (): number[] => {
+  const stored = localStorage.getItem(ENROLLED_KEY);
+  return stored ? JSON.parse(stored) : [];
+};
 
 const CourseDetail = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [program, setProgram] = useState<TrainingProgram | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [openDays, setOpenDays] = useState<number[]>([0, 1]);
+  const [enrolled, setEnrolled] = useState<number[]>(readEnrolled);
 
   useEffect(() => {
     if (courseId) {
@@ -26,160 +42,141 @@ const CourseDetail = () => {
     navigate("/training-stage");
   };
 
-  const toggleDay = (index: number) => {
-    setOpenDays((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
-    );
+  // Enrolment is local to this prototype (read by the training stage page)
+  const handleEnroll = () => {
+    if (!program || enrolled.includes(program.id)) return;
+    const next = [...enrolled, program.id];
+    localStorage.setItem(ENROLLED_KEY, JSON.stringify(next));
+    setEnrolled(next);
+    toast({ title: t.course_enrolled_toast, description: program.title });
   };
+
+  const crumbs = [
+    { label: t.crumb_portal, to: "/dashboard" },
+    { label: t.training_crumb, to: "/training-stage" },
+  ];
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary font-hrsd-medium">جاري التحميل...</div>
+      <div className="flex max-w-[760px] flex-col gap-6" aria-busy>
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-10 w-80 max-w-full" />
+          <Skeleton className="h-5 w-full" />
+        </div>
+        <SkeletonPanel lines={3} />
+        <SkeletonPanel lines={5} />
       </div>
     );
   }
 
   if (!program) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center" dir="rtl">
-            <h2 className="text-2xl font-hrsd-bold text-foreground mb-4">البرنامج غير موجود</h2>
-            <Button onClick={handleBack} className="bg-primary hover:bg-primary/90">
-              العودة إلى البرامج التدريبية
-            </Button>
-          </div>
+      <div className="max-w-[760px]">
+        <PageHeader title={t.course_not_found_title} breadcrumbs={crumbs} />
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState icon={BookX} message={t.course_not_found} action={{ label: t.course_back, onClick: handleBack }} />
         </div>
       </div>
     );
   }
 
+  const isEnrolled = enrolled.includes(program.id);
+
+  const facts = [
+    { icon: Clock, label: t.training_duration, value: program.duration },
+    { icon: Calendar, label: t.course_period, value: `${program.startDate} ${t.course_period_sep} ${program.endDate}` },
+    { icon: CalendarDays, label: t.course_days, value: program.schedule?.days.join("، ") || t.course_days_fallback },
+    { icon: Clock, label: t.course_time, value: program.schedule?.time || program.time },
+    { icon: Monitor, label: t.training_delivery, value: program.deliveryMode },
+    { icon: Users, label: t.modal_instructor, value: program.instructor },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      
+    <div className="max-w-[760px]">
+      <PageHeader
+        title={program.title}
+        description={program.description}
+        breadcrumbs={[...crumbs, { label: program.title }]}
+        actions={
+          isEnrolled ? (
+            <span className="inline-flex h-10 items-center gap-2 rounded-md bg-primary/10 px-4 text-small font-hrsd-medium text-primary">
+              <CheckCircle2 aria-hidden className="h-4 w-4" />
+              {t.course_enrolled}
+            </span>
+          ) : (
+            <Button onClick={handleEnroll}>{t.course_enroll}</Button>
+          )
+        }
+      />
 
-      {/* Hero Section */}
-      <section className="bg-primary py-12 md:py-16 px-4" dir="rtl">
-        <div className="container mx-auto max-w-4xl">
-          {/* Back Button */}
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors font-hrsd-medium"
-          >
-            <ArrowRight size={20} />
-            <span>العودة إلى البرامج التدريبية</span>
-          </button>
-
-          {/* Course Title */}
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-hrsd-title text-white leading-relaxed mb-4">
-            {program.title}
-          </h1>
-          
-          {/* Short Description */}
-          <p className="text-white/90 text-base md:text-lg leading-relaxed font-hrsd-medium">
-            {program.description}
-          </p>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <section className="py-8 md:py-12 px-4" dir="rtl">
-        <div className="container mx-auto max-w-4xl space-y-8">
-          
-          {/* About Section */}
-          <div className="bg-card rounded-xl p-6 border border-border">
-            <h2 className="text-xl font-hrsd-bold text-foreground mb-4">عام</h2>
-            <p className="text-muted-foreground font-hrsd-medium leading-relaxed">
-              {program.fullDescription}
-            </p>
-          </div>
-
-          {/* Schedule Banner */}
-          <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 flex items-center gap-3">
-            <Calendar size={24} className="text-primary shrink-0" />
-            <p className="text-foreground font-hrsd-medium text-sm md:text-base">
-              <span className="text-primary font-hrsd-semibold">{program.title}</span>
-              {" "}تبدأ من {program.startDate} إلى {program.endDate} من الساعة {program.time} كل يوم
-            </p>
-          </div>
-
-          {/* Course Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-card rounded-xl p-5 border border-border text-center">
-              <Clock size={28} className="text-primary mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground font-hrsd-medium mb-1">المدة</p>
-              <p className="font-hrsd-semibold text-foreground">{program.duration}</p>
-            </div>
-            <div className="bg-card rounded-xl p-5 border border-border text-center">
-              <Calendar size={28} className="text-primary mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground font-hrsd-medium mb-1">أيام التدريب</p>
-              <p className="font-hrsd-semibold text-foreground">
-                {program.schedule?.days.join("، ") || "حسب الجدول"}
-              </p>
-            </div>
-            <div className="bg-card rounded-xl p-5 border border-border text-center">
-              <FileText size={28} className="text-primary mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground font-hrsd-medium mb-1">نوع التدريب</p>
-              <p className="font-hrsd-semibold text-foreground">{program.deliveryMode}</p>
-            </div>
-          </div>
-
-          {/* Course Days - Collapsible */}
-          <div className="space-y-3">
-            {program.courseDays.map((day, index) => (
-              <Collapsible
-                key={index}
-                open={openDays.includes(index)}
-                onOpenChange={() => toggleDay(index)}
-              >
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
-                  <CollapsibleTrigger className="w-full p-5 flex items-center justify-between hover:bg-muted/50 transition-colors">
-                    <h3 className="text-lg font-hrsd-bold text-foreground">{day.title}</h3>
-                    {openDays.includes(index) ? (
-                      <ChevronUp size={20} className="text-muted-foreground" />
-                    ) : (
-                      <ChevronDown size={20} className="text-muted-foreground" />
-                    )}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="px-5 pb-5 space-y-3">
-                      {day.materials.length > 0 ? (
-                        day.materials.map((material, matIndex) => (
-                          <div
-                            key={matIndex}
-                            className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border/50"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <FileText size={20} className="text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-hrsd-medium text-foreground text-sm">
-                                  {material.name}
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-xs text-muted-foreground font-hrsd-medium bg-muted px-2 py-1 rounded">
-                              {material.type}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-sm font-hrsd-medium text-center py-4">
-                          لا توجد مواد متاحة حالياً
-                        </p>
-                      )}
-                    </div>
-                  </CollapsibleContent>
+      <div className="flex flex-col gap-6">
+        {/* Facts strip */}
+        <section aria-label={t.course_facts} className="rounded-lg border border-border bg-card p-5">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 md:grid-cols-3">
+            {facts.map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex items-start gap-3">
+                <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div className="min-w-0">
+                  <dt className="text-small text-muted-foreground">{label}</dt>
+                  <dd className="text-small font-hrsd-medium text-ink">{value || "—"}</dd>
                 </div>
-              </Collapsible>
+              </div>
             ))}
-          </div>
+          </dl>
+        </section>
 
-        </div>
-      </section>
+        {/* About */}
+        <section className="rounded-lg border border-border bg-card p-5 md:p-6">
+          <h2 className="text-h3 text-ink">{t.course_about}</h2>
+          <p className="mt-3 text-body text-muted-foreground">{program.fullDescription}</p>
+        </section>
 
+        {/* Course days */}
+        <section aria-labelledby="course-content-title" className="rounded-lg border border-border bg-card">
+          <h2 id="course-content-title" className="px-5 pt-5 text-h3 text-ink md:px-6 md:pt-6">
+            {t.course_content}
+            <span className="tabular ms-2 text-small text-muted-foreground">{formatNumber(program.courseDays.length)}</span>
+          </h2>
+          <Accordion
+            type="multiple"
+            dir="rtl"
+            value={openDays.map(String)}
+            onValueChange={(values) => setOpenDays(values.map(Number))}
+            className="mt-3"
+          >
+            {program.courseDays.map((day, index) => (
+              <AccordionItem key={day.title} value={String(index)} className="border-t border-border border-b-0">
+                <AccordionTrigger className="px-5 py-4 text-start text-body font-hrsd-bold text-ink transition-colors duration-micro hover:bg-section-alt hover:no-underline md:px-6">
+                  <span className="flex items-center gap-3">
+                    {day.title}
+                    <span className="tabular text-small font-hrsd-regular text-muted-foreground">{formatNumber(day.materials.length)}</span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5 md:px-6">
+                  {day.materials.length > 0 ? (
+                    <ul className="flex flex-col gap-2">
+                      {day.materials.map((material) => (
+                        <li key={material.name} className="flex items-center gap-3 rounded-md border border-border p-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/5 text-primary">
+                            <FileText aria-hidden className="h-4 w-4" />
+                          </span>
+                          <p className="min-w-0 flex-1 text-small font-hrsd-medium text-ink">{material.name}</p>
+                          <span className="tabular shrink-0 rounded-full bg-section-alt px-2 text-small text-muted-foreground" dir="ltr">
+                            {material.type}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-small text-muted-foreground">{t.course_materials_empty}</p>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </section>
+      </div>
     </div>
   );
 };

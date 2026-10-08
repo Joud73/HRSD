@@ -1,5 +1,7 @@
-import { X, Clock, BookOpen, Users, Calendar } from "lucide-react";
+import { BookOpen, Calendar, CheckCircle2, Clock, Users } from "lucide-react";
+import { assessmentCopy as t } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ProgramDetails {
   title: string;
@@ -20,144 +22,84 @@ interface TrainingProgramModalProps {
   isEnrolled?: boolean;
 }
 
-const TrainingProgramModal = ({
-  program,
-  isOpen,
-  onClose,
-  onEnroll,
-  isEnrolled = false,
-}: TrainingProgramModalProps) => {
-  if (!isOpen || !program) return null;
+/** Program summary in a dialog, with a link through to the full program page. */
+const TrainingProgramModal = ({ program, isOpen, onClose, onEnroll, isEnrolled = false }: TrainingProgramModalProps) => {
+  const facts = program
+    ? [
+        { icon: Clock, label: t.training_duration, value: program.duration },
+        { icon: BookOpen, label: t.training_type, value: program.type },
+        { icon: Users, label: t.modal_instructor, value: program.instructor },
+        { icon: Calendar, label: t.modal_start, value: program.startDate },
+      ].filter((f) => !!f.value)
+    : [];
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      dir="rtl"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <Dialog open={isOpen && !!program} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent dir="rtl" className="max-h-[90vh] gap-6 overflow-y-auto sm:max-w-lg">
+        {program && (
+          <>
+            <DialogHeader className="text-start">
+              <DialogTitle className="text-h3 text-ink">{program.title}</DialogTitle>
+              <DialogDescription className="text-body text-muted-foreground">{program.description}</DialogDescription>
+            </DialogHeader>
 
-      {/* Modal */}
-      <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-in">
-        {/* Header */}
-        <div className="sticky top-0 bg-card border-b border-border p-4 md:p-6 flex items-start justify-between gap-4 rounded-t-2xl">
-          <h2
-            id="modal-title"
-            className="text-xl md:text-2xl font-hrsd-bold text-foreground leading-relaxed"
-          >
-            {program.title}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition-colors shrink-0"
-            aria-label="إغلاق النافذة"
-          >
-            <X size={20} className="text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 md:p-6 space-y-6">
-          {/* Description */}
-          <p className="text-muted-foreground leading-relaxed font-hrsd-medium">
-            {program.description}
-          </p>
-
-          {/* Meta Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2 text-sm">
-              <Clock size={18} className="text-primary" />
-              <span className="font-hrsd-medium text-foreground">{program.duration}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <BookOpen size={18} className="text-primary" />
-              <span className="font-hrsd-medium text-foreground">{program.type}</span>
-            </div>
-            {program.instructor && (
-              <div className="flex items-center gap-2 text-sm">
-                <Users size={18} className="text-primary" />
-                <span className="font-hrsd-medium text-foreground">{program.instructor}</span>
-              </div>
+            {isEnrolled && (
+              <p className="inline-flex items-center gap-1.5 self-start rounded-full bg-primary/10 px-3 py-1 text-small font-hrsd-medium text-primary">
+                <CheckCircle2 aria-hidden className="h-4 w-4" />
+                {t.course_enrolled}
+              </p>
             )}
-            {program.startDate && (
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar size={18} className="text-primary" />
-                <span className="font-hrsd-medium text-foreground">{program.startDate}</span>
-              </div>
+
+            <dl className="grid grid-cols-1 gap-4 rounded-lg bg-section-alt p-4 sm:grid-cols-2">
+              {facts.map(({ icon: Icon, label, value }) => (
+                <div key={label} className="flex items-start gap-2">
+                  <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div>
+                    <dt className="text-small text-muted-foreground">{label}</dt>
+                    <dd className="text-small font-hrsd-medium text-ink">{value}</dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+
+            {program.objectives && program.objectives.length > 0 && (
+              <section>
+                <h3 className="mb-2 text-body font-hrsd-bold text-ink">{t.modal_objectives}</h3>
+                <ul className="flex flex-col gap-2">
+                  {program.objectives.map((objective) => (
+                    <li key={objective} className="flex items-start gap-2 text-small text-muted-foreground">
+                      <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      {objective}
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
-          </div>
 
-          {/* Objectives */}
-          {program.objectives && program.objectives.length > 0 && (
-            <div>
-              <h3 className="text-base font-hrsd-bold text-foreground mb-3">
-                أهداف البرنامج
-              </h3>
-              <ul className="space-y-2">
-                {program.objectives.map((objective, index) => (
-                  <li
-                    key={index}
-                    className="flex items-start gap-2 text-sm text-muted-foreground font-hrsd-medium"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
-                    <span>{objective}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            {program.requirements && program.requirements.length > 0 && (
+              <section>
+                <h3 className="mb-2 text-body font-hrsd-bold text-ink">{t.modal_requirements}</h3>
+                <ul className="flex flex-col gap-2">
+                  {program.requirements.map((requirement) => (
+                    <li key={requirement} className="flex items-start gap-2 text-small text-muted-foreground">
+                      <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral" />
+                      {requirement}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-          {/* Requirements */}
-          {program.requirements && program.requirements.length > 0 && (
-            <div>
-              <h3 className="text-base font-hrsd-bold text-foreground mb-3">
-                المتطلبات
-              </h3>
-              <ul className="space-y-2">
-                {program.requirements.map((requirement, index) => (
-                  <li
-                    key={index}
-                    className="flex items-start gap-2 text-sm text-muted-foreground font-hrsd-medium"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent mt-2 shrink-0" />
-                    <span>{requirement}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-card border-t border-border p-4 md:p-6 flex flex-col sm:flex-row gap-3 rounded-b-2xl">
-          <Button
-            onClick={onEnroll}
-            disabled={isEnrolled}
-            className={`h-12 flex-1 font-hrsd-semibold rounded-lg ${
-              isEnrolled
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-primary hover:bg-primary/90 text-white"
-            }`}
-          >
-            {isEnrolled ? "ملتحق بالبرنامج ✓" : "الالتحاق بالبرنامج"}
-          </Button>
-          <Button
-            onClick={onClose}
-            variant="outline"
-            className="h-12 flex-1 font-hrsd-medium border-border hover:bg-muted rounded-lg"
-          >
-            إغلاق
-          </Button>
-        </div>
-      </div>
-    </div>
+            <DialogFooter className="flex-col-reverse gap-3 sm:flex-row sm:justify-start sm:gap-3 sm:space-x-0">
+              <Button onClick={onEnroll}>{t.modal_open}</Button>
+              <Button variant="outline" onClick={onClose}>
+                {t.modal_close}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
 

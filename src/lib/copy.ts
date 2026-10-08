@@ -159,6 +159,7 @@ export const copy = {
   search_placeholder: "ابحث",
   filter_all: "الكل",
   missing_value: "غير متوفر",
+  close: "إغلاق",
   profile_title: "الملف الشخصي",
   profile_desc: "بيانات حسابك في المنصة",
   profile_account: "معلومات الحساب",

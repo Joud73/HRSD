@@ -1,64 +1,64 @@
-import { useState } from "react";
+import { useId, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { pagesCopy } from "@/lib/copy";
+import { formatPercent } from "@/lib/format";
+import { ease, transition } from "@/lib/motion";
+import { cn } from "@/lib/utils";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import CountUp from "@/components/shared/CountUp";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SelfAssessmentStepProps {
   onComplete: (score: number) => void;
   onSkip: () => void;
 }
 
-const questions = [
-  { id: 1, text: "ما مدى معرفتك بأهداف العمل غير الربحي؟" },
-  { id: 2, text: "هل لديك خبرة سابقة في العمل التطوعي؟" },
-  { id: 3, text: "ما مستوى مهاراتك في التواصل مع الآخرين؟" },
-  { id: 4, text: "هل تجيد العمل ضمن فريق؟" },
-  { id: 5, text: "ما مدى قدرتك على إدارة الوقت؟" },
-  { id: 6, text: "هل لديك خبرة في التخطيط الاستراتيجي؟" },
-  { id: 7, text: "ما مستوى معرفتك بالأنظمة واللوائح ذات العلاقة؟" },
-  { id: 8, text: "هل تستطيع التعامل مع ضغوط العمل؟" },
-  { id: 9, text: "ما مدى إلمامك باستخدام التقنية في العمل؟" },
-  { id: 10, text: "هل لديك مهارات القيادة والتوجيه؟" },
-  { id: 11, text: "ما مستوى معرفتك بإدارة المشاريع؟" },
-  { id: 12, text: "هل تجيد التعامل مع المستفيدين؟" },
-  { id: 13, text: "ما مدى قدرتك على حل المشكلات؟" },
-  { id: 14, text: "هل لديك خبرة في كتابة التقارير؟" },
-  { id: 15, text: "ما مستوى مهاراتك في العرض والتقديم؟" },
-  { id: 16, text: "هل تستطيع التكيف مع التغييرات؟" },
-  { id: 17, text: "ما مدى معرفتك بأفضل الممارسات في القطاع؟" },
-  { id: 18, text: "هل لديك خبرة في جمع التبرعات؟" },
-  { id: 19, text: "ما مستوى معرفتك بالحوكمة المؤسسية؟" },
-  { id: 20, text: "هل تجيد بناء الشراكات والعلاقات؟" },
-  { id: 21, text: "ما مدى قدرتك على الابتكار والإبداع؟" },
-  { id: 22, text: "هل لديك رغبة في التطوير المستمر؟" },
-];
+const questions = pagesCopy.sa_questions.map((text, i) => ({ id: i + 1, text }));
+const options = pagesCopy.sa_options;
 
-const options = [
-  { value: "1", label: "ضعيف" },
-  { value: "2", label: "متوسط" },
-  { value: "3", label: "جيد" },
-  { value: "4", label: "ممتاز" },
-];
+const getScoreLevel = (score: number) => {
+  if (score >= 80) return pagesCopy.sa_levels.excellent;
+  if (score >= 60) return pagesCopy.sa_levels.very_good;
+  if (score >= 40) return pagesCopy.sa_levels.good;
+  return pagesCopy.sa_levels.improve;
+};
+
+const Bar = ({ value, label }: { value: number; label: string }) => {
+  const reduced = useReducedMotion();
+  return (
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} className="h-2 overflow-hidden rounded-full bg-section-alt">
+      <motion.div
+        className="h-full rounded-full bg-primary"
+        initial={false}
+        animate={{ width: `${value}%` }}
+        transition={reduced ? { duration: 0 } : { duration: 0.6, ease }}
+      />
+    </div>
+  );
+};
 
 const SelfAssessmentStep = ({ onComplete, onSkip }: SelfAssessmentStepProps) => {
+  const reduced = useReducedMotion();
+  const groupId = useId();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
 
+  const question = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const isLast = currentQuestion === questions.length - 1;
 
   const handleAnswer = (value: string) => {
-    setAnswers({ ...answers, [questions[currentQuestion].id]: value });
+    setAnswers({ ...answers, [question.id]: value });
   };
 
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      // Calculate score
       const totalScore = Object.values(answers).reduce((sum, val) => sum + parseInt(val), 0);
       const maxScore = questions.length * 4;
       const percentage = Math.round((totalScore / maxScore) * 100);
@@ -73,138 +73,104 @@ const SelfAssessmentStep = ({ onComplete, onSkip }: SelfAssessmentStepProps) => 
     }
   };
 
-  const getScoreLevel = (score: number) => {
-    if (score >= 80) return { label: "ممتاز", color: "hsl(142, 71%, 45%)" };
-    if (score >= 60) return { label: "جيد جداً", color: "hsl(175, 75%, 30%)" };
-    if (score >= 40) return { label: "جيد", color: "hsl(35, 91%, 54%)" };
-    return { label: "يحتاج تحسين", color: "hsl(0, 84%, 60%)" };
-  };
-
   if (showResult) {
-    const level = getScoreLevel(score);
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 max-w-lg mx-auto text-center" dir="rtl">
-        <h3 
-          className="text-2xl font-hrsd-title mb-6"
-          style={{ color: "hsl(175, 75%, 30%)" }}
-        >
-          نتيجة التقييم الذاتي
-        </h3>
-
-        <div 
-          className="w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-6"
-          style={{ 
-            background: `conic-gradient(${level.color} ${score}%, hsl(var(--border)) ${score}%)`,
-          }}
-        >
-          <div className="w-24 h-24 rounded-full bg-white flex flex-col items-center justify-center">
-            <span className="text-3xl font-hrsd-bold" style={{ color: level.color }}>
-              {score}%
-            </span>
-          </div>
+      <section aria-labelledby="sa-result-title" className="mx-auto max-w-[640px] rounded-lg border border-border bg-card p-6 md:p-8">
+        <h2 id="sa-result-title" className="text-h3 text-ink">
+          {pagesCopy.sa_result_title}
+        </h2>
+        <div className="mt-6 flex flex-wrap items-end gap-4">
+          <CountUp value={score} suffix="%" className="tabular text-display font-hrsd-bold text-primary" />
+          <span className="mb-3 inline-flex h-7 items-center rounded-full border border-primary/30 bg-primary/5 px-3 text-caption font-hrsd-medium text-primary">
+            {getScoreLevel(score)}
+          </span>
         </div>
-
-        <div 
-          className="inline-block px-6 py-2 rounded-full mb-6 font-hrsd-semibold text-white"
-          style={{ backgroundColor: level.color }}
-        >
-          {level.label}
+        <div className="mt-4">
+          <Bar value={score} label={pagesCopy.sa_result_title} />
         </div>
-
-        <p className="text-gray-600 mb-8 font-hrsd">
-          بناءً على إجاباتك، قمنا بتحديد الدورات المناسبة لتطوير مهاراتك
-        </p>
-
-        <Button
-          className="w-full h-12 font-hrsd-semibold bg-primary hover:bg-primary/90"
-          onClick={() => onComplete(score)}
-        >
-          الدورات المقترحة
+        <p className="mt-6 text-body text-muted-foreground">{pagesCopy.sa_result_desc}</p>
+        <Button className="mt-8 h-12 w-full px-6 text-body sm:w-auto" onClick={() => onComplete(score)}>
+          {pagesCopy.sa_result_action}
+          <ArrowLeft aria-hidden />
         </Button>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-8 max-w-lg mx-auto" dir="rtl">
-      <div className="flex items-center justify-between mb-6">
-        <h3 
-          className="text-2xl font-hrsd-title"
-          style={{ color: "hsl(175, 75%, 30%)" }}
-        >
-          التقييم الذاتي
-        </h3>
-        <Button
-          variant="ghost"
-          className="text-gray-500 hover:text-gray-700 font-hrsd"
-          onClick={onSkip}
-        >
-          تخطي
-        </Button>
-      </div>
-
-      <div className="mb-6">
-        <div className="flex justify-between text-sm text-gray-500 mb-2 font-hrsd">
-          <span>السؤال {currentQuestion + 1} من {questions.length}</span>
-          <span>{Math.round(progress)}%</span>
+    <section aria-labelledby="sa-title" className="mx-auto max-w-[720px] rounded-lg border border-border bg-card">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border p-6">
+        <div>
+          <h2 id="sa-title" className="text-h3 text-ink">
+            {pagesCopy.sa_title}
+          </h2>
+          <p className="mt-1 text-small text-muted-foreground">{pagesCopy.sa_desc}</p>
         </div>
-        <Progress value={progress} className="h-2" />
+        <Button variant="ghost" className="text-muted-foreground hover:text-ink" onClick={onSkip}>
+          {pagesCopy.sa_skip}
+        </Button>
       </div>
 
-      <div className="mb-8">
-        <p className="text-lg font-hrsd-semibold text-gray-800 mb-6">
-          {questions[currentQuestion].text}
-        </p>
+      <div className="p-6 md:p-8">
+        <div className="mb-8">
+          <div className="mb-2 flex justify-between text-small text-muted-foreground">
+            <span>{pagesCopy.sa_question_of(currentQuestion + 1, questions.length)}</span>
+            <span className="tabular">{formatPercent(Math.round(progress))}</span>
+          </div>
+          <Bar value={progress} label={pagesCopy.sa_question_of(currentQuestion + 1, questions.length)} />
+        </div>
 
-        <RadioGroup
-          value={answers[questions[currentQuestion].id] || ""}
-          onValueChange={handleAnswer}
-          className="space-y-3"
-        >
-          {options.map((option) => (
-            <div
-              key={option.value}
-              className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                answers[questions[currentQuestion].id] === option.value
-                  ? "border-primary bg-primary/5"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-              onClick={() => handleAnswer(option.value)}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.fieldset
+            key={question.id}
+            initial={{ opacity: 0, x: reduced ? 0 : 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0 }}
+            transition={transition.ui}
+          >
+            <legend id={`${groupId}-q`} className="mb-6 text-body font-hrsd-bold text-ink">
+              {question.text}
+            </legend>
+            <RadioGroup
+              dir="rtl"
+              aria-labelledby={`${groupId}-q`}
+              value={answers[question.id] || ""}
+              onValueChange={handleAnswer}
+              className="grid gap-3 sm:grid-cols-2"
             >
-              <Label 
-                htmlFor={option.value} 
-                className="flex-1 cursor-pointer font-hrsd text-base text-right"
-              >
-                {option.label}
-              </Label>
-              <RadioGroupItem value={option.value} id={option.value} className="mr-3" />
-            </div>
-          ))}
-        </RadioGroup>
+              {options.map((option) => {
+                const checked = answers[question.id] === option.value;
+                const optionId = `${groupId}-${option.value}`;
+                return (
+                  <label
+                    key={option.value}
+                    htmlFor={optionId}
+                    className={cn(
+                      "flex min-h-12 cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-body transition-colors duration-micro",
+                      checked ? "border-primary bg-primary/5 text-primary" : "border-border text-ink hover:border-ink/30"
+                    )}
+                  >
+                    <RadioGroupItem value={option.value} id={optionId} />
+                    {option.label}
+                  </label>
+                );
+              })}
+            </RadioGroup>
+          </motion.fieldset>
+        </AnimatePresence>
       </div>
 
-      <div className="flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="flex-1 h-12 font-hrsd-semibold"
-          onClick={handlePrevious}
-          disabled={currentQuestion === 0}
-        >
-          <ChevronRight className="w-5 h-5 ml-2" />
-          السابق
+      <div className="flex flex-col-reverse gap-3 border-t border-border p-6 sm:flex-row sm:justify-between">
+        <Button type="button" variant="outline" className="h-12 px-6 text-body" onClick={handlePrevious} disabled={currentQuestion === 0}>
+          <ChevronRight aria-hidden />
+          {pagesCopy.sa_prev}
         </Button>
-        <Button
-          type="button"
-          className="flex-1 h-12 font-hrsd-semibold bg-primary hover:bg-primary/90"
-          onClick={handleNext}
-          disabled={!answers[questions[currentQuestion].id]}
-        >
-          {currentQuestion === questions.length - 1 ? "عرض النتيجة" : "التالي"}
-          {currentQuestion < questions.length - 1 && <ChevronLeft className="w-5 h-5 mr-2" />}
+        <Button type="button" className="h-12 px-6 text-body" onClick={handleNext} disabled={!answers[question.id]}>
+          {isLast ? pagesCopy.sa_finish : pagesCopy.sa_next}
+          <ChevronLeft aria-hidden />
         </Button>
       </div>
-    </div>
+    </section>
   );
 };
 

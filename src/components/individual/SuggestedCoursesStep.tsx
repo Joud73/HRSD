@@ -1,68 +1,17 @@
 import { useState } from "react";
+import { CheckCircle2, Clock, Users } from "lucide-react";
+import { pagesCopy } from "@/lib/copy";
+import { formatNumber } from "@/lib/format";
+import EmptyState from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Clock, Users, CheckCircle2 } from "lucide-react";
 
 interface SuggestedCoursesStepProps {
   assessmentScore?: number;
   onEnroll: (courseId: number) => void;
 }
 
-const allCourses = [
-  {
-    id: 1,
-    title: "أساسيات العمل غير الربحي",
-    description: "تعرف على المفاهيم الأساسية والإطار العام للعمل في القطاع غير الربحي",
-    duration: "8 ساعات",
-    participants: 234,
-    level: "مبتدئ",
-    category: "basic",
-  },
-  {
-    id: 2,
-    title: "مهارات التواصل الفعّال",
-    description: "تطوير مهارات التواصل مع الفريق والمستفيدين والشركاء",
-    duration: "6 ساعات",
-    participants: 189,
-    level: "متوسط",
-    category: "skills",
-  },
-  {
-    id: 3,
-    title: "إدارة المشاريع التطوعية",
-    description: "تعلم كيفية تخطيط وتنفيذ ومتابعة المشاريع التطوعية بكفاءة",
-    duration: "12 ساعة",
-    participants: 156,
-    level: "متقدم",
-    category: "management",
-  },
-  {
-    id: 4,
-    title: "الحوكمة المؤسسية",
-    description: "فهم مبادئ الحوكمة وتطبيقها في المنظمات غير الربحية",
-    duration: "10 ساعات",
-    participants: 98,
-    level: "متقدم",
-    category: "governance",
-  },
-  {
-    id: 5,
-    title: "بناء الشراكات الاستراتيجية",
-    description: "استراتيجيات بناء وإدارة الشراكات الفعالة مع الجهات المختلفة",
-    duration: "8 ساعات",
-    participants: 145,
-    level: "متوسط",
-    category: "partnerships",
-  },
-  {
-    id: 6,
-    title: "التخطيط الاستراتيجي",
-    description: "تعلم وضع الخطط الاستراتيجية وقياس مؤشرات الأداء",
-    duration: "14 ساعة",
-    participants: 112,
-    level: "متقدم",
-    category: "planning",
-  },
-];
+const LMS_URL = "https://phpstack-1518564-5838964.cloudwaysapps.com/";
+const allCourses = pagesCopy.sc_courses;
 
 const SuggestedCoursesStep = ({ assessmentScore, onEnroll }: SuggestedCoursesStepProps) => {
   const [enrolledCourses, setEnrolledCourses] = useState<number[]>([]);
@@ -71,10 +20,10 @@ const SuggestedCoursesStep = ({ assessmentScore, onEnroll }: SuggestedCoursesSte
   const getSuggestedCourses = () => {
     if (!assessmentScore) return allCourses;
     if (assessmentScore >= 80) {
-      return allCourses.filter(c => c.level === "متقدم");
+      return allCourses.filter((c) => c.level === "advanced");
     }
     if (assessmentScore >= 60) {
-      return allCourses.filter(c => c.level === "متوسط" || c.level === "متقدم");
+      return allCourses.filter((c) => c.level === "intermediate" || c.level === "advanced");
     }
     return allCourses;
   };
@@ -88,110 +37,71 @@ const SuggestedCoursesStep = ({ assessmentScore, onEnroll }: SuggestedCoursesSte
     }
   };
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "مبتدئ":
-        return "hsl(142, 71%, 45%)";
-      case "متوسط":
-        return "hsl(35, 91%, 54%)";
-      case "متقدم":
-        return "hsl(175, 75%, 30%)";
-      default:
-        return "hsl(175, 75%, 30%)";
-    }
-  };
-
   return (
-    <div className="max-w-4xl mx-auto" dir="rtl">
-      <div className="text-center mb-8">
-        <h3 
-          className="text-2xl font-hrsd-title mb-3"
-          style={{ color: "hsl(175, 75%, 30%)" }}
-        >
-          الدورات المقترحة
-        </h3>
-        <p className="text-gray-600 font-hrsd">
-          {assessmentScore 
-            ? `بناءً على نتيجة تقييمك (${assessmentScore}%)، نقترح عليك الدورات التالية`
-            : "اختر من الدورات المتاحة لتطوير مهاراتك"
-          }
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {suggestedCourses.map((course) => {
-          const isEnrolled = enrolledCourses.includes(course.id);
-          
-          return (
-            <div
-              key={course.id}
-              className="bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:shadow-xl"
-            >
-              <div 
-                className="h-2"
-                style={{ backgroundColor: getLevelColor(course.level) }}
-              />
-              
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <h4 className="text-lg font-hrsd-semibold text-gray-800">
-                    {course.title}
-                  </h4>
-                  <span 
-                    className="px-3 py-1 rounded-full text-xs font-hrsd-semibold text-white"
-                    style={{ backgroundColor: getLevelColor(course.level) }}
-                  >
-                    {course.level}
-                  </span>
-                </div>
-                
-                <p className="text-gray-600 text-sm mb-4 font-hrsd leading-relaxed">
-                  {course.description}
-                </p>
-                
-                <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    <span className="font-hrsd">{course.duration}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span className="font-hrsd">{course.participants} مشارك</span>
-                  </div>
-                </div>
-                
-                {isEnrolled ? (
-                  <Button
-                    disabled
-                    className="w-full h-11 font-hrsd-semibold bg-green-500 hover:bg-green-500"
-                  >
-                    <CheckCircle2 className="w-5 h-5 ml-2" />
-                    تم الالتحاق
-                  </Button>
-                ) : (
-                  <a href="https://phpstack-1518564-5838964.cloudwaysapps.com/">
-                    <Button
-                      className="w-full h-11 font-hrsd-semibold bg-primary hover:bg-primary/90"
-                      onClick={() => handleEnroll(course.id)}
-                    >
-                      الالتحاق بالدورة
-                    </Button>
-                  </a>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {enrolledCourses.length > 0 && (
-        <div className="mt-8 text-center">
-          <p className="text-gray-600 font-hrsd mb-4">
-            لقد التحقت بـ {enrolledCourses.length} دورة
+    <section aria-labelledby="sc-title">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="max-w-[720px]">
+          <h2 id="sc-title" className="text-h3 text-ink">
+            {pagesCopy.sc_title}
+          </h2>
+          <p className="mt-1 text-body text-muted-foreground">
+            {assessmentScore ? pagesCopy.sc_desc_score(assessmentScore) : pagesCopy.sc_desc_default}
           </p>
         </div>
+        {enrolledCourses.length > 0 && (
+          <p className="text-small text-muted-foreground">
+            {pagesCopy.sc_enrolled_count}: <span className="tabular font-hrsd-bold text-ink">{formatNumber(enrolledCourses.length)}</span>
+          </p>
+        )}
+      </div>
+
+      {suggestedCourses.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState message={pagesCopy.sc_empty} />
+        </div>
+      ) : (
+        <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {suggestedCourses.map((course) => {
+            const isEnrolled = enrolledCourses.includes(course.id);
+            return (
+              <li key={course.id} className="flex flex-col rounded-lg border border-border bg-card p-6 transition-colors duration-micro hover:border-ink/20">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-body font-hrsd-bold text-ink">{course.title}</h3>
+                  <span className="inline-flex h-7 shrink-0 items-center rounded-full border border-border px-3 text-caption text-muted-foreground">
+                    {pagesCopy.sc_levels[course.level]}
+                  </span>
+                </div>
+                <p className="mt-2 flex-1 text-small text-muted-foreground">{course.description}</p>
+                <div className="mt-4 flex flex-wrap items-center gap-4 text-small text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock aria-hidden className="h-4 w-4" />
+                    {pagesCopy.hours(course.hours)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users aria-hidden className="h-4 w-4" />
+                    <span className="tabular">{formatNumber(course.participants)}</span> {pagesCopy.sc_participants}
+                  </span>
+                </div>
+                <div className="mt-6">
+                  {isEnrolled ? (
+                    <Button disabled variant="outline" className="h-11 w-full border-success/40 text-success disabled:opacity-100">
+                      <CheckCircle2 aria-hidden />
+                      {pagesCopy.sc_enrolled}
+                    </Button>
+                  ) : (
+                    <Button asChild className="h-11 w-full">
+                      <a href={LMS_URL} onClick={() => handleEnroll(course.id)}>
+                        {pagesCopy.sc_enroll}
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </div>
+    </section>
   );
 };
 

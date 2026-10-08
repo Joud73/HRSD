@@ -43,7 +43,7 @@ const UserDropdown = ({ name, items, logoutRedirect = "/" }: UserDropdownProps) 
         >
           <span
             aria-hidden
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-hrsd-bold text-primary-foreground"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-caption font-hrsd-bold text-primary-foreground"
           >
             {name.trim().charAt(0)}
           </span>

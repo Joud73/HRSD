@@ -61,7 +61,7 @@ export const categories = [
   "التقنية والابتكار",
 ];
 
-// Training programs data with categories
+// Training programs data with categories (dates are display strings)
 export const trainingPrograms: TrainingProgram[] = [
   {
     id: 1,
@@ -69,7 +69,7 @@ export const trainingPrograms: TrainingProgram[] = [
     description:
       "برنامج شامل يغطي المفاهيم الأساسية للقيادة الفعالة وإدارة الفرق في بيئة العمل الحديثة.",
     fullDescription:
-      "المشاريع تحسب الحياة العملية والشخصية، ولكي تنجز وترتقي في أماكن العمل، وفي مشاريعنا وأعمالنا الخاصة فحن بحاجة ماسة لتعلم هذا الفن. هذه الدورة هي عبارة عن برنامج متكامل لإدارة المشاريع يعتمد بشكل رئيسي على منهجية إدارة المشاريع الخاصة بالمعهد العالمي لإدارة المشاريع والمسمى 'الدليل المعرفي لإدارة المشاريع'. الإصدار الأخير (PMP) وهو الإصدار المعتمد الجديد، وهو بالتالي يقوم بتغطية كل ما يتعلق بشهادة 'مدير المشاريع المحترف'.",
+      "يقدّم البرنامج المفاهيم الأساسية للقيادة الإدارية في المنظمات غير الربحية، ويتناول أساليب القيادة، واتخاذ القرار، وبناء فرق العمل، وإدارة التغيير. ويجمع بين الجلسات التفاعلية والتطبيقات العملية المرتبطة ببيئة عمل المشاركين.",
     duration: "4 أسابيع",
     type: "تفاعلي",
     deliveryMode: "عن بُعد",
@@ -83,8 +83,8 @@ export const trainingPrograms: TrainingProgram[] = [
     ],
     requirements: ["إتمام مرحلة التسجيل", "الالتزام بالحضور"],
     instructor: "د. أحمد الفهد",
-    startDate: "الأحد الموافق 27 أبريل",
-    endDate: "يوم الخميس الموافق 1 مايو",
+    startDate: "الأحد 27 أبريل",
+    endDate: "الخميس 1 مايو",
     time: "6م وحتى 9م",
     schedule: {
       days: ["الأحد", "الثلاثاء", "الخميس"],
@@ -137,8 +137,8 @@ export const trainingPrograms: TrainingProgram[] = [
     ],
     requirements: ["لا يوجد متطلبات مسبقة"],
     instructor: "أ. سارة المحمد",
-    startDate: "الأحد الموافق 22 يناير",
-    endDate: "يوم الأربعاء الموافق 10 فبراير",
+    startDate: "الأحد 22 يناير",
+    endDate: "الأربعاء 10 فبراير",
     time: "4م وحتى 7م",
     schedule: {
       days: ["الاثنين", "الأربعاء"],
@@ -186,8 +186,8 @@ export const trainingPrograms: TrainingProgram[] = [
     ],
     requirements: ["إتمام برنامج أساسيات القيادة"],
     instructor: "د. خالد العمري",
-    startDate: "السبت الموافق 1 فبراير",
-    endDate: "يوم الثلاثاء الموافق 5 مارس",
+    startDate: "السبت 1 فبراير",
+    endDate: "الثلاثاء 5 مارس",
     time: "5م وحتى 8م",
     schedule: {
       days: ["السبت", "الثلاثاء"],
@@ -243,8 +243,8 @@ export const trainingPrograms: TrainingProgram[] = [
     ],
     requirements: ["خبرة سابقة في العمل المؤسسي"],
     instructor: "م. فاطمة الزهراني",
-    startDate: "الأحد الموافق 15 فبراير",
-    endDate: "يوم الخميس الموافق 28 مارس",
+    startDate: "الأحد 15 فبراير",
+    endDate: "الخميس 28 مارس",
     time: "7م وحتى 9م",
     schedule: {
       days: ["الأحد", "الثلاثاء", "الخميس"],
@@ -297,8 +297,8 @@ export const trainingPrograms: TrainingProgram[] = [
     ],
     requirements: ["شغف بالابتكار والتطوير"],
     instructor: "أ. محمد الدوسري",
-    startDate: "السبت الموافق 1 مارس",
-    endDate: "يوم الأربعاء الموافق 26 مارس",
+    startDate: "السبت 1 مارس",
+    endDate: "الأربعاء 26 مارس",
     time: "5م وحتى 7م",
     schedule: {
       days: ["السبت", "الاثنين", "الأربعاء"],
@@ -352,8 +352,8 @@ export const trainingPrograms: TrainingProgram[] = [
     ],
     requirements: ["معرفة أساسية بالتقنية"],
     instructor: "د. نورة السعيد",
-    startDate: "الأحد الموافق 15 مارس",
-    endDate: "يوم الأربعاء الموافق 9 أبريل",
+    startDate: "الأحد 15 مارس",
+    endDate: "الأربعاء 9 أبريل",
     time: "6م وحتى 9م",
     schedule: {
       days: ["الأحد", "الأربعاء"],

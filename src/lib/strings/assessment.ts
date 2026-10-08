@@ -131,7 +131,8 @@ export const assessmentCopy = {
   modal_close: "إغلاق",
 
   // ---------- Course detail ----------
-  course_not_found: "البرنامج غير موجود أو أُزيل.",
+  course_not_found_title: "البرنامج غير موجود",
+  course_not_found: "الرابط غير صحيح أو أن البرنامج أُزيل.",
   course_back: "العودة إلى البرامج التدريبية",
   course_about: "عن البرنامج",
   course_facts: "معلومات البرنامج",
