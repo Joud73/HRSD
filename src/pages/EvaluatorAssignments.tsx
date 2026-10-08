@@ -1,49 +1,63 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ChevronLeft } from "lucide-react";
+import { copy, evaluatorCopy as t } from "@/lib/copy";
+import { formatDate, formatPercent } from "@/lib/format";
+import { STATUS, toStatusKey, type StatusKey } from "@/lib/status";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PageHeader from "@/components/shared/PageHeader";
+import DataTable, { type Column } from "@/components/shared/DataTable";
+import EmptyState from "@/components/shared/EmptyState";
+import SegmentedControl from "@/components/shared/SegmentedControl";
 import StatusBadge from "@/components/shared/StatusBadge";
-import {
-  useEvaluatorAssignments,
-  statusLabelMap,
-} from "@/hooks/useEvaluatorAssignments";
+import { useEvaluatorAssignments, type AssignmentRow } from "@/hooks/useEvaluatorAssignments";
 
-const statusFilterOptions = [
-  { value: "all", label: "الكل" },
-  { value: "not_started", label: "لم تبدأ" },
-  { value: "draft", label: "مسودة" },
-  { value: "submitted", label: "تم التقديم" },
-  { value: "under_review", label: "قيد المراجعة" },
-  { value: "needs_revision", label: "يحتاج تعديل" },
-  { value: "resubmitted", label: "أعيد التقديم" },
-  { value: "approved", label: "معتمد" },
-  { value: "completed", label: "مكتمل" },
+/** Assignment codes that src/lib/status.ts does not know yet */
+const statusOf = (raw: string) => toStatusKey(raw);
+
+const STATUS_KEYS = Object.keys(STATUS) as StatusKey[];
+type Filter = "all" | StatusKey;
+
+const columns: Column<AssignmentRow>[] = [
+  {
+    key: "association",
+    header: t.col_association,
+    cell: (r) => <span className="font-hrsd-medium">{r.association_name || t.unknown_association}</span>,
+  },
+  { key: "year", header: t.col_year, cell: (r) => <span className="tabular">{r.year ?? "—"}</span> },
+  { key: "status", header: t.col_status, cell: (r) => <StatusBadge status={statusOf(r.status)} /> },
+  {
+    key: "completion",
+    header: t.col_completion,
+    cell: (r) => {
+      const pct = r.completion_percentage;
+      const known = pct !== null && pct !== undefined;
+      return (
+        <div className="flex items-center gap-3">
+          <div aria-hidden className="h-1.5 w-20 overflow-hidden rounded-full bg-section-alt">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${known ? Math.min(100, pct) : 0}%` }} />
+          </div>
+          <span className="tabular text-small text-muted-foreground">{formatPercent(known ? pct : null)}</span>
+        </div>
+      );
+    },
+  },
+  { key: "assigned", header: t.col_assigned, cell: (r) => <span className="text-muted-foreground">{formatDate(r.assigned_at)}</span> },
+  { key: "updated", header: t.col_updated, cell: (r) => <span className="text-muted-foreground">{formatDate(r.updated_at)}</span> },
+  {
+    key: "open",
+    header: <span className="sr-only">{t.open_assignment}</span>,
+    align: "end",
+    cell: () => (
+      <ChevronLeft aria-hidden className="ms-auto h-4 w-4 text-muted-foreground transition-transform duration-micro group-hover:-translate-x-0.5 group-hover:text-primary" />
+    ),
+  },
 ];
 
 const EvaluatorAssignments = () => {
   const navigate = useNavigate();
   const { data: assignments, isLoading } = useEvaluatorAssignments();
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<Filter>("all");
   const [yearFilter, setYearFilter] = useState("all");
 
   const years = useMemo(() => {
@@ -52,130 +66,82 @@ const EvaluatorAssignments = () => {
     return Array.from(set).sort((a, b) => b - a);
   }, [assignments]);
 
-  const filtered = useMemo(() => {
-    if (!assignments) return [];
-    return assignments.filter((a) => {
-      if (statusFilter !== "all" && a.status !== statusFilter) return false;
-      if (yearFilter !== "all" && a.year !== Number(yearFilter)) return false;
-      return true;
-    });
-  }, [assignments, statusFilter, yearFilter]);
+  const byYear = useMemo(
+    () => (assignments ?? []).filter((a) => yearFilter === "all" || a.year === Number(yearFilter)),
+    [assignments, yearFilter]
+  );
+
+  const filtered = useMemo(
+    () => byYear.filter((a) => statusFilter === "all" || statusOf(a.status) === statusFilter),
+    [byYear, statusFilter]
+  );
+
+  const options = [
+    { value: "all" as Filter, label: copy.filter_all, count: byYear.length },
+    ...STATUS_KEYS.map((k) => ({
+      value: k as Filter,
+      label: STATUS[k].label,
+      count: byYear.filter((a) => statusOf(a.status) === k).length,
+    })),
+  ];
+
+  const hasAny = (assignments?.length ?? 0) > 0;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-hrsd-title text-foreground">الجمعيات المكلّفة</h1>
-        <p className="text-sm font-hrsd text-muted-foreground mt-1">
-          قائمة الجمعيات المسندة إليك للتقييم
-        </p>
-      </div>
+    <>
+      <PageHeader
+        title={t.assignments_title}
+        description={t.assignments_desc}
+        breadcrumbs={[{ label: copy.shell_context.evaluator, to: "/evaluator" }, { label: t.assignments_title }]}
+      />
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44 text-sm font-hrsd-medium">
-            <SelectValue placeholder="الحالة" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusFilterOptions.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SegmentedControl<Filter> label={t.filter_status_label} value={statusFilter} onChange={setStatusFilter} options={options} />
+          {years.length > 1 && (
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger aria-label={t.filter_year_label} className="h-11 w-36 text-small">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{copy.filter_all}</SelectItem>
+                {years.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
 
-        {years.length > 0 && (
-          <Select value={yearFilter} onValueChange={setYearFilter}>
-            <SelectTrigger className="w-32 text-sm font-hrsd-medium">
-              <SelectValue placeholder="السنة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">الكل</SelectItem>
-              {years.map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          getRowKey={(r) => r.id}
+          loading={isLoading}
+          onRowClick={(r) => navigate(`/evaluator/assignment/${r.id}`)}
+          rowLabel={(r) => `${t.open_assignment} ${r.association_name || t.unknown_association}`}
+          caption={t.assignments_title}
+          empty={
+            hasAny ? (
+              <EmptyState
+                message={t.empty_filtered}
+                action={{
+                  label: t.clear_filter,
+                  onClick: () => {
+                    setStatusFilter("all");
+                    setYearFilter("all");
+                  },
+                }}
+              />
+            ) : (
+              <EmptyState message={t.empty_assignments} action={{ label: copy.nav_evaluator.dashboard, to: "/evaluator" }} />
+            )
+          }
+        />
       </div>
-
-      {/* Table */}
-      <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-40 text-muted-foreground text-sm font-hrsd">
-            لا توجد تكليفات
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-right font-hrsd-semibold">اسم الجمعية</TableHead>
-                <TableHead className="text-right font-hrsd-semibold">السنة</TableHead>
-                <TableHead className="text-right font-hrsd-semibold">الحالة</TableHead>
-                <TableHead className="text-right font-hrsd-semibold">نسبة الإنجاز</TableHead>
-                <TableHead className="text-right font-hrsd-semibold">تاريخ التكليف</TableHead>
-                <TableHead className="text-right font-hrsd-semibold">آخر تحديث</TableHead>
-                <TableHead className="text-right font-hrsd-semibold">إجراء</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-hrsd-medium">{row.association_name}</TableCell>
-                  <TableCell className="font-hrsd">{row.year}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={statusLabelMap[row.status] || row.status} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-20 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${row.completion_percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-hrsd-bold text-primary">
-                        {row.completion_percentage}%
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-hrsd text-muted-foreground">
-                    {new Date(row.assigned_at).toLocaleDateString("ar-SA")}
-                  </TableCell>
-                  <TableCell className="font-hrsd text-muted-foreground">
-                    {new Date(row.updated_at).toLocaleDateString("ar-SA")}
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() =>
-                            navigate(`/evaluator/assignment/${row.id}`)
-                          }
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>عرض التفاصيل</TooltipContent>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-    </div>
+    </>
   );
 };
 

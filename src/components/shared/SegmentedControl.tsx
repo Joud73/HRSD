@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 
 interface SegmentedControlProps<T extends string> {
   value: T;
-  onChange: (value: T) => void;
-  options: { value: T; label: string; count?: number }[];
+  onChange: (value: NoInfer<T>) => void;
+  options: readonly { value: NoInfer<T>; label: string; count?: number }[];
   label: string;
   className?: string;
 }

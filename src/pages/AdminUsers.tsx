@@ -1,21 +1,18 @@
-import { useState, useMemo } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Ban, CheckCircle2, KeyRound, Plus, Users } from "lucide-react";
+import { copy, adminCopy } from "@/lib/copy";
+import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAdminUsers, AdminUserRow } from "@/hooks/useAdminData";
-import KpiCard from "@/components/admin/KpiCard";
-import StatusBadge from "@/components/shared/StatusBadge";
-import { Input } from "@/components/ui/input";
+import { useAdminUsers, type AdminUserRow } from "@/hooks/useAdminData";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -24,21 +21,22 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import {
-  Search, Plus, FileDown, MoreHorizontal, Users, UserCheck, UserX,
-  Pencil, Ban, CheckCircle2, KeyRound, Loader2,
-} from "lucide-react";
+import PageHeader from "@/components/shared/PageHeader";
+import DataTable, { type Column } from "@/components/shared/DataTable";
+import EmptyState from "@/components/shared/EmptyState";
+import SegmentedControl from "@/components/shared/SegmentedControl";
+import { FieldShell, TextField } from "@/components/shared/FormField";
+import { RowActionsTrigger, SearchField, Toolbar } from "@/components/admin/AdminParts";
+import { dialogUi } from "@/components/admin/adminUi";
 
 type DbRole = "admin" | "evaluator" | "organization";
+type StatusFilter = "all" | "active" | "disabled";
 
-const roleOptions: { value: DbRole; label: string }[] = [
-  { value: "evaluator", label: "مقيم" },
-  { value: "organization", label: "جمعية" },
-  { value: "admin", label: "مدير النظام" },
-];
+const roleOptions: DbRole[] = ["evaluator", "organization", "admin"];
 
 const emptyForm = { email: "", role: "evaluator" as DbRole, organization_name: "", registration_number: "" };
+
+const roleLabel = (role: string) => adminCopy.roles_map[role] ?? adminCopy.role_unknown;
 
 const AdminUsers = () => {
   const { toast } = useToast();
@@ -46,11 +44,12 @@ const AdminUsers = () => {
   const { data: users = [], isLoading } = useAdminUsers();
 
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("الكل");
-  const [statusFilter, setStatusFilter] = useState("الكل");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const [formOpen, setFormOpen] = useState(false);
   const [formFields, setFormFields] = useState(emptyForm);
+  const [formErrors, setFormErrors] = useState<{ email?: string; org?: string }>({});
   const [saving, setSaving] = useState(false);
 
   const [toggleTarget, setToggleTarget] = useState<AdminUserRow | null>(null);
@@ -58,28 +57,29 @@ const AdminUsers = () => {
 
   const filtered = useMemo(() =>
     users.filter((u) => {
-      if (roleFilter !== "الكل" && u.roleAr !== roleFilter) return false;
-      if (statusFilter === "نشط" && u.status !== "active") return false;
-      if (statusFilter === "معطل" && u.status === "active") return false;
+      if (roleFilter !== "all" && u.role !== roleFilter) return false;
+      if (statusFilter === "active" && u.status !== "active") return false;
+      if (statusFilter === "disabled" && u.status === "active") return false;
       if (search && !u.email.includes(search) && !u.organization_name?.includes(search)) return false;
       return true;
     }), [users, roleFilter, statusFilter, search]);
 
-  const total = users.length;
   const active = users.filter((u) => u.status === "active").length;
-  const disabled = total - active;
+  const filtersOn = search !== "" || roleFilter !== "all" || statusFilter !== "all";
+  const clearFilters = () => { setSearch(""); setRoleFilter("all"); setStatusFilter("all"); };
 
-  const openAdd = () => { setFormFields(emptyForm); setFormOpen(true); };
+  const openAdd = () => { setFormFields(emptyForm); setFormErrors({}); setFormOpen(true); };
 
   const saveForm = async () => {
     if (!formFields.email) {
-      toast({ title: "يرجى إدخال البريد الإلكتروني", variant: "destructive" });
+      setFormErrors({ email: adminCopy.users_error_email });
       return;
     }
     if (formFields.role === "organization" && !formFields.organization_name.trim()) {
-      toast({ title: "يرجى إدخال اسم الجهة", variant: "destructive" });
+      setFormErrors({ org: adminCopy.users_error_org });
       return;
     }
+    setFormErrors({});
     setSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-user", {
@@ -92,11 +92,11 @@ const AdminUsers = () => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: "تم إنشاء المستخدم بنجاح", description: `كلمة المرور الافتراضية: Aa123456` });
+      toast({ title: adminCopy.users_created, description: adminCopy.default_password_note });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setFormOpen(false);
-    } catch (err: any) {
-      toast({ title: "خطأ في إنشاء المستخدم", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: adminCopy.users_create_failed, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -107,9 +107,9 @@ const AdminUsers = () => {
     const newStatus = toggleTarget.status === "active" ? "profile_incomplete" : "active";
     const { error } = await supabase.from("profiles").update({ status: newStatus }).eq("id", toggleTarget.id);
     if (error) {
-      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
     } else {
-      toast({ title: newStatus === "active" ? "تم تفعيل المستخدم" : "تم تعطيل المستخدم" });
+      toast({ title: newStatus === "active" ? adminCopy.users_enabled : adminCopy.users_disabled });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     }
     setToggleTarget(null);
@@ -121,182 +121,218 @@ const AdminUsers = () => {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) {
-      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "تم إرسال رابط إعادة التعيين" });
+      toast({ title: adminCopy.users_reset_sent });
     }
     setResetTarget(null);
   };
 
-  const statusBadge = (status: string) => {
-    if (status === "active") return "مكتمل";
-    return "لم تبدأ";
-  };
+  const columns: Column<AdminUserRow>[] = [
+    {
+      key: "email",
+      header: adminCopy.col_email,
+      cell: (u) => <span dir="ltr" className="font-hrsd-medium">{u.email}</span>,
+    },
+    { key: "role", header: adminCopy.col_role, cell: (u) => roleLabel(u.role) },
+    {
+      key: "org",
+      header: adminCopy.col_org,
+      cell: (u) => <span className="text-muted-foreground">{u.organization_name || "—"}</span>,
+    },
+    {
+      key: "status",
+      header: adminCopy.col_account_status,
+      // Account state is not an assessment state: plain text, not a status badge
+      cell: (u) => (
+        <span className={cn("inline-flex items-center gap-2", u.status === "active" ? "text-ink" : "text-muted-foreground")}>
+          <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", u.status === "active" ? "bg-primary" : "bg-neutral")} />
+          {u.statusAr}
+        </span>
+      ),
+    },
+    {
+      key: "created",
+      header: adminCopy.col_created_at,
+      cell: (u) => <span className="tabular whitespace-nowrap text-muted-foreground">{formatDate(u.created_at)}</span>,
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">{adminCopy.actions_label}</span>,
+      align: "end",
+      className: "w-16",
+      cell: (u) => (
+        <DropdownMenu dir="rtl">
+          <DropdownMenuTrigger asChild>
+            <RowActionsTrigger />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[200px]">
+            <DropdownMenuItem className="gap-2 text-small" onSelect={() => setToggleTarget(u)}>
+              {u.status === "active" ? (
+                <><Ban aria-hidden className="h-4 w-4" /> {adminCopy.users_disable}</>
+              ) : (
+                <><CheckCircle2 aria-hidden className="h-4 w-4" /> {adminCopy.users_enable}</>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 text-small" onSelect={() => setResetTarget(u)}>
+              <KeyRound aria-hidden className="h-4 w-4" /> {adminCopy.users_reset}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const disabling = toggleTarget?.status === "active";
 
   return (
     <>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-hrsd-bold text-foreground">إدارة المستخدمين</h1>
-            <p className="text-sm text-muted-foreground font-hrsd mt-1">إضافة المستخدمين وإدارة بياناتهم وصلاحياتهم</p>
-          </div>
+      <PageHeader
+        title={copy.nav_admin.users}
+        description={adminCopy.users_desc}
+        breadcrumbs={[{ label: adminCopy.breadcrumb_root, to: "/admin" }, { label: copy.nav_admin.users }]}
+        actions={
+          <Button onClick={openAdd}>
+            <Plus aria-hidden /> {adminCopy.users_add}
+          </Button>
+        }
+      />
 
-          <div className="flex flex-wrap items-center gap-3 justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="ابحث بالبريد أو اسم الجهة..." className="pr-9 w-56 text-sm font-hrsd" value={search} onChange={(e) => setSearch(e.target.value)} />
-              </div>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-40 text-sm font-hrsd"><SelectValue /></SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="الكل">الدور: الكل</SelectItem>
-                  {roleOptions.map((r) => <SelectItem key={r.value} value={r.label}>{r.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-36 text-sm font-hrsd"><SelectValue /></SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="الكل">الحالة: الكل</SelectItem>
-                  <SelectItem value="نشط">نشط</SelectItem>
-                  <SelectItem value="معطل">معطل</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2 font-hrsd-medium" onClick={() => toast({ title: "سيتم توفير هذه الميزة لاحقًا" })}>
-                تصدير Excel <FileDown className="h-4 w-4" />
-              </Button>
-              <Button size="sm" className="gap-2 font-hrsd-medium" onClick={openAdd}>
-                إنشاء مستخدم جديد <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+      <Toolbar>
+        <SearchField value={search} onChange={setSearch} placeholder={adminCopy.users_search} />
+        <Select value={roleFilter} onValueChange={setRoleFilter} dir="rtl">
+          <SelectTrigger className="h-10 w-full text-small sm:w-44" aria-label={adminCopy.users_role_filter}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{adminCopy.users_role_all}</SelectItem>
+            {roleOptions.map((r) => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <SegmentedControl
+          label={adminCopy.users_status_filter}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: "all", label: copy.filter_all, count: users.length },
+            { value: "active", label: adminCopy.users_status_active, count: active },
+            { value: "disabled", label: adminCopy.users_status_disabled, count: users.length - active },
+          ]}
+        />
+      </Toolbar>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard title="إجمالي المستخدمين" value={total} icon={<Users className="h-5 w-5" />} />
-            <KpiCard title="المستخدمون النشطون" value={active} icon={<UserCheck className="h-5 w-5" />} />
-            <KpiCard title="المستخدمون المعطلون" value={disabled} icon={<UserX className="h-5 w-5" />} />
-          </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        loading={isLoading}
+        getRowKey={(u) => u.id}
+        caption={copy.nav_admin.users}
+        empty={
+          filtersOn ? (
+            <EmptyState message={adminCopy.no_results} action={{ label: adminCopy.clear_filters, onClick: clearFilters }} />
+          ) : (
+            <EmptyState icon={Users} message={adminCopy.users_empty} action={{ label: adminCopy.users_add, onClick: openAdd }} />
+          )
+        }
+      />
 
-          <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base font-hrsd-semibold">قائمة المستخدمين</CardTitle></CardHeader>
-            <CardContent className="p-0">
-              {isLoading ? (
-                <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {["البريد الإلكتروني", "الدور", "الجهة / الجمعية", "الحالة", "تاريخ الإنشاء", "الإجراءات"].map((h) => (
-                        <TableHead key={h} className="text-right text-xs font-hrsd-medium whitespace-nowrap">{h}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.length === 0 && (
-                      <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground font-hrsd">لا توجد نتائج</TableCell></TableRow>
-                    )}
-                    {filtered.map((u) => (
-                      <TableRow key={u.id}>
-                        <TableCell className="text-sm font-hrsd ltr text-right" dir="ltr">{u.email}</TableCell>
-                        <TableCell className="text-sm font-hrsd">{u.roleAr}</TableCell>
-                        <TableCell className="text-sm font-hrsd text-muted-foreground">{u.organization_name || "—"}</TableCell>
-                        <TableCell><StatusBadge status={statusBadge(u.status)} /><span className="sr-only">{u.statusAr}</span></TableCell>
-                        <TableCell className="text-sm font-hrsd text-muted-foreground whitespace-nowrap">{new Date(u.created_at).toLocaleDateString("ar-SA")}</TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="font-hrsd text-sm min-w-[180px]">
-                              <DropdownMenuItem className="gap-2" onClick={() => setToggleTarget(u)}>
-                                {u.status === "active" ? <><Ban className="h-3.5 w-3.5" /> تعطيل المستخدم</> : <><CheckCircle2 className="h-3.5 w-3.5" /> تفعيل المستخدم</>}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2" onClick={() => setResetTarget(u)}><KeyRound className="h-3.5 w-3.5" /> إعادة تعيين كلمة المرور</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-      {/* Create User Dialog */}
+      {/* Create user */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="sm:max-w-lg font-hrsd" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="font-hrsd-bold">إنشاء مستخدم جديد</DialogTitle>
-            <DialogDescription>أدخل بيانات المستخدم الجديد — كلمة المرور الافتراضية: Aa123456</DialogDescription>
+        <DialogContent className={dialogUi.content} dir="rtl">
+          <DialogHeader className={dialogUi.header}>
+            <DialogTitle className={dialogUi.title}>{adminCopy.users_form_title}</DialogTitle>
+            <DialogDescription className={dialogUi.description}>{adminCopy.users_form_desc}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-1.5">
-              <Label className="font-hrsd-medium text-sm">البريد الإلكتروني *</Label>
-              <Input className="font-hrsd text-sm" type="email" dir="ltr" value={formFields.email} onChange={(e) => setFormFields((p) => ({ ...p, email: e.target.value }))} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label className="font-hrsd-medium text-sm">الدور</Label>
-              <Select value={formFields.role} onValueChange={(v) => setFormFields((p) => ({ ...p, role: v as DbRole }))}>
-                <SelectTrigger className="font-hrsd text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent align="end">
-                  {roleOptions.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+          <form
+            id="create-user-form"
+            className={dialogUi.body}
+            noValidate
+            onSubmit={(e) => { e.preventDefault(); saveForm(); }}
+          >
+            <TextField
+              label={adminCopy.users_form_email}
+              type="email"
+              dir="ltr"
+              required
+              autoComplete="off"
+              placeholder="name@example.com"
+              value={formFields.email}
+              error={formErrors.email}
+              onChange={(e) => setFormFields((p) => ({ ...p, email: e.target.value }))}
+            />
+            <FieldShell id="create-user-role" label={adminCopy.users_form_role}>
+              <Select value={formFields.role} onValueChange={(v) => setFormFields((p) => ({ ...p, role: v as DbRole }))} dir="rtl">
+                <SelectTrigger id="create-user-role" className="h-12 text-body"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map((r) => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
+            </FieldShell>
             {formFields.role === "organization" && (
               <>
-                <div className="grid gap-1.5">
-                  <Label className="font-hrsd-medium text-sm">اسم الجهة *</Label>
-                  <Input className="font-hrsd text-sm" value={formFields.organization_name} onChange={(e) => setFormFields((p) => ({ ...p, organization_name: e.target.value }))} />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label className="font-hrsd-medium text-sm">رقم التسجيل (اختياري)</Label>
-                  <Input className="font-hrsd text-sm" value={formFields.registration_number} onChange={(e) => setFormFields((p) => ({ ...p, registration_number: e.target.value }))} />
-                </div>
+                <TextField
+                  label={adminCopy.users_form_org}
+                  required
+                  value={formFields.organization_name}
+                  error={formErrors.org}
+                  onChange={(e) => setFormFields((p) => ({ ...p, organization_name: e.target.value }))}
+                />
+                <TextField
+                  label={adminCopy.users_form_registration}
+                  hint={adminCopy.users_form_registration_hint}
+                  inputMode="numeric"
+                  value={formFields.registration_number}
+                  onChange={(e) => setFormFields((p) => ({ ...p, registration_number: e.target.value }))}
+                />
               </>
             )}
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setFormOpen(false)} className="font-hrsd-medium">إلغاء</Button>
-            <Button onClick={saveForm} disabled={saving} className="font-hrsd-medium gap-2">
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />} إنشاء
+          </form>
+          <DialogFooter className={dialogUi.footer}>
+            <Button type="submit" form="create-user-form" disabled={saving}>
+              {adminCopy.users_form_submit}
             </Button>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>{adminCopy.cancel}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Toggle AlertDialog */}
-      <AlertDialog open={!!toggleTarget} onOpenChange={() => setToggleTarget(null)}>
-        <AlertDialogContent dir="rtl" className="font-hrsd">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-hrsd-bold">{toggleTarget?.status === "active" ? "تعطيل المستخدم" : "تفعيل المستخدم"}</AlertDialogTitle>
-            <AlertDialogDescription>{toggleTarget?.status === "active" ? "هل أنت متأكد من تعطيل المستخدم؟" : "هل تريد تفعيل المستخدم؟"}</AlertDialogDescription>
+      {/* Enable / disable */}
+      <AlertDialog open={!!toggleTarget} onOpenChange={(open) => !open && setToggleTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader className={dialogUi.header}>
+            <AlertDialogTitle className={dialogUi.title}>
+              {disabling ? adminCopy.users_disable_title : adminCopy.users_enable_title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className={dialogUi.description}>
+              {disabling ? adminCopy.users_disable_desc : adminCopy.users_enable_desc}
+              <span className="mt-2 block font-hrsd-medium text-ink"><bdi dir="ltr">{toggleTarget?.email}</bdi></span>
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="font-hrsd-medium">إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmToggle} className="font-hrsd-medium">تأكيد</AlertDialogAction>
+          <AlertDialogFooter className={dialogUi.footer}>
+            <AlertDialogAction onClick={confirmToggle} className={cn(disabling && dialogUi.danger)}>
+              {disabling ? adminCopy.users_disable_confirm : adminCopy.users_enable_confirm}
+            </AlertDialogAction>
+            <AlertDialogCancel>{adminCopy.cancel}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Reset Password Dialog */}
-      <Dialog open={!!resetTarget} onOpenChange={() => setResetTarget(null)}>
-        <DialogContent className="sm:max-w-md font-hrsd" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="font-hrsd-bold">إعادة تعيين كلمة المرور</DialogTitle>
-            <DialogDescription>سيتم إرسال رابط إعادة تعيين كلمة المرور إلى البريد الإلكتروني.</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm font-hrsd-medium py-2">{resetTarget?.email}</p>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setResetTarget(null)} className="font-hrsd-medium">إلغاء</Button>
-            <Button onClick={confirmReset} className="font-hrsd-medium">إرسال الرابط</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Reset password */}
+      <AlertDialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader className={dialogUi.header}>
+            <AlertDialogTitle className={dialogUi.title}>{adminCopy.users_reset_title}</AlertDialogTitle>
+            <AlertDialogDescription className={dialogUi.description}>
+              {adminCopy.users_reset_desc}
+              <span className="mt-2 block font-hrsd-medium text-ink"><bdi dir="ltr">{resetTarget?.email}</bdi></span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className={dialogUi.footer}>
+            <AlertDialogAction onClick={confirmReset}>{adminCopy.users_reset_confirm}</AlertDialogAction>
+            <AlertDialogCancel>{adminCopy.cancel}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

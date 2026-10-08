@@ -1,112 +1,129 @@
-import {
-  Building2,
-  ClipboardList,
-  TrendingUp,
-  Clock,
-  FileCheck,
-  MessageSquare,
-} from "lucide-react";
-import KpiCard from "@/components/admin/KpiCard";
+import { useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Building2, ClipboardList, PieChart, Undo2 } from "lucide-react";
+import { motion } from "motion/react";
+import { copy, evaluatorCopy as t } from "@/lib/copy";
+import { formatDate } from "@/lib/format";
+import { STATUS, toStatusKey, type StatusKey } from "@/lib/status";
+import { revealGroup, revealItem, inViewOnce } from "@/lib/motion";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/shared/PageHeader";
+import KpiCard from "@/components/shared/KpiCard";
 import StatusBadge from "@/components/shared/StatusBadge";
-import { useEvaluatorStats, statusLabelMap } from "@/hooks/useEvaluatorAssignments";
+import DataTable, { type Column } from "@/components/shared/DataTable";
+import EmptyState from "@/components/shared/EmptyState";
+import { SkeletonKpis, SkeletonPanel } from "@/components/shared/Skeletons";
+import { useEvaluatorAssignments, type AssignmentRow } from "@/hooks/useEvaluatorAssignments";
+
+/** Assignment codes that src/lib/status.ts does not know yet */
+const statusOf = (raw: string) => toStatusKey(raw);
+
+const STATUS_KEYS = Object.keys(STATUS) as StatusKey[];
+const RECENT_COUNT = 5;
+
+const columns: Column<AssignmentRow>[] = [
+  {
+    key: "association",
+    header: t.col_association,
+    cell: (r) => <span className="font-hrsd-medium">{r.association_name || t.unknown_association}</span>,
+  },
+  { key: "year", header: t.col_year, cell: (r) => <span className="tabular">{r.year ?? "—"}</span> },
+  { key: "status", header: t.col_status, cell: (r) => <StatusBadge status={statusOf(r.status)} /> },
+  { key: "updated", header: t.col_updated, cell: (r) => <span className="text-muted-foreground">{formatDate(r.updated_at)}</span> },
+];
 
 const EvaluatorDashboard = () => {
-  const { stats, isLoading } = useEvaluatorStats();
+  const navigate = useNavigate();
+  const reduced = useReducedMotion();
+  const { data: assignments, isLoading } = useEvaluatorAssignments();
+
+  const counts = useMemo(() => {
+    const c = Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])) as Record<StatusKey, number>;
+    for (const a of assignments ?? []) c[statusOf(a.status)] += 1;
+    return c;
+  }, [assignments]);
+
+  const total = assignments?.length ?? 0;
+  const completion = total > 0 ? Math.round((counts.approved / total) * 100) : null;
+  const recent = (assignments ?? []).slice(0, RECENT_COUNT);
+
+  const header = (
+    <PageHeader
+      title={t.dashboard_title}
+      description={t.dashboard_desc}
+      breadcrumbs={[{ label: copy.shell_context.evaluator, to: "/evaluator" }, { label: t.dashboard_crumb }]}
+      actions={
+        total > 0 ? (
+          <Button asChild variant="outline">
+            <Link to="/evaluator/assignments">
+              {t.view_all}
+              <ArrowLeft aria-hidden />
+            </Link>
+          </Button>
+        ) : undefined
+      }
+    />
+  );
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <>
+        {header}
+        <div className="flex flex-col gap-8" aria-busy>
+          <SkeletonKpis />
+          <SkeletonPanel lines={5} />
         </div>
-      </div>
+      </>
     );
   }
 
-  const statuses = [
-    { label: "لم تبدأ", count: stats.notStarted },
-    { label: "قيد التقييم", count: stats.inProgress },
-    { label: "بانتظار رد الجمعية", count: stats.waitingResponse },
-    { label: "مكتمل", count: stats.completed },
-  ];
-
   return (
-    <div className="space-y-6">
-      {/* Page title */}
-      <div>
-        <h1 className="text-xl font-hrsd-title text-foreground">لوحة تحكم المقيّم</h1>
-        <p className="text-sm font-hrsd text-muted-foreground mt-1">
-          ملخص التكليفات والتقييمات الخاصة بك
-        </p>
-      </div>
+    <>
+      {header}
+      <motion.div
+        variants={revealGroup}
+        initial={reduced ? false : "hidden"}
+        whileInView="visible"
+        viewport={inViewOnce}
+        className="flex flex-col gap-8"
+      >
+        <motion.div variants={revealItem} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label={t.kpi_total} value={total} icon={Building2} />
+          <KpiCard label={STATUS.submitted.label} value={counts.submitted} icon={ClipboardList} />
+          <KpiCard label={t.kpi_returned} value={counts.returned} icon={Undo2} />
+          <KpiCard label={t.kpi_completion} value={completion} suffix="%" icon={PieChart} hint={t.kpi_completion_hint} />
+        </motion.div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <KpiCard
-          title="إجمالي الجمعيات المكلّفة"
-          value={stats.total}
-          icon={<Building2 className="h-5 w-5" />}
-        />
-        <KpiCard
-          title="قيد التقييم"
-          value={stats.inProgress}
-          icon={<ClipboardList className="h-5 w-5" />}
-        />
-        <KpiCard
-          title="بانتظار رد الجمعية"
-          value={stats.waitingResponse}
-          icon={<Clock className="h-5 w-5" />}
-        />
-        <KpiCard
-          title="نسبة الإنجاز الشخصية"
-          value={`${stats.completionRate}%`}
-          icon={<TrendingUp className="h-5 w-5" />}
-          highlight
-          showProgress
-          progressValue={stats.completionRate}
-        />
-      </div>
+        <motion.section variants={revealItem} aria-labelledby="distribution-title" className="rounded-lg border border-border bg-card p-5">
+          <h2 id="distribution-title" className="text-h3 text-ink">
+            {t.distribution_title}
+          </h2>
+          <ul className="mt-4 flex flex-wrap gap-3">
+            {STATUS_KEYS.map((k) => (
+              <li key={k}>
+                <StatusBadge status={k} count={counts[k]} />
+              </li>
+            ))}
+          </ul>
+        </motion.section>
 
-      {/* Status Distribution */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h3 className="text-sm font-hrsd-semibold text-foreground mb-4">
-          توزيع حالات التقييم
-        </h3>
-        <div className="flex flex-wrap gap-3">
-          {statuses.map((s) => (
-            <StatusBadge key={s.label} status={s.label} count={s.count} />
-          ))}
-        </div>
-      </div>
-
-      {/* Quick stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="rounded-full p-2.5 border border-border bg-muted/50 text-muted-foreground">
-              <FileCheck className="h-5 w-5" />
-            </div>
-            <h3 className="text-sm font-hrsd-semibold text-foreground">شواهد جديدة</h3>
-          </div>
-          <p className="text-2xl font-hrsd-bold text-foreground">0</p>
-          <p className="text-xs font-hrsd text-muted-foreground mt-1">
-            لا توجد شواهد جديدة مرفوعة
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="rounded-full p-2.5 border border-border bg-muted/50 text-muted-foreground">
-              <MessageSquare className="h-5 w-5" />
-            </div>
-            <h3 className="text-sm font-hrsd-semibold text-foreground">ردود جديدة</h3>
-          </div>
-          <p className="text-2xl font-hrsd-bold text-foreground">0</p>
-          <p className="text-xs font-hrsd text-muted-foreground mt-1">
-            لا توجد ردود جديدة من الجمعيات
-          </p>
-        </div>
-      </div>
-    </div>
+        <motion.section variants={revealItem} aria-labelledby="recent-title" className="flex flex-col gap-4">
+          <h2 id="recent-title" className="text-h3 text-ink">
+            {t.recent_title}
+          </h2>
+          <DataTable
+            columns={columns}
+            rows={recent}
+            getRowKey={(r) => r.id}
+            onRowClick={(r) => navigate(`/evaluator/assignment/${r.id}`)}
+            rowLabel={(r) => `${t.open_assignment} ${r.association_name || t.unknown_association}`}
+            caption={t.recent_title}
+            empty={<EmptyState message={t.empty_assignments} action={{ label: t.view_all, to: "/evaluator/assignments" }} />}
+          />
+        </motion.section>
+      </motion.div>
+    </>
   );
 };
 

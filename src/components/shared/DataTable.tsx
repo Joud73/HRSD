@@ -16,11 +16,11 @@ export interface Column<T> {
 interface DataTableProps<T> {
   columns: Column<T>[];
   rows: T[];
-  getRowKey: (row: T, index: number) => string;
+  getRowKey: (row: NoInfer<T>, index: number) => string;
   loading?: boolean;
-  onRowClick?: (row: T) => void;
+  onRowClick?: (row: NoInfer<T>) => void;
   /** Accessible label for the row action (row click), e.g. the row title */
-  rowLabel?: (row: T) => string;
+  rowLabel?: (row: NoInfer<T>) => string;
   /** Rendered when rows is empty and not loading */
   empty?: ReactNode;
   caption?: string;

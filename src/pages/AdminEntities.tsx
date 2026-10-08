@@ -1,42 +1,41 @@
-import { useState, useMemo } from "react";
-import { Plus, Pencil, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Building2, Pencil, Plus } from "lucide-react";
+import { copy, adminSetupCopy as t } from "@/lib/copy";
+import { formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import PageHeader from "@/components/shared/PageHeader";
+import DataTable, { type Column } from "@/components/shared/DataTable";
+import EmptyState from "@/components/shared/EmptyState";
+import SegmentedControl from "@/components/shared/SegmentedControl";
+import { FieldShell, TextField } from "@/components/shared/FormField";
+import SearchInput from "@/components/admin/setup/SearchInput";
+import { FormDialog, fieldRowClass } from "@/components/admin/setup/SetupDialogs";
+import { crumbs } from "@/components/admin/setup/crumbs";
+import { entitySeed, type EntityType } from "@/components/admin/setup/entities";
 
-interface EntityType {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-}
-
-const seed: EntityType[] = [
-  { id: "1", name: "جمعية", description: "جمعية أهلية مسجلة", isActive: true },
-  { id: "2", name: "مؤسسة أهلية", description: "مؤسسة أهلية غير ربحية", isActive: true },
-  { id: "3", name: "جمعية تعاونية", description: "", isActive: false },
-];
+type ActiveFilter = "all" | "active" | "inactive";
 
 const AdminEntities = () => {
   const { toast } = useToast();
-  const [entities, setEntities] = useState<EntityType[]>(seed);
+  const [entities, setEntities] = useState<EntityType[]>(entitySeed);
   const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<EntityType | null>(null);
   const [formName, setFormName] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formActive, setFormActive] = useState(true);
+  const [nameError, setNameError] = useState<string | undefined>();
 
-  const filtered = useMemo(
+  const searched = useMemo(
     () => entities.filter((e) => e.name.includes(search) || e.description.includes(search)),
     [entities, search]
+  );
+  const filtered = useMemo(
+    () => searched.filter((e) => activeFilter === "all" || (activeFilter === "active" ? e.isActive : !e.isActive)),
+    [searched, activeFilter]
   );
 
   const openAdd = () => {
@@ -44,6 +43,7 @@ const AdminEntities = () => {
     setFormName("");
     setFormDesc("");
     setFormActive(true);
+    setNameError(undefined);
     setModalOpen(true);
   };
 
@@ -52,31 +52,28 @@ const AdminEntities = () => {
     setFormName(e.name);
     setFormDesc(e.description);
     setFormActive(e.isActive);
+    setNameError(undefined);
     setModalOpen(true);
   };
 
   const save = () => {
     if (!formName.trim()) {
-      toast({ title: "خطأ", description: "اسم الكيان مطلوب", variant: "destructive" });
+      setNameError(t.error_name_required);
       return;
     }
-    const duplicate = entities.find(
-      (e) => e.name === formName.trim() && e.id !== editTarget?.id
-    );
+    const duplicate = entities.find((e) => e.name === formName.trim() && e.id !== editTarget?.id);
     if (duplicate) {
-      toast({ title: "خطأ", description: "يوجد كيان بهذا الاسم", variant: "destructive" });
+      setNameError(t.entities_duplicate);
       return;
     }
 
     if (editTarget) {
       setEntities((prev) =>
         prev.map((e) =>
-          e.id === editTarget.id
-            ? { ...e, name: formName.trim(), description: formDesc.trim(), isActive: formActive }
-            : e
+          e.id === editTarget.id ? { ...e, name: formName.trim(), description: formDesc.trim(), isActive: formActive } : e
         )
       );
-      toast({ title: "تم التحديث" });
+      toast({ title: t.toast_updated });
     } else {
       const newEntity: EntityType = {
         id: crypto.randomUUID(),
@@ -85,120 +82,114 @@ const AdminEntities = () => {
         isActive: formActive,
       };
       setEntities((prev) => [...prev, newEntity]);
-      toast({ title: "تمت الإضافة" });
+      toast({ title: t.toast_added });
     }
     setModalOpen(false);
   };
 
   const toggleActive = (id: string) => {
-    setEntities((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, isActive: !e.isActive } : e))
-    );
+    setEntities((prev) => prev.map((e) => (e.id === id ? { ...e, isActive: !e.isActive } : e)));
   };
+
+  const columns: Column<EntityType>[] = [
+    { key: "name", header: t.name, cell: (e) => <span className="font-hrsd-medium text-ink">{e.name}</span> },
+    {
+      key: "desc",
+      header: t.description,
+      cell: (e) => <span className="text-muted-foreground">{e.description || "—"}</span>,
+    },
+    {
+      key: "status",
+      header: t.status,
+      cell: (e) => (
+        <label className="inline-flex cursor-pointer items-center gap-3">
+          <Switch checked={e.isActive} onCheckedChange={() => toggleActive(e.id)} aria-label={`${t.entities_toggle}: ${e.name}`} />
+          <span className={e.isActive ? "text-ink" : "text-muted-foreground"}>{e.isActive ? t.active : t.inactive}</span>
+        </label>
+      ),
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">{t.actions}</span>,
+      align: "end",
+      className: "w-16",
+      cell: (e) => (
+        <Button size="icon" variant="ghost" onClick={() => openEdit(e)} aria-label={`${t.entities_edit_aria}: ${e.name}`}>
+          <Pencil aria-hidden />
+        </Button>
+      ),
+    },
+  ];
+
+  const filterOptions: { value: ActiveFilter; label: string; count: number }[] = [
+    { value: "all", label: copy.filter_all, count: searched.length },
+    { value: "active", label: t.active, count: searched.filter((e) => e.isActive).length },
+    { value: "inactive", label: t.inactive, count: searched.filter((e) => !e.isActive).length },
+  ];
 
   return (
     <>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-xl font-hrsd-title text-foreground">تعريف الكيانات الأهلية</h1>
-            <p className="text-sm font-hrsd text-muted-foreground mt-1">
-              إدارة أنواع الكيانات المستخدمة في عملية التقييم
-            </p>
-          </div>
+      <PageHeader
+        title={t.entities_title}
+        description={t.entities_desc}
+        breadcrumbs={crumbs.entities}
+        actions={
+          <Button onClick={openAdd}>
+            <Plus aria-hidden /> {t.entities_add}
+          </Button>
+        }
+      />
 
-          {/* Toolbar */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="relative w-64">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ابحث عن كيان..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="ps-9 text-sm font-hrsd"
-              />
-            </div>
-            <Button size="sm" onClick={openAdd} className="gap-2">
-              <Plus className="h-4 w-4" /> إضافة كيان
-            </Button>
-          </div>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchInput value={search} onChange={setSearch} placeholder={t.entities_search} />
+        <SegmentedControl
+          label={t.entities_filter_label}
+          value={activeFilter}
+          onChange={setActiveFilter}
+          options={filterOptions}
+        />
+      </div>
 
-          {/* Table */}
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            {filtered.length === 0 ? (
-              <div className="p-10 text-center text-sm font-hrsd text-muted-foreground">
-                لا توجد كيانات
-                <br />
-                <Button size="sm" variant="outline" className="mt-3" onClick={openAdd}>
-                  إضافة كيان جديد
-                </Button>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-right font-hrsd-medium">الاسم</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">الوصف</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">الحالة</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">إجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((e) => (
-                    <TableRow key={e.id}>
-                      <TableCell className="font-hrsd-medium text-sm">{e.name}</TableCell>
-                      <TableCell className="text-sm font-hrsd text-muted-foreground">
-                        {e.description || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={e.isActive}
-                          onCheckedChange={() => toggleActive(e.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(e)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        getRowKey={(e) => e.id}
+        caption={`${t.entities_title} (${formatNumber(filtered.length)})`}
+        empty={
+          entities.length === 0 ? (
+            <EmptyState icon={Building2} message={t.entities_empty_all} action={{ label: t.entities_add, onClick: openAdd }} />
+          ) : (
+            <EmptyState icon={Building2} message={t.entities_empty} action={{ label: t.reset_filters, onClick: () => { setSearch(""); setActiveFilter("all"); } }} />
+          )
+        }
+      />
 
-          {/* Add / Edit Modal */}
-          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-            <DialogContent className="sm:max-w-md" dir="rtl">
-              <DialogHeader>
-                <DialogTitle className="font-hrsd-semibold">
-                  {editTarget ? "تعديل كيان" : "إضافة كيان جديد"}
-                </DialogTitle>
-                <DialogDescription className="font-hrsd text-sm">
-                  {editTarget ? "تعديل بيانات الكيان" : "أدخل بيانات الكيان الجديد"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div>
-                  <label className="block text-sm font-hrsd-medium mb-1">الاسم *</label>
-                  <Input value={formName} onChange={(e) => setFormName(e.target.value)} className="font-hrsd" />
-                </div>
-                <div>
-                  <label className="block text-sm font-hrsd-medium mb-1">الوصف</label>
-                  <Input value={formDesc} onChange={(e) => setFormDesc(e.target.value)} className="font-hrsd" />
-                </div>
-                <div className="flex items-center gap-3">
-                  <Switch checked={formActive} onCheckedChange={setFormActive} />
-                  <span className="text-sm font-hrsd">{formActive ? "مفعّل" : "موقوف"}</span>
-                </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={() => setModalOpen(false)}>إلغاء</Button>
-                <Button onClick={save}>حفظ</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+      <FormDialog
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title={editTarget ? t.entities_dialog_edit : t.entities_dialog_add}
+        description={t.entities_dialog_desc}
+        onSubmit={save}
+      >
+        <TextField
+          label={t.name}
+          required
+          value={formName}
+          onChange={(e) => {
+            setFormName(e.target.value);
+            if (nameError) setNameError(undefined);
+          }}
+          error={nameError}
+          autoFocus
+        />
+        <TextField label={t.description} value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
+        <FieldShell id="entity-active" label={t.activation}>
+          <div className={fieldRowClass}>
+            <span className="text-small text-ink">{formActive ? t.active : t.inactive}</span>
+            <Switch id="entity-active" checked={formActive} onCheckedChange={setFormActive} />
+          </div>
+        </FieldShell>
+      </FormDialog>
     </>
   );
 };

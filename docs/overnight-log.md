@@ -11,7 +11,7 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - [x] Phase 3: Public shell corrections
 - [x] Phase 4: Home page
 - [x] Phase 5: Authentication pages
-- [ ] Phase 6: Internal app
+- [x] Phase 6: Internal app
 - [ ] Phase 7: Remaining pages sweep
 - [ ] Phase 8: Quality pass
 
@@ -54,5 +54,13 @@ Baseline before the run: typecheck 0 errors, lint 32 problems (22 errors, 10 war
 - Phase 5: Register is three steps (بيانات المنظمة, بيانات الدخول, بيانات الممثل). The existing order is kept: signUp must run before the delegates insert, so step 2's button creates the account and step 3 has no Back button. Payload and calls are unchanged.
 - Phase 5: UnderReview no longer shows OrganizationJourney, an invented submission date or a disabled certificate button; it shows the organization name and the submitted status.
 - Phase 5: ForgotPassword back links now point to /login instead of the retired /login-local.
+- Phase 6 (method): phases 5 to 7 ran as six parallel engineers on disjoint file sets (auth; org dashboard + evaluator; admin management; admin performance + reports; assessment + training; remaining pages). Each area has its own strings module in src/lib/strings/, re-exported from src/lib/copy.ts, so no two engineers edited copy.ts at once. I made every shared-file change myself.
+- Phase 6 (dashboard): there is no stored cycle name or deadline, so both show a muted dash. Track progress is read from the evidence the self-assessment page already stores in localStorage (`evidence-<slug>`): an indicator counts as completed when it has at least one evidence record, and the panel says so. Track status can only be لم يبدأ or قيد التقييم, because nothing records a submission. DashboardHeroSection was deleted (mock numbers, teal SVG backgrounds).
+- Phase 6 (evaluator): EvaluationDetails replaced the free status dropdown, which listed ten legacy statuses, with two actions: اعتماد التقييم and إعادة للاستكمال, each behind a confirm dialog. They write the same `status` column through the same save mutation, with values that existed before (`approved`, `needs_revision`). **Please review: this is the one place where the interaction, not only the look, changed.**
+- Phase 6 (admin): list pages follow PageHeader, toolbar, DataTable, EmptyState. The KPI strips that only repeated status counts were removed from list pages; the counts now sit inside the filter controls. Validation messages moved from toasts to inline fields. Destructive confirmations use a danger button.
+- Phase 6 (statuses): non-assessment states are not forced into the five badges. User active/disabled, evaluation year open/closed and a rejected registration request show plain text with a small dot. A pending request shows مرسل للمراجعة and an approved one معتمد. Every legacy Arabic label and database code maps through toStatusKey in src/lib/status.ts.
+- Phase 6 (terms): مساق became مسار, نوع الدليل became نوع الشاهد, and المقيّم/مقيم became المدقق everywhere, including the role label in useAdminData (a display string only).
+- Phase 6 (data): the rubric mock now uses the official 5 tracks and 15 standards. Reports keep their mock values, and the hardcoded "تراجع بنسبة 8%" is now computed from the comparison data. Detail pages still show their demo record for any id, as before.
+- Phase 6 (shared fixes I made): SegmentedControl and DataTable infer their row and value type through NoInfer, so a useState setter can be passed directly. The dialog close button moved to the end side with an Arabic label and no gold. Dialog and AlertDialog headers are start-aligned, and their footers use gap with the primary action first. The Switch thumb moves the right way in RTL. Submenu chevrons point in reading direction. Added a `font-hrsd-regular` alias (the header, footer and hero already used it), collapsible keyframes and `formatDateTime`. The old admin KpiCard was deleted.
 
 ## Not finished

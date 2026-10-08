@@ -1,543 +1,492 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  ArrowRight,
-  ShieldCheck,
-  Send,
-  Download,
-  X,
-} from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Download, FileText, MessageSquare, Paperclip } from "lucide-react";
+import { copy, adminCopy } from "@/lib/copy";
+import { formatDate, formatNumber, formatPercent } from "@/lib/format";
+import type { StatusKey } from "@/lib/status";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import PageHeader from "@/components/shared/PageHeader";
+import DataTable, { type Column } from "@/components/shared/DataTable";
+import EmptyState from "@/components/shared/EmptyState";
+import SegmentedControl from "@/components/shared/SegmentedControl";
 import StatusBadge from "@/components/shared/StatusBadge";
+import { FieldShell } from "@/components/shared/FormField";
+import { Fact, KeyFacts, Panel } from "@/components/admin/AdminParts";
+import { dialogUi, tabsUi } from "@/components/admin/adminUi";
+import { formatDateTime } from "@/lib/format";
 
 /* ══════════════════════════════════════════════════════
-   MOCK DATA
+   DEMO DATA (prototype content; no Supabase source yet)
    ══════════════════════════════════════════════════════ */
+
+const [T_ORIENTATION, T_TEAM, T_PARTNERSHIPS, T_PROGRAMS, T_IMPACT] = copy.nav_tracks_items;
 
 const assocData: Record<string, {
   name: string; type: string; license: string; region: string; email: string;
-  mobile: string; year: number; status: string; progress: number; score: number | null;
-  delegate: { name: string; idNumber: string; email: string; mobile: string; role: string; date: string; accountStatus: string };
+  mobile: string; year: number; status: StatusKey; progress: number; score: number | null;
+  delegate: { name: string; idNumber: string; email: string; mobile: string; role: string; date: string; active: boolean };
   tracks: { name: string; active: boolean }[];
 }> = {
   a1: {
     name: "جمعية البر الخيرية", type: "جمعية", license: "1045832", region: "الرياض / الرياض",
-    email: "info@albirr.org.sa", mobile: "0551234567", year: 2026, status: "قيد التقييم",
+    email: "info@albirr.org.sa", mobile: "0551234567", year: 2026, status: "in_progress",
     progress: 60, score: 72,
     delegate: {
       name: "عبدالرحمن الأحمد", idNumber: "1098765432", email: "a.alahmad@albirr.org.sa",
-      mobile: "0559876543", role: "مدير الجودة", date: "2026-01-05", accountStatus: "نشط",
+      mobile: "0559876543", role: "مدير الجودة", date: "2026-01-05", active: true,
     },
     tracks: [
-      { name: "مساق التوجه", active: true },
-      { name: "مساق الفريق", active: true },
-      { name: "مساق الشراكات", active: false },
-      { name: "مساق التأثير", active: true },
-      { name: "مساق البرامج", active: false },
+      { name: T_ORIENTATION, active: true },
+      { name: T_TEAM, active: true },
+      { name: T_PARTNERSHIPS, active: false },
+      { name: T_PROGRAMS, active: false },
+      { name: T_IMPACT, active: true },
     ],
   },
 };
 
-const evidenceRows = [
-  { id: "e1", name: "وثيقة الرؤية الاستراتيجية", track: "مساق التوجه", criterion: "الرؤية والرسالة", date: "2026-01-10", uploader: "عبدالرحمن الأحمد", status: "مقبول" },
-  { id: "e2", name: "خطة التطوير المؤسسي", track: "مساق التوجه", criterion: "التخطيط الاستراتيجي", date: "2026-01-12", uploader: "عبدالرحمن الأحمد", status: "بحاجة توضيح" },
-  { id: "e3", name: "هيكل فريق العمل", track: "مساق الفريق", criterion: "الهيكل التنظيمي", date: "2026-01-15", uploader: "عبدالرحمن الأحمد", status: "مقبول" },
-  { id: "e4", name: "تقرير برامج التدريب", track: "مساق الفريق", criterion: "تطوير الكفاءات", date: "2026-01-18", uploader: "عبدالرحمن الأحمد", status: "مرفوض" },
-  { id: "e5", name: "اتفاقيات الشراكة", track: "مساق الشراكات", criterion: "الشراكات المجتمعية", date: "2026-01-20", uploader: "عبدالرحمن الأحمد", status: "مقبول" },
-  { id: "e6", name: "تقرير الأثر الاجتماعي", track: "مساق التأثير", criterion: "قياس الأثر", date: "2026-01-22", uploader: "عبدالرحمن الأحمد", status: "بحاجة توضيح" },
+interface Evidence {
+  id: string; name: string; track: string; criterion: string; date: string; uploader: string; status: StatusKey;
+}
+
+const evidenceRows: Evidence[] = [
+  { id: "e1", name: "وثيقة الرؤية الاستراتيجية", track: T_ORIENTATION, criterion: "الرؤية والرسالة", date: "2026-01-10", uploader: "عبدالرحمن الأحمد", status: "approved" },
+  { id: "e2", name: "خطة التطوير المؤسسي", track: T_ORIENTATION, criterion: "التخطيط الاستراتيجي", date: "2026-01-12", uploader: "عبدالرحمن الأحمد", status: "returned" },
+  { id: "e3", name: "هيكل فريق العمل", track: T_TEAM, criterion: "الهيكل التنظيمي", date: "2026-01-15", uploader: "عبدالرحمن الأحمد", status: "approved" },
+  { id: "e4", name: "تقرير برامج التدريب", track: T_TEAM, criterion: "تطوير الكفاءات", date: "2026-01-18", uploader: "عبدالرحمن الأحمد", status: "returned" },
+  { id: "e5", name: "اتفاقيات الشراكة", track: T_PARTNERSHIPS, criterion: "الشراكات المجتمعية", date: "2026-01-20", uploader: "عبدالرحمن الأحمد", status: "approved" },
+  { id: "e6", name: "تقرير الأثر الاجتماعي", track: T_IMPACT, criterion: "قياس الأثر", date: "2026-01-22", uploader: "عبدالرحمن الأحمد", status: "returned" },
 ];
 
-const evidenceStatusColor: Record<string, string> = {
-  "مقبول": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "مرفوض": "bg-red-50 text-red-700 border-red-200",
-  "بحاجة توضيح": "bg-amber-50 text-amber-700 border-amber-200",
-};
+interface Criterion { criterion: string; status: StatusKey; score: number | null; note: string }
 
-const tracksCriteria: Record<string, { criterion: string; status: string; score: number | null; note: string }[]> = {
-  "مساق التوجه": [
-    { criterion: "الرؤية والرسالة", status: "مكتمل", score: 85, note: "متميز في صياغة الرؤية" },
-    { criterion: "التخطيط الاستراتيجي", status: "بحاجة مراجعة", score: 60, note: "يحتاج تفصيل أكثر" },
-    { criterion: "القيم المؤسسية", status: "مكتمل", score: 78, note: "" },
-  ],
-  "مساق الفريق": [
-    { criterion: "الهيكل التنظيمي", status: "مكتمل", score: 90, note: "ممتاز" },
-    { criterion: "تطوير الكفاءات", status: "ناقص", score: 40, note: "لم يُرفق دليل كافٍ" },
-    { criterion: "بيئة العمل", status: "مكتمل", score: 75, note: "" },
-  ],
-  "مساق الشراكات": [
-    { criterion: "الشراكات المجتمعية", status: "مكتمل", score: 82, note: "" },
-    { criterion: "التواصل المؤسسي", status: "بحاجة مراجعة", score: 55, note: "ضعف في التوثيق" },
-  ],
-  "مساق التأثير": [
-    { criterion: "قياس الأثر", status: "بحاجة مراجعة", score: 50, note: "تقرير غير مكتمل" },
-    { criterion: "التقارير الدورية", status: "مكتمل", score: 70, note: "" },
-  ],
-  "مساق البرامج": [
-    { criterion: "تصميم البرامج", status: "ناقص", score: null, note: "لم يبدأ" },
-    { criterion: "تنفيذ البرامج", status: "ناقص", score: null, note: "لم يبدأ" },
-  ],
-};
-
-const criterionStatusColor: Record<string, string> = {
-  "مكتمل": "bg-emerald-50 text-emerald-700",
-  "ناقص": "bg-red-50 text-red-700",
-  "بحاجة مراجعة": "bg-amber-50 text-amber-700",
-};
-
-const initialComments = [
-  { id: "c1", sender: "المقيم", message: "يرجى إرفاق تقرير الأثر الاجتماعي الكامل", time: "2026-01-22 10:30" },
-  { id: "c2", sender: "الجمعية", message: "تم رفع التقرير المحدّث، يرجى المراجعة", time: "2026-01-23 14:15" },
-  { id: "c3", sender: "إشراف", message: "تمت الملاحظة، سيتم المتابعة مع المقيم", time: "2026-01-24 09:00" },
+/** In track order (copy.nav_tracks_items) */
+const tracksCriteria: [string, Criterion[]][] = [
+  [T_ORIENTATION, [
+    { criterion: "الرؤية والرسالة", status: "approved", score: 85, note: "صياغة الرؤية واضحة ومتميزة" },
+    { criterion: "التخطيط الاستراتيجي", status: "returned", score: 60, note: "يحتاج إلى تفصيل أكثر" },
+    { criterion: "القيم المؤسسية", status: "approved", score: 78, note: "" },
+  ]],
+  [T_TEAM, [
+    { criterion: "الهيكل التنظيمي", status: "approved", score: 90, note: "ممتاز" },
+    { criterion: "تطوير الكفاءات", status: "returned", score: 40, note: "لم يُرفق شاهد كافٍ" },
+    { criterion: "بيئة العمل", status: "approved", score: 75, note: "" },
+  ]],
+  [T_PARTNERSHIPS, [
+    { criterion: "الشراكات المجتمعية", status: "approved", score: 82, note: "" },
+    { criterion: "التواصل المؤسسي", status: "returned", score: 55, note: "ضعف في التوثيق" },
+  ]],
+  [T_PROGRAMS, [
+    { criterion: "تصميم البرامج", status: "not_started", score: null, note: "" },
+    { criterion: "تنفيذ البرامج", status: "not_started", score: null, note: "" },
+  ]],
+  [T_IMPACT, [
+    { criterion: "قياس الأثر", status: "returned", score: 50, note: "التقرير غير مكتمل" },
+    { criterion: "التقارير الدورية", status: "approved", score: 70, note: "" },
+  ]],
 ];
 
-const senderColor: Record<string, string> = {
-  "المقيم": "bg-primary/10 text-primary",
-  "الجمعية": "bg-amber-50 text-amber-700",
-  "إشراف": "bg-purple-50 text-purple-700",
+type Sender = "evaluator" | "association" | "supervision";
+interface Comment { id: string; sender: Sender; message: string; time: string }
+
+const senderLabel: Record<Sender, string> = {
+  evaluator: adminCopy.sender_evaluator,
+  association: adminCopy.sender_association,
+  supervision: adminCopy.sender_supervision,
 };
 
-const auditLog = [
-  { date: "2026-01-05 09:00", user: "مدير النظام", action: "إنشاء ملف الجمعية", detail: "تم إنشاء ملف جمعية البر الخيرية" },
-  { date: "2026-01-06 11:30", user: "مدير النظام", action: "تعيين مقيم", detail: "تم تعيين أحمد محمد كمقيم" },
+const initialComments: Comment[] = [
+  { id: "c1", sender: "evaluator", message: "يرجى إرفاق تقرير الأثر الاجتماعي كاملاً.", time: "2026-01-22 10:30" },
+  { id: "c2", sender: "association", message: "رُفع التقرير المحدّث، يرجى مراجعته.", time: "2026-01-23 14:15" },
+  { id: "c3", sender: "supervision", message: "تمت الملاحظة، وستتم المتابعة مع المدقق.", time: "2026-01-24 09:00" },
+];
+
+interface AuditEntry { date: string; user: string; action: string; detail: string }
+
+const auditLog: AuditEntry[] = [
+  { date: "2026-01-05 09:00", user: "مدير النظام", action: "إنشاء ملف الجمعية", detail: "أُنشئ ملف جمعية البر الخيرية" },
+  { date: "2026-01-06 11:30", user: "مدير النظام", action: "إسناد مدقق", detail: "أُسند التقييم إلى أحمد محمد" },
   { date: "2026-01-10 14:00", user: "المفوض", action: "رفع شاهد", detail: "وثيقة الرؤية الاستراتيجية" },
-  { date: "2026-01-15 10:00", user: "المقيم", action: "تعديل تقييم", detail: "تحديث درجة معيار الرؤية والرسالة" },
-  { date: "2026-01-20 16:45", user: "مدير النظام", action: "إضافة ملاحظة إشرافية", detail: "ملاحظة على مساق التوجه" },
-  { date: "2026-01-22 10:30", user: "المقيم", action: "طلب توضيح", detail: "طلب تقرير الأثر الاجتماعي الكامل" },
-  { date: "2026-01-24 09:00", user: "مدير النظام", action: "تعليق إشرافي", detail: "متابعة طلب التوضيح" },
+  { date: "2026-01-15 10:00", user: "المدقق", action: "تعديل تقييم", detail: "تحديث درجة معيار الرؤية والرسالة" },
+  { date: "2026-01-20 16:45", user: "مدير النظام", action: "إضافة ملاحظة إشرافية", detail: `ملاحظة على مسار ${T_ORIENTATION}` },
+  { date: "2026-01-22 10:30", user: "المدقق", action: "طلب استكمال", detail: "طلب تقرير الأثر الاجتماعي كاملاً" },
+  { date: "2026-01-24 09:00", user: "مدير النظام", action: "تعليق إشرافي", detail: "متابعة طلب الاستكمال" },
 ];
 
 /* ══════════════════════════════════════════════════════
    COMPONENT
    ══════════════════════════════════════════════════════ */
 
+type ManagerAction = "approve" | "redo" | "reopen" | "close";
+
+const actionLabel: Record<ManagerAction, string> = {
+  approve: adminCopy.eval_approve,
+  redo: adminCopy.eval_redo,
+  reopen: adminCopy.eval_reopen,
+  close: adminCopy.eval_close,
+};
+
+const criterionColumns = (onDetails: () => void): Column<Criterion>[] => [
+  { key: "criterion", header: adminCopy.eval_col_criterion, cell: (c) => <span className="font-hrsd-medium">{c.criterion}</span> },
+  { key: "status", header: adminCopy.eval_col_status, cell: (c) => <StatusBadge status={c.status} /> },
+  {
+    key: "score",
+    header: adminCopy.eval_col_score,
+    cell: (c) => <span className={cn("tabular", c.score === null && "text-muted-foreground")}>{formatPercent(c.score)}</span>,
+  },
+  {
+    key: "note",
+    header: adminCopy.eval_col_note,
+    cell: (c) => <span className="text-muted-foreground">{c.note || "—"}</span>,
+  },
+  {
+    key: "details",
+    header: <span className="sr-only">{adminCopy.actions_label}</span>,
+    align: "end",
+    cell: () => (
+      <Button variant="ghost" size="sm" className="text-primary" onClick={onDetails}>
+        {adminCopy.eval_view_details}
+      </Button>
+    ),
+  },
+];
+
+const auditColumns: Column<AuditEntry>[] = [
+  {
+    key: "date",
+    header: adminCopy.audit_date,
+    cell: (a) => <span className="tabular whitespace-nowrap text-muted-foreground">{formatDateTime(a.date)}</span>,
+  },
+  { key: "user", header: adminCopy.audit_user, cell: (a) => <span className="font-hrsd-medium">{a.user}</span> },
+  { key: "action", header: adminCopy.audit_action, cell: (a) => a.action },
+  { key: "detail", header: adminCopy.audit_detail, cell: (a) => <span className="text-muted-foreground">{a.detail}</span> },
+];
+
 const AdminAssociationDetail = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const data = assocData[id ?? ""] ?? assocData.a1;
 
-  // Supervisory note
   const [supervisoryNote, setSupervisoryNote] = useState("");
-
-  // Comments
   const [comments, setComments] = useState(initialComments);
   const [newComment, setNewComment] = useState("");
-
-  // Evidence modal
-  const [previewEvidence, setPreviewEvidence] = useState<typeof evidenceRows[0] | null>(null);
-
-  // Evaluation track filter
+  const [previewEvidence, setPreviewEvidence] = useState<Evidence | null>(null);
   const [evalTrackFilter, setEvalTrackFilter] = useState("all");
+  const [pendingAction, setPendingAction] = useState<ManagerAction | null>(null);
 
-  const comingSoon = () => toast({ title: "قريبًا", description: "سيتم توفير هذه الميزة لاحقًا" });
+  const comingSoon = () => toast({ title: adminCopy.soon_title, description: adminCopy.soon_desc });
 
-  const confirmAction = (label: string) => {
-    toast({ title: "تم", description: `${label} (تجريبيًا)` });
+  const confirmAction = (action: ManagerAction) => {
+    toast({ title: adminCopy.eval_done, description: `${actionLabel[action]}. ${adminCopy.demo_suffix}` });
   };
 
   const filteredTracks = evalTrackFilter === "all"
-    ? Object.entries(tracksCriteria)
-    : Object.entries(tracksCriteria).filter(([t]) => t === evalTrackFilter);
+    ? tracksCriteria
+    : tracksCriteria.filter(([t]) => t === evalTrackFilter);
 
-  /* ── Field helper ── */
-  const Field = ({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) => (
-    <div>
-      <p className="text-xs font-hrsd text-muted-foreground mb-1">{label}</p>
-      {children ?? <p className="text-sm font-hrsd-medium text-foreground">{value ?? "—"}</p>}
-    </div>
-  );
+  const evidenceColumns: Column<Evidence>[] = [
+    { key: "name", header: adminCopy.evidence_name, cell: (e) => <span className="font-hrsd-medium">{e.name}</span> },
+    { key: "track", header: adminCopy.col_track, cell: (e) => e.track },
+    { key: "criterion", header: adminCopy.evidence_criterion, cell: (e) => e.criterion },
+    {
+      key: "date",
+      header: adminCopy.evidence_date,
+      cell: (e) => <span className="tabular whitespace-nowrap text-muted-foreground">{formatDate(e.date)}</span>,
+    },
+    { key: "uploader", header: adminCopy.evidence_uploader, cell: (e) => <span className="text-muted-foreground">{e.uploader}</span> },
+    { key: "status", header: adminCopy.evidence_status, cell: (e) => <StatusBadge status={e.status} /> },
+  ];
 
-  /* ── Manager action button with confirm dialog ── */
-  const ConfirmButton = ({ label, variant = "outline" }: { label: string; variant?: "outline" | "default" | "destructive" }) => (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant={variant} size="sm" className="text-xs font-hrsd-medium">
-          {label}
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent dir="rtl">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="font-hrsd-semibold">تأكيد الإجراء</AlertDialogTitle>
-          <AlertDialogDescription className="font-hrsd">
-            هل أنت متأكد من تنفيذ: "{label}"؟
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="gap-2">
-          <AlertDialogCancel className="font-hrsd-medium">إلغاء</AlertDialogCancel>
-          <AlertDialogAction className="font-hrsd-medium" onClick={() => confirmAction(label)}>
-            تأكيد
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
+  const sendComment = () => {
+    if (!newComment.trim()) return;
+    setComments((prev) => [
+      ...prev,
+      { id: `c${prev.length + 1}`, sender: "supervision", message: newComment.trim(), time: new Date().toISOString() },
+    ]);
+    setNewComment("");
+  };
 
   return (
     <>
-        <div className="space-y-6">
-          {/* ── Title area ── */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/admin/associations")}
-                className="rounded-xl"
-              >
-                <ArrowRight className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-xl font-hrsd-title text-foreground">تفاصيل الجمعية</h1>
-                <p className="text-sm font-hrsd text-muted-foreground mt-0.5">
-                  عرض شامل لبيانات الجهة وتفاصيل التقييم
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs font-hrsd-medium border-primary/30 text-primary">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              صلاحيات المدير: اطلاع كامل
-            </Badge>
-          </div>
+      <PageHeader
+        title={data.name}
+        description={adminCopy.assoc_detail_desc}
+        breadcrumbs={[
+          { label: adminCopy.breadcrumb_root, to: "/admin" },
+          { label: copy.nav_admin.associations, to: "/admin/associations" },
+          { label: data.name },
+        ]}
+        meta={
+          <KeyFacts
+            items={[
+              { label: adminCopy.assoc_fact_status, value: <StatusBadge status={data.status} /> },
+              { label: adminCopy.assoc_fact_year, value: <span className="tabular">{data.year}</span> },
+              { label: adminCopy.assoc_fact_progress, value: <span className="tabular">{formatPercent(data.progress)}</span> },
+              { label: adminCopy.assoc_fact_score, value: <span className="tabular">{formatPercent(data.score)}</span> },
+              { label: adminCopy.assoc_fact_license, value: <span className="tabular">{data.license}</span> },
+            ]}
+          />
+        }
+      />
 
-          {/* ── Tabs ── */}
-          <Tabs defaultValue="overview" dir="rtl" className="space-y-5">
-            <TabsList className="bg-card border border-border h-auto p-1 gap-1 w-fit ms-auto flex-row-reverse">
-              {[
-                { value: "overview", label: "نظرة عامة" },
-                { value: "evidence", label: "الشواهد" },
-                { value: "evaluation", label: "التقييم" },
-                { value: "comments", label: "التعليقات" },
-                { value: "audit", label: "سجل التعديلات" },
-              ].map((t) => (
-                <TabsTrigger key={t.value} value={t.value} className="text-xs font-hrsd-medium px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
-                  {t.label}
-                </TabsTrigger>
+      <Tabs defaultValue="overview" dir="rtl">
+        <TabsList className={tabsUi.list}>
+          <TabsTrigger value="overview" className={tabsUi.trigger}>{adminCopy.assoc_tab_overview}</TabsTrigger>
+          <TabsTrigger value="evidence" className={tabsUi.trigger}>{adminCopy.assoc_tab_evidence}</TabsTrigger>
+          <TabsTrigger value="evaluation" className={tabsUi.trigger}>{adminCopy.assoc_tab_evaluation}</TabsTrigger>
+          <TabsTrigger value="comments" className={tabsUi.trigger}>{adminCopy.assoc_tab_comments}</TabsTrigger>
+          <TabsTrigger value="audit" className={tabsUi.trigger}>{adminCopy.assoc_tab_audit}</TabsTrigger>
+        </TabsList>
+
+        {/* ── Overview ── */}
+        <TabsContent value="overview" className={tabsUi.content}>
+          <Panel title={adminCopy.assoc_section_info}>
+            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+              <Fact label={adminCopy.assoc_name}>{data.name}</Fact>
+              <Fact label={adminCopy.assoc_type}>{data.type}</Fact>
+              <Fact label={adminCopy.assoc_fact_license}><span className="tabular">{data.license}</span></Fact>
+              <Fact label={adminCopy.assoc_region}>{data.region}</Fact>
+              <Fact label={adminCopy.assoc_email}><bdi dir="ltr">{data.email}</bdi></Fact>
+              <Fact label={adminCopy.assoc_mobile}><bdi dir="ltr" className="tabular">{data.mobile}</bdi></Fact>
+            </dl>
+          </Panel>
+
+          <Panel title={adminCopy.assoc_section_delegate}>
+            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+              <Fact label={adminCopy.delegate_name}>{data.delegate.name}</Fact>
+              <Fact label={adminCopy.delegate_id}><span className="tabular">{data.delegate.idNumber}</span></Fact>
+              <Fact label={adminCopy.assoc_email}><bdi dir="ltr">{data.delegate.email}</bdi></Fact>
+              <Fact label={adminCopy.assoc_mobile}><bdi dir="ltr" className="tabular">{data.delegate.mobile}</bdi></Fact>
+              <Fact label={adminCopy.delegate_role}>{data.delegate.role}</Fact>
+              <Fact label={adminCopy.delegate_date}><span className="tabular">{formatDate(data.delegate.date)}</span></Fact>
+              <Fact label={adminCopy.delegate_account}>
+                {data.delegate.active ? adminCopy.users_status_active : adminCopy.users_status_disabled}
+              </Fact>
+            </dl>
+          </Panel>
+
+          <Panel title={adminCopy.assoc_section_tracks}>
+            <ul className="flex flex-wrap gap-2">
+              {data.tracks.map((t) => (
+                <li
+                  key={t.name}
+                  className={cn(
+                    "inline-flex h-9 items-center rounded-full border px-4 text-small font-hrsd-medium",
+                    t.active ? "border-primary/30 bg-primary/5 text-primary" : "border-border text-muted-foreground"
+                  )}
+                >
+                  {t.name}
+                  <span className="sr-only">: {t.active ? adminCopy.track_selected : adminCopy.track_not_selected}</span>
+                </li>
               ))}
-            </TabsList>
+            </ul>
+          </Panel>
 
-            {/* ═══════════════════  TAB 1: نظرة عامة  ═══════════════════ */}
-            <TabsContent value="overview" className="space-y-5">
-              {/* A) بيانات الجمعية */}
-              <div className="rounded-xl border border-border bg-card shadow-sm">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">بيانات الجمعية</h3>
-                </div>
-                <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
-                  <Field label="اسم الجمعية" value={data.name} />
-                  <Field label="نوع الجهة" value={data.type} />
-                  <Field label="رقم الترخيص" value={data.license} />
-                  <Field label="المنطقة / المدينة" value={data.region} />
-                  <Field label="البريد الإلكتروني" value={data.email} />
-                  <Field label="رقم الجوال" value={data.mobile} />
-                  <Field label="سنة التقييم" value={String(data.year)} />
-                  <Field label="حالة التقييم">
-                    <StatusBadge status={data.status} />
-                  </Field>
-                  <Field label="نسبة الإنجاز">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-hrsd-medium">{data.progress}%</span>
-                      <Progress value={data.progress} className="h-1.5 w-24" />
+          <Panel title={adminCopy.assoc_section_note}>
+            <form
+              className="flex flex-col items-start gap-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                toast({ title: adminCopy.note_saved, description: adminCopy.demo_suffix });
+                setSupervisoryNote("");
+              }}
+            >
+              <Textarea
+                aria-label={adminCopy.assoc_section_note}
+                placeholder={adminCopy.note_placeholder}
+                value={supervisoryNote}
+                onChange={(e) => setSupervisoryNote(e.target.value)}
+                rows={3}
+                className="w-full resize-y text-body"
+              />
+              <Button type="submit" disabled={!supervisoryNote.trim()}>{adminCopy.note_save}</Button>
+            </form>
+          </Panel>
+        </TabsContent>
+
+        {/* ── Evidence ── */}
+        <TabsContent value="evidence" className={tabsUi.content}>
+          <DataTable
+            columns={evidenceColumns}
+            rows={evidenceRows}
+            getRowKey={(e) => e.id}
+            onRowClick={(e) => setPreviewEvidence(e)}
+            rowLabel={(e) => `${adminCopy.evidence_view}: ${e.name}`}
+            caption={adminCopy.evidence_title}
+            empty={<EmptyState icon={Paperclip} message={adminCopy.evidence_empty} />}
+          />
+
+          <Dialog open={!!previewEvidence} onOpenChange={(open) => !open && setPreviewEvidence(null)}>
+            <DialogContent dir="rtl" className={dialogUi.content}>
+              <DialogHeader className={dialogUi.header}>
+                <DialogTitle className={dialogUi.title}>{previewEvidence?.name}</DialogTitle>
+              </DialogHeader>
+              {previewEvidence && (
+                <dl className="grid grid-cols-2 gap-4">
+                  <Fact label={adminCopy.col_track}>{previewEvidence.track}</Fact>
+                  <Fact label={adminCopy.evidence_criterion}>{previewEvidence.criterion}</Fact>
+                  <Fact label={adminCopy.evidence_date}><span className="tabular">{formatDate(previewEvidence.date)}</span></Fact>
+                  <Fact label={adminCopy.evidence_status}><StatusBadge status={previewEvidence.status} /></Fact>
+                </dl>
+              )}
+              <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-section-alt px-6 py-10 text-center">
+                <FileText aria-hidden className="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
+                <p className="text-small text-muted-foreground">{adminCopy.evidence_preview_missing}</p>
+              </div>
+              <DialogFooter className={dialogUi.footer}>
+                <Button onClick={comingSoon}>
+                  <Download aria-hidden /> {adminCopy.evidence_download}
+                </Button>
+                <Button variant="outline" onClick={() => setPreviewEvidence(null)}>{adminCopy.close}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        {/* ── Evaluation ── */}
+        <TabsContent value="evaluation" className={tabsUi.content}>
+          <Panel title={adminCopy.eval_actions_title}>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => setPendingAction("approve")}>{adminCopy.eval_approve}</Button>
+              <Button variant="outline" onClick={() => setPendingAction("redo")}>{adminCopy.eval_redo}</Button>
+              <Button variant="outline" onClick={() => setPendingAction("reopen")}>{adminCopy.eval_reopen}</Button>
+              <Button
+                variant="outline"
+                className="border-danger/40 text-danger hover:bg-danger/5 hover:text-danger"
+                onClick={() => setPendingAction("close")}
+              >
+                {adminCopy.eval_close}
+              </Button>
+            </div>
+          </Panel>
+
+          <Panel
+            title={adminCopy.eval_criteria_title}
+            aside={
+              <SegmentedControl
+                label={adminCopy.eval_track_filter}
+                value={evalTrackFilter}
+                onChange={setEvalTrackFilter}
+                options={[
+                  { value: "all", label: copy.filter_all },
+                  ...tracksCriteria.map(([t]) => ({ value: t, label: t })),
+                ]}
+              />
+            }
+          >
+            <Accordion type="multiple" className="flex flex-col gap-3">
+              {filteredTracks.map(([track, criteria]) => (
+                <AccordionItem key={track} value={track} className="rounded-lg border border-border">
+                  <AccordionTrigger className="gap-3 px-5 py-4 text-start hover:no-underline">
+                    <span className="flex flex-1 items-center gap-3">
+                      <span className="text-body font-hrsd-bold text-ink">{track}</span>
+                      <span className="text-small text-muted-foreground">
+                        <span className="tabular">{formatNumber(criteria.length)}</span> {adminCopy.eval_criteria_count}
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-0">
+                    <DataTable
+                      columns={criterionColumns(comingSoon)}
+                      rows={criteria}
+                      getRowKey={(c) => c.criterion}
+                      caption={track}
+                      className="rounded-none border-0 border-t"
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Panel>
+        </TabsContent>
+
+        {/* ── Comments ── */}
+        <TabsContent value="comments" className={tabsUi.content}>
+          <Panel title={adminCopy.comments_title} bodyClassName="p-0">
+            {comments.length === 0 ? (
+              <EmptyState icon={MessageSquare} message={adminCopy.comments_empty} />
+            ) : (
+              <ol className="flex flex-col divide-y divide-border">
+                {comments.map((c) => (
+                  <li key={c.id} className="flex flex-col gap-1 px-6 py-4">
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className={cn("text-small font-hrsd-bold", c.sender === "supervision" ? "text-primary" : "text-ink")}>
+                        {senderLabel[c.sender]}
+                      </span>
+                      <time className="tabular text-caption text-muted-foreground">{formatDateTime(c.time)}</time>
                     </div>
-                  </Field>
-                  <Field label="الدرجة الحالية" value={data.score !== null ? `${data.score}%` : "—"} />
-                </div>
-              </div>
+                    <p className="text-body text-ink">{c.message}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <form
+              className="flex flex-col gap-3 border-t border-border px-6 py-5"
+              onSubmit={(e) => { e.preventDefault(); sendComment(); }}
+            >
+              <FieldShell id="new-comment" label={adminCopy.comments_label}>
+                <Textarea
+                  id="new-comment"
+                  placeholder={adminCopy.comments_placeholder}
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={3}
+                  className="resize-y text-body"
+                />
+              </FieldShell>
+              <Button type="submit" className="self-start" disabled={!newComment.trim()}>
+                {adminCopy.comments_send}
+              </Button>
+            </form>
+          </Panel>
+        </TabsContent>
 
-              {/* B) بيانات المفوض */}
-              <div className="rounded-xl border border-border bg-card shadow-sm">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">بيانات المفوض</h3>
-                </div>
-                <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
-                  <Field label="الاسم" value={data.delegate.name} />
-                  <Field label="رقم الهوية" value={data.delegate.idNumber} />
-                  <Field label="البريد الإلكتروني" value={data.delegate.email} />
-                  <Field label="رقم الجوال" value={data.delegate.mobile} />
-                  <Field label="الصفة / المنصب" value={data.delegate.role} />
-                  <Field label="تاريخ التفويض" value={data.delegate.date} />
-                  <Field label="حالة الحساب">
-                    <Badge variant="outline" className="text-xs border-emerald-200 text-emerald-700 bg-emerald-50">
-                      {data.delegate.accountStatus}
-                    </Badge>
-                  </Field>
-                </div>
-              </div>
+        {/* ── Audit log ── */}
+        <TabsContent value="audit" className={tabsUi.content}>
+          <DataTable
+            columns={auditColumns}
+            rows={auditLog}
+            getRowKey={(a, i) => `${a.date}-${i}`}
+            caption={adminCopy.audit_title}
+          />
+        </TabsContent>
+      </Tabs>
 
-              {/* C) المسارات المختارة */}
-              <div className="rounded-xl border border-border bg-card shadow-sm">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">المسارات المختارة</h3>
-                </div>
-                <div className="p-6 flex flex-wrap gap-2">
-                  {data.tracks.map((t) => (
-                    <Badge
-                      key={t.name}
-                      variant="outline"
-                      className={`text-xs font-hrsd-medium px-3 py-1.5 ${
-                        t.active
-                          ? "border-primary/30 text-primary bg-primary/5"
-                          : "border-border text-muted-foreground bg-muted/50 opacity-60"
-                      }`}
-                    >
-                      {t.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Supervisory note */}
-              <div className="rounded-xl border border-border bg-card shadow-sm">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">إضافة ملاحظة إشرافية</h3>
-                </div>
-                <div className="p-6 space-y-3">
-                  <Textarea
-                    placeholder="اكتب ملاحظة إشرافية..."
-                    value={supervisoryNote}
-                    onChange={(e) => setSupervisoryNote(e.target.value)}
-                    className="font-hrsd text-sm min-h-[80px]"
-                  />
-                  <Button
-                    size="sm"
-                    className="text-xs font-hrsd-medium"
-                    onClick={() => {
-                      toast({ title: "تم", description: "تم حفظ الملاحظة (تجريبيًا)" });
-                      setSupervisoryNote("");
-                    }}
-                  >
-                    حفظ الملاحظة
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* ═══════════════════  TAB 2: الشواهد  ═══════════════════ */}
-            <TabsContent value="evidence" className="space-y-5">
-              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">جميع الشواهد المرفقة</h3>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      {["اسم الشاهد", "المسار", "المعيار", "تاريخ الرفع", "المرفوع بواسطة", "الحالة", "إجراء"].map((h) => (
-                         <TableHead key={h} className="text-right font-hrsd-medium text-xs">{h}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {evidenceRows.map((e) => (
-                      <TableRow key={e.id} className="text-sm font-hrsd">
-                        <TableCell className="font-hrsd-medium text-right">{e.name}</TableCell>
-                        <TableCell>{e.track}</TableCell>
-                        <TableCell>{e.criterion}</TableCell>
-                        <TableCell>{e.date}</TableCell>
-                        <TableCell>{e.uploader}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-hrsd-medium ${evidenceStatusColor[e.status] ?? ""}`}>
-                            {e.status}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" className="text-xs font-hrsd-medium text-primary" onClick={() => setPreviewEvidence(e)}>
-                            عرض
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Evidence preview modal */}
-              <Dialog open={!!previewEvidence} onOpenChange={() => setPreviewEvidence(null)}>
-                <DialogContent dir="rtl" className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="font-hrsd-semibold text-base">{previewEvidence?.name}</DialogTitle>
-                  </DialogHeader>
-                  <div className="rounded-lg border border-border bg-muted/30 flex items-center justify-center h-48">
-                    <p className="text-sm font-hrsd text-muted-foreground">معاينة الملف غير متوفرة حاليًا</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="gap-2 text-xs font-hrsd-medium w-fit" onClick={comingSoon}>
-                    <Download className="h-3.5 w-3.5" />
-                    تحميل الملف
-                  </Button>
-                </DialogContent>
-              </Dialog>
-            </TabsContent>
-
-            {/* ═══════════════════  TAB 3: التقييم  ═══════════════════ */}
-            <TabsContent value="evaluation" className="space-y-5">
-              {/* Manager actions */}
-              <div className="flex flex-wrap items-center gap-2">
-                <ConfirmButton label="اعتماد نهائي للتقييم" variant="default" />
-                <ConfirmButton label="إعادة التقييم" />
-                <ConfirmButton label="إغلاق الملف" />
-                <ConfirmButton label="إعادة فتح التقييم" />
-              </div>
-
-              {/* Track filter */}
-              <Select value={evalTrackFilter} onValueChange={setEvalTrackFilter}>
-                <SelectTrigger className="w-48 text-sm font-hrsd-medium">
-                  <SelectValue placeholder="المسار" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل</SelectItem>
-                  {Object.keys(tracksCriteria).map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Criteria accordion */}
-              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">حالة كل معيار وتقييم المقيم</h3>
-                </div>
-                <div className="p-4">
-                  <Accordion type="multiple" className="space-y-2">
-                    {filteredTracks.map(([track, criteria]) => (
-                      <AccordionItem key={track} value={track} className="border rounded-lg px-4">
-                        <AccordionTrigger className="text-sm font-hrsd-semibold hover:no-underline py-3">
-                          {track}
-                          <span className="text-xs font-hrsd text-muted-foreground me-auto ms-3">
-                            ({criteria.length} معايير)
-                          </span>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/20">
-                                {["المعيار / البند", "حالة المعيار", "تقييم المقيم", "ملاحظة المقيم", "إجراء"].map((h) => (
-                                   <TableHead key={h} className="text-right font-hrsd-medium text-xs">{h}</TableHead>
-                                 ))}
-                               </TableRow>
-                             </TableHeader>
-                            <TableBody>
-                              {criteria.map((c) => (
-                                <TableRow key={c.criterion} className="text-sm font-hrsd">
-                                  <TableCell className="font-hrsd-medium">{c.criterion}</TableCell>
-                                  <TableCell>
-                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-hrsd-medium ${criterionStatusColor[c.status] ?? ""}`}>
-                                      {c.status}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell>{c.score !== null ? `${c.score}%` : "—"}</TableCell>
-                                  <TableCell className="text-muted-foreground text-xs max-w-[200px] truncate">{c.note || "—"}</TableCell>
-                                  <TableCell>
-                                    <Button variant="ghost" size="sm" className="text-xs font-hrsd-medium text-primary" onClick={comingSoon}>
-                                      عرض التفاصيل
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* ═══════════════════  TAB 4: التعليقات  ═══════════════════ */}
-            <TabsContent value="comments" className="space-y-5">
-              <div className="rounded-xl border border-border bg-card shadow-sm">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">التعليقات بين المقيم والجمعية</h3>
-                </div>
-                <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
-                  {comments.map((c) => (
-                    <div key={c.id} className="flex gap-3">
-                      <Badge variant="outline" className={`shrink-0 h-fit text-[10px] font-hrsd-medium px-2 py-0.5 ${senderColor[c.sender] ?? ""}`}>
-                        {c.sender}
-                      </Badge>
-                      <div className="flex-1">
-                        <p className="text-sm font-hrsd text-foreground">{c.message}</p>
-                        <p className="text-[10px] font-hrsd text-muted-foreground mt-1">{c.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-6 py-4 border-t border-border flex gap-3">
-                  <Textarea
-                    placeholder="اكتب تعليقًا..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className="font-hrsd text-sm min-h-[60px] flex-1"
-                  />
-                  <Button
-                    size="sm"
-                    className="gap-1.5 text-xs font-hrsd-medium self-end"
-                    onClick={() => {
-                      if (!newComment.trim()) return;
-                      setComments((prev) => [
-                        ...prev,
-                        { id: `c${prev.length + 1}`, sender: "إشراف", message: newComment.trim(), time: new Date().toLocaleString("ar-SA") },
-                      ]);
-                      setNewComment("");
-                    }}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    إرسال
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* ═══════════════════  TAB 5: سجل التعديلات  ═══════════════════ */}
-            <TabsContent value="audit" className="space-y-5">
-              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="text-sm font-hrsd-semibold text-foreground">سجل التعديلات</h3>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                       {["التاريخ والوقت", "المستخدم", "الإجراء", "تفاصيل مختصرة"].map((h) => (
-                         <TableHead key={h} className="text-right font-hrsd-medium text-xs">{h}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditLog.map((a, i) => (
-                      <TableRow key={i} className="text-sm font-hrsd">
-                        <TableCell className="text-xs text-muted-foreground">{a.date}</TableCell>
-                        <TableCell className="font-hrsd-medium">{a.user}</TableCell>
-                        <TableCell>{a.action}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{a.detail}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+      {/* Manager action confirmation */}
+      <AlertDialog open={!!pendingAction} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader className={dialogUi.header}>
+            <AlertDialogTitle className={dialogUi.title}>{pendingAction ? actionLabel[pendingAction] : adminCopy.eval_confirm_title}</AlertDialogTitle>
+            <AlertDialogDescription className={dialogUi.description}>
+              {pendingAction && adminCopy.eval_confirm_desc[pendingAction]}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className={dialogUi.footer}>
+            <AlertDialogAction
+              className={cn(pendingAction === "close" && dialogUi.danger)}
+              onClick={() => pendingAction && confirmAction(pendingAction)}
+            >
+              {pendingAction ? actionLabel[pendingAction] : adminCopy.confirm}
+            </AlertDialogAction>
+            <AlertDialogCancel>{adminCopy.cancel}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

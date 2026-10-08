@@ -1,14 +1,17 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { copy, adminCopy } from "@/lib/copy";
+import { formatDate, formatNumber } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -20,92 +23,36 @@ import {
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Search, Plus, Trash2, Save, Copy, ShieldCheck,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import PageHeader from "@/components/shared/PageHeader";
+import EmptyState from "@/components/shared/EmptyState";
+import { FieldShell, TextField } from "@/components/shared/FormField";
+import { Panel } from "@/components/admin/AdminParts";
+import { dialogUi, tabsUi } from "@/components/admin/adminUi";
 
 /* ── permission model ── */
 interface PermGroup {
-  key: string;
+  key: keyof typeof adminCopy.perm_groups;
   label: string;
   items: { key: string; label: string }[];
 }
 
+const group = (key: PermGroup["key"], itemKeys: string[]): PermGroup => ({
+  key,
+  label: adminCopy.perm_groups[key],
+  items: itemKeys.map((k) => ({ key: k, label: adminCopy.perms[k] })),
+});
+
 const permissionGroups: PermGroup[] = [
-  {
-    key: "dashboard", label: "لوحة التحكم والتقارير",
-    items: [
-      { key: "dashboard.view", label: "عرض لوحة التحكم" },
-      { key: "reports.view", label: "عرض التقارير" },
-      { key: "reports.export", label: "تصدير التقارير" },
-      { key: "reports.share", label: "مشاركة تقرير" },
-      { key: "reports.download", label: "تحميل تقرير شامل" },
-    ],
-  },
-  {
-    key: "management", label: "الإدارة",
-    items: [
-      { key: "users.view", label: "إدارة المستخدمين: عرض" },
-      { key: "users.create", label: "إدارة المستخدمين: إنشاء" },
-      { key: "users.edit", label: "إدارة المستخدمين: تعديل" },
-      { key: "users.disable", label: "إدارة المستخدمين: تعطيل/حذف" },
-      { key: "users.reset_password", label: "إعادة تعيين كلمة المرور" },
-      { key: "roles.view", label: "إدارة الصلاحيات: عرض" },
-      { key: "roles.edit", label: "إدارة الصلاحيات: تعديل" },
-    ],
-  },
-  {
-    key: "associations", label: "إدارة الجمعيات",
-    items: [
-      { key: "assoc.list", label: "عرض قائمة الجمعيات" },
-      { key: "assoc.detail", label: "عرض تفاصيل جمعية" },
-      { key: "assoc.evidence", label: "الاطلاع على الشواهد" },
-      { key: "assoc.reopen", label: "إعادة فتح التقييم" },
-      { key: "assoc.change_eval", label: "تغيير المقيم" },
-      { key: "assoc.stop", label: "إيقاف تقييم" },
-      { key: "assoc.archive", label: "أرشفة جهة" },
-      { key: "assoc.export", label: "تصدير بيانات جمعية" },
-      { key: "assoc.audit", label: "عرض سجل العمليات" },
-    ],
-  },
-  {
-    key: "evaluators", label: "إدارة المقيمين",
-    items: [
-      { key: "eval.list", label: "عرض قائمة المقيمين" },
-      { key: "eval.add", label: "إضافة مقيم" },
-      { key: "eval.edit", label: "تعديل بيانات مقيم" },
-      { key: "eval.toggle", label: "إيقاف/تفعيل مقيم" },
-      { key: "eval.distribute", label: "توزيع التقييمات" },
-      { key: "eval.reassign", label: "إعادة إسناد تقييم" },
-      { key: "eval.performance", label: "عرض أداء المقيم" },
-    ],
-  },
-  {
-    key: "eval_config", label: "تهيئة التقييم",
-    items: [
-      { key: "config.entities", label: "تعريف الجهات" },
-      { key: "config.tracks", label: "تعريف المساقات" },
-      { key: "config.years", label: "إدارة سنوات التقييم" },
-      { key: "config.evaluate", label: "تقييم الجهات" },
-    ],
-  },
+  group("dashboard", ["dashboard.view", "reports.view", "reports.export", "reports.share", "reports.download"]),
+  group("management", ["users.view", "users.create", "users.edit", "users.disable", "users.reset_password", "roles.view", "roles.edit"]),
+  group("associations", ["assoc.list", "assoc.detail", "assoc.evidence", "assoc.reopen", "assoc.change_eval", "assoc.stop", "assoc.archive", "assoc.export", "assoc.audit"]),
+  group("evaluators", ["eval.list", "eval.add", "eval.edit", "eval.toggle", "eval.distribute", "eval.reassign", "eval.performance"]),
+  group("eval_config", ["config.entities", "config.tracks", "config.years", "config.evaluate"]),
 ];
 
 const allPermKeys = permissionGroups.flatMap((g) => g.items.map((i) => i.key));
 
-const pageAccessList = [
-  { key: "page.dashboard", label: "لوحة التحكم" },
-  { key: "page.users", label: "إدارة المستخدمين" },
-  { key: "page.roles", label: "إدارة الصلاحيات" },
-  { key: "page.associations", label: "إدارة الجمعيات" },
-  { key: "page.evaluators", label: "إدارة المقيمين" },
-  { key: "page.eval_config", label: "تهيئة التقييم" },
-  { key: "page.reports", label: "التقارير" },
-  { key: "page.assoc_detail", label: "تفاصيل الجمعية" },
-  { key: "page.eval_detail", label: "أداء المقيم" },
-];
+const pageAccessList = Object.entries(adminCopy.pages_access).map(([key, label]) => ({ key, label }));
 
 const allPageKeys = pageAccessList.map((p) => p.key);
 
@@ -121,13 +68,26 @@ interface Role {
 
 const makePerms = (keys: string[], value: boolean) => Object.fromEntries(keys.map((k) => [k, value]));
 
+const seed = adminCopy.seed_roles;
+
 const defaultRoles: Role[] = [
-  { id: "r1", name: "مدير نظام", description: "صلاحية كاملة على جميع أجزاء النظام", permissions: makePerms(allPermKeys, true), pageAccess: makePerms(allPageKeys, true), lastModified: "2026-02-20" },
-  { id: "r2", name: "مشرف مراجعة", description: "إدارة المقيمين والجمعيات ومتابعة التقييمات", permissions: { ...makePerms(allPermKeys, false), "dashboard.view": true, "reports.view": true, "assoc.list": true, "assoc.detail": true, "assoc.evidence": true, "eval.list": true, "eval.performance": true, "eval.distribute": true }, pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true, "page.associations": true, "page.evaluators": true, "page.reports": true, "page.assoc_detail": true, "page.eval_detail": true }, lastModified: "2026-02-18" },
-  { id: "r3", name: "مدقق", description: "الاطلاع على التقارير والشواهد فقط", permissions: { ...makePerms(allPermKeys, false), "dashboard.view": true, "reports.view": true, "assoc.list": true, "assoc.detail": true, "assoc.evidence": true }, pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true, "page.reports": true, "page.associations": true, "page.assoc_detail": true }, lastModified: "2026-02-15" },
-  { id: "r4", name: "منظمة", description: "وصول محدود لبيانات المنظمة فقط", permissions: { ...makePerms(allPermKeys, false), "dashboard.view": true }, pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true }, lastModified: "2026-02-10" },
-  { id: "r5", name: "فرد", description: "وصول أساسي للأفراد", permissions: makePerms(allPermKeys, false), pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true }, lastModified: "2026-02-05" },
+  { id: "r1", ...seed.r1, permissions: makePerms(allPermKeys, true), pageAccess: makePerms(allPageKeys, true), lastModified: "2026-02-20" },
+  { id: "r2", ...seed.r2, permissions: { ...makePerms(allPermKeys, false), "dashboard.view": true, "reports.view": true, "assoc.list": true, "assoc.detail": true, "assoc.evidence": true, "eval.list": true, "eval.performance": true, "eval.distribute": true }, pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true, "page.associations": true, "page.evaluators": true, "page.reports": true, "page.assoc_detail": true, "page.eval_detail": true }, lastModified: "2026-02-18" },
+  { id: "r3", ...seed.r3, permissions: { ...makePerms(allPermKeys, false), "dashboard.view": true, "reports.view": true, "assoc.list": true, "assoc.detail": true, "assoc.evidence": true }, pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true, "page.reports": true, "page.associations": true, "page.assoc_detail": true }, lastModified: "2026-02-15" },
+  { id: "r4", ...seed.r4, permissions: { ...makePerms(allPermKeys, false), "dashboard.view": true }, pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true }, lastModified: "2026-02-10" },
+  { id: "r5", ...seed.r5, permissions: makePerms(allPermKeys, false), pageAccess: { ...makePerms(allPageKeys, false), "page.dashboard": true }, lastModified: "2026-02-05" },
 ];
+
+/** Switch row: label at the start, switch at the end. */
+const SwitchRow = ({ id, label, checked, onChange, aside }: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void; aside?: ReactNode }) => (
+  <div className="flex min-h-12 items-center justify-between gap-4 py-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <Label htmlFor={id} className="cursor-pointer text-small font-hrsd-regular text-ink">{label}</Label>
+      {aside}
+    </div>
+    <Switch id={id} checked={checked} onCheckedChange={onChange} />
+  </div>
+);
 
 /* ── component ── */
 const AdminRoles = () => {
@@ -140,6 +100,7 @@ const AdminRoles = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createDesc, setCreateDesc] = useState("");
+  const [createError, setCreateError] = useState<string | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
   const [copyFromRole, setCopyFromRole] = useState("");
 
@@ -158,10 +119,10 @@ const AdminRoles = () => {
     updateRole({ permissions: { ...selected.permissions, [key]: !selected.permissions[key] } });
   };
 
-  const toggleAllGroup = (group: PermGroup, value: boolean) => {
+  const toggleAllGroup = (g: PermGroup, value: boolean) => {
     if (!selected) return;
     const updated = { ...selected.permissions };
-    group.items.forEach((i) => { updated[i.key] = value; });
+    g.items.forEach((i) => { updated[i.key] = value; });
     updateRole({ permissions: updated });
   };
 
@@ -171,11 +132,13 @@ const AdminRoles = () => {
   };
 
   const saveRole = () => {
-    toast({ title: "تم حفظ التعديلات (تجريبيًا)" });
+    toast({ title: adminCopy.roles_saved, description: adminCopy.demo_suffix });
   };
 
+  const openCreate = () => { setCreateError(undefined); setCreateOpen(true); };
+
   const createRole = () => {
-    if (!createName.trim()) { toast({ title: "يرجى إدخال اسم الدور", variant: "destructive" }); return; }
+    if (!createName.trim()) { setCreateError(adminCopy.roles_error_name); return; }
     const newRole: Role = {
       id: `r${Date.now()}`, name: createName, description: createDesc,
       permissions: makePerms(allPermKeys, false), pageAccess: makePerms(allPageKeys, false),
@@ -183,16 +146,16 @@ const AdminRoles = () => {
     };
     setRoles((prev) => [...prev, newRole]);
     setSelectedId(newRole.id);
-    setCreateOpen(false); setCreateName(""); setCreateDesc("");
-    toast({ title: "تم إنشاء الدور (تجريبيًا)" });
+    setCreateOpen(false); setCreateName(""); setCreateDesc(""); setCreateError(undefined);
+    toast({ title: adminCopy.roles_created, description: adminCopy.demo_suffix });
   };
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
-    if (deleteTarget.name === "مدير نظام") { toast({ title: "لا يمكن حذف دور مدير النظام", variant: "destructive" }); setDeleteTarget(null); return; }
+    if (deleteTarget.name === seed.r1.name) { toast({ title: adminCopy.roles_delete_blocked, variant: "destructive" }); setDeleteTarget(null); return; }
     setRoles((prev) => prev.filter((r) => r.id !== deleteTarget.id));
     if (selectedId === deleteTarget.id) setSelectedId(roles[0]?.id ?? "");
-    toast({ title: "تم حذف الدور (تجريبيًا)" });
+    toast({ title: adminCopy.roles_deleted, description: adminCopy.demo_suffix });
     setDeleteTarget(null);
   };
 
@@ -202,225 +165,265 @@ const AdminRoles = () => {
     if (!source) return;
     updateRole({ permissions: { ...source.permissions }, pageAccess: { ...source.pageAccess } });
     setCopyFromRole("");
-    toast({ title: `تم نسخ الصلاحيات من "${source.name}" (تجريبيًا)` });
+    toast({ title: `${adminCopy.roles_copied} ${source.name}`, description: adminCopy.demo_suffix });
   };
 
-  const isGroupAllOn = (group: PermGroup) => selected ? group.items.every((i) => selected.permissions[i.key]) : false;
+  const isGroupAllOn = (g: PermGroup) => selected ? g.items.every((i) => selected.permissions[i.key]) : false;
 
   return (
     <>
-        <div className="space-y-6">
-          {/* header */}
-          <div>
-            <h1 className="text-2xl font-hrsd-bold text-foreground">إدارة الصلاحيات</h1>
-            <p className="text-sm text-muted-foreground font-hrsd mt-1">إنشاء الأدوار وتحديد الصلاحيات والتحكم في الوصول للصفحات</p>
-          </div>
+      <PageHeader
+        title={copy.nav_admin.roles}
+        description={adminCopy.roles_desc}
+        breadcrumbs={[{ label: adminCopy.breadcrumb_root, to: "/admin" }, { label: copy.nav_admin.roles }]}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus aria-hidden /> {adminCopy.roles_add}
+          </Button>
+        }
+      />
 
-          {/* 2-column layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-            {/* RIGHT: Roles list */}
-            <Card className="h-fit">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-hrsd-semibold">قائمة الأدوار</CardTitle>
-                  <Badge variant="secondary" className="font-hrsd text-xs">{roles.length}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button size="sm" className="w-full gap-2 font-hrsd-medium" onClick={() => setCreateOpen(true)}>
-                  إنشاء دور جديد <Plus className="h-4 w-4" />
-                </Button>
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="ابحث عن دور..." className="pr-9 text-sm font-hrsd" value={search} onChange={(e) => setSearch(e.target.value)} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  {filteredRoles.map((r) => (
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        {/* Roles list */}
+        <Panel
+          title={adminCopy.roles_list_title}
+          aside={<span className="tabular text-small text-muted-foreground">{formatNumber(roles.length)}</span>}
+          bodyClassName="flex flex-col gap-3 p-4"
+        >
+          <div className="relative">
+            <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder={adminCopy.roles_search}
+              aria-label={adminCopy.roles_search}
+              className="h-10 ps-9 text-small"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {filteredRoles.length === 0 ? (
+            <p className="px-2 py-4 text-small text-muted-foreground">{adminCopy.roles_empty}</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {filteredRoles.map((r) => {
+                const active = r.id === selectedId;
+                return (
+                  <li key={r.id}>
                     <button
-                      key={r.id}
+                      type="button"
                       onClick={() => setSelectedId(r.id)}
+                      aria-current={active ? "true" : undefined}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-hrsd-medium transition-colors text-start w-full",
-                        r.id === selectedId ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+                        "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-start text-small transition-colors duration-micro active:scale-[0.98]",
+                        active ? "bg-primary/10 font-hrsd-bold text-primary" : "font-hrsd-medium text-ink hover:bg-section-alt"
                       )}
                     >
-                      <ShieldCheck className="h-4 w-4 shrink-0" />
-                      <span className="flex-1">{r.name}</span>
+                      <ShieldCheck aria-hidden className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                      <span className="flex-1 truncate">{r.name}</span>
                     </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
 
-            {/* LEFT: Role details */}
-            {selected ? (
-              <div className="space-y-5">
-                <Tabs defaultValue="info" dir="rtl" className="space-y-5">
-                  <TabsList className="bg-card border border-border h-auto p-1 gap-1 w-fit">
-                    <TabsTrigger value="info" className="text-xs font-hrsd-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 py-2">بيانات الدور</TabsTrigger>
-                    <TabsTrigger value="permissions" className="text-xs font-hrsd-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 py-2">الصلاحيات</TabsTrigger>
-                    <TabsTrigger value="pages" className="text-xs font-hrsd-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 py-2">التحكم في الوصول</TabsTrigger>
-                  </TabsList>
+        {/* Role details */}
+        {selected ? (
+          <div className="flex min-w-0 flex-col">
+            <div className="mb-2 flex flex-col gap-1">
+              <h2 className="text-h2 text-ink">{selected.name}</h2>
+              {selected.description && <p className="text-body text-muted-foreground">{selected.description}</p>}
+            </div>
+            <Tabs defaultValue="info" dir="rtl">
+              <TabsList className={tabsUi.list}>
+                <TabsTrigger value="info" className={tabsUi.trigger}>{adminCopy.roles_tab_info}</TabsTrigger>
+                <TabsTrigger value="permissions" className={tabsUi.trigger}>{adminCopy.roles_tab_permissions}</TabsTrigger>
+                <TabsTrigger value="pages" className={tabsUi.trigger}>{adminCopy.roles_tab_pages}</TabsTrigger>
+              </TabsList>
 
-                  {/* TAB 1: Role Info */}
-                  <TabsContent value="info">
-                    <Card>
-                      <CardHeader className="pb-3"><CardTitle className="text-base font-hrsd-semibold">بيانات الدور</CardTitle></CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid gap-1.5">
-                          <Label className="font-hrsd-medium text-sm">اسم الدور</Label>
-                          <Input className="font-hrsd text-sm" value={selected.name} onChange={(e) => updateRole({ name: e.target.value })} />
-                        </div>
-                        <div className="grid gap-1.5">
-                          <Label className="font-hrsd-medium text-sm">الوصف</Label>
-                          <Textarea className="font-hrsd text-sm resize-none" rows={3} value={selected.description} onChange={(e) => updateRole({ description: e.target.value })} />
-                        </div>
-                        <p className="text-xs text-muted-foreground font-hrsd">آخر تعديل: {selected.lastModified}</p>
-                        <div className="flex items-center gap-2 pt-2">
-                          <Button size="sm" className="gap-2 font-hrsd-medium" onClick={saveRole}>
-                            حفظ التعديلات <Save className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="gap-2 font-hrsd-medium text-destructive hover:text-destructive" onClick={() => setDeleteTarget(selected)}>
-                            حذف الدور <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
+              {/* Role info */}
+              <TabsContent value="info" className={tabsUi.content}>
+                <Panel>
+                  <div className="flex flex-col gap-5">
+                    <TextField
+                      label={adminCopy.roles_name}
+                      value={selected.name}
+                      onChange={(e) => updateRole({ name: e.target.value })}
+                    />
+                    <FieldShell id="role-description" label={adminCopy.roles_description}>
+                      <Textarea
+                        id="role-description"
+                        className="resize-none text-body"
+                        rows={3}
+                        value={selected.description}
+                        onChange={(e) => updateRole({ description: e.target.value })}
+                      />
+                    </FieldShell>
+                    <p className="text-caption text-muted-foreground">
+                      {adminCopy.roles_last_modified}: <span className="tabular">{formatDate(selected.lastModified)}</span>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
+                      <Button onClick={saveRole}>{adminCopy.roles_save}</Button>
+                      <Button
+                        variant="outline"
+                        className="border-danger/40 text-danger hover:bg-danger/5 hover:text-danger"
+                        onClick={() => setDeleteTarget(selected)}
+                      >
+                        <Trash2 aria-hidden /> {adminCopy.roles_delete}
+                      </Button>
+                    </div>
+                  </div>
+                </Panel>
+              </TabsContent>
 
-                  {/* TAB 2: Permissions */}
-                  <TabsContent value="permissions">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <CardTitle className="text-base font-hrsd-semibold">الصلاحيات</CardTitle>
-                          <div className="flex items-center gap-2">
-                            <Select value={copyFromRole} onValueChange={setCopyFromRole}>
-                              <SelectTrigger className="w-44 text-xs font-hrsd h-8"><SelectValue placeholder="نسخ من دور آخر..." /></SelectTrigger>
-                              <SelectContent align="end">
-                                {roles.filter((r) => r.id !== selectedId).map((r) => (
-                                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button size="sm" variant="outline" className="gap-1.5 font-hrsd-medium h-8 text-xs" disabled={!copyFromRole} onClick={copyPermissions}>
-                              نسخ <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <Accordion type="multiple" defaultValue={permissionGroups.map((g) => g.key)} className="space-y-2">
-                          {permissionGroups.map((group) => (
-                            <AccordionItem key={group.key} value={group.key} className="border rounded-xl px-4">
-                              <AccordionTrigger className="py-3 hover:no-underline">
-                                <div className="flex items-center gap-3 flex-1">
-                                  <span className="text-sm font-hrsd-semibold">{group.label}</span>
-                                  <Badge variant="outline" className="text-[10px] font-hrsd">
-                                    {group.items.filter((i) => selected.permissions[i.key]).length}/{group.items.length}
-                                  </Badge>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pb-4 space-y-3">
-                                <div className="flex items-center gap-2 pb-2 border-b border-border">
-                                  <Switch
-                                    checked={isGroupAllOn(group)}
-                                    onCheckedChange={(v) => toggleAllGroup(group, v)}
-                                    id={`all-${group.key}`}
-                                  />
-                                  <Label htmlFor={`all-${group.key}`} className="text-xs font-hrsd-medium text-primary cursor-pointer">تحديد الكل</Label>
-                                </div>
-                                {group.items.map((item) => (
-                                  <div key={item.key} className="flex items-center justify-between">
-                                    <Label htmlFor={item.key} className="text-sm font-hrsd cursor-pointer">{item.label}</Label>
-                                    <Switch
-                                      id={item.key}
-                                      checked={!!selected.permissions[item.key]}
-                                      onCheckedChange={() => togglePerm(item.key)}
-                                    />
-                                  </div>
-                                ))}
-                              </AccordionContent>
-                            </AccordionItem>
+              {/* Permissions */}
+              <TabsContent value="permissions" className={tabsUi.content}>
+                <Panel
+                  title={adminCopy.roles_tab_permissions}
+                  aside={
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select value={copyFromRole} onValueChange={setCopyFromRole} dir="rtl">
+                        <SelectTrigger className="h-10 w-48 text-small" aria-label={adminCopy.roles_copy_from}>
+                          <SelectValue placeholder={adminCopy.roles_copy_from} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roles.filter((r) => r.id !== selectedId).map((r) => (
+                            <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                           ))}
-                        </Accordion>
-                        <Button size="sm" className="mt-4 gap-2 font-hrsd-medium" onClick={saveRole}>
-                          حفظ الصلاحيات <Save className="h-4 w-4" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  {/* TAB 3: Page Access */}
-                  <TabsContent value="pages">
-                    <Card>
-                      <CardHeader className="pb-3"><CardTitle className="text-base font-hrsd-semibold">التحكم في الوصول للصفحات</CardTitle></CardHeader>
-                      <CardContent className="space-y-3">
-                        {pageAccessList.map((page) => (
-                          <div key={page.key} className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <Label htmlFor={page.key} className="text-sm font-hrsd-medium cursor-pointer">{page.label}</Label>
-                              {!selected.pageAccess[page.key] && (
-                                <span className="text-[10px] font-hrsd text-muted-foreground bg-muted px-2 py-0.5 rounded-full">مخفي عن هذا الدور</span>
-                              )}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" disabled={!copyFromRole} onClick={copyPermissions}>
+                        {adminCopy.roles_copy_action}
+                      </Button>
+                    </div>
+                  }
+                >
+                  <Accordion type="multiple" defaultValue={permissionGroups.map((g) => g.key)} className="flex flex-col gap-3">
+                    {permissionGroups.map((g) => {
+                      const on = g.items.filter((i) => selected.permissions[i.key]).length;
+                      return (
+                        <AccordionItem key={g.key} value={g.key} className="rounded-lg border border-border">
+                          <AccordionTrigger className="gap-3 px-5 py-4 text-start hover:no-underline">
+                            <span className="flex flex-1 items-center gap-3">
+                              <span className="text-body font-hrsd-bold text-ink">{g.label}</span>
+                              <span className="tabular text-small text-muted-foreground">
+                                {formatNumber(on)} / {formatNumber(g.items.length)}
+                              </span>
+                            </span>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-5 pb-3">
+                            <div className="flex flex-col divide-y divide-border">
+                              <SwitchRow
+                                id={`all-${g.key}`}
+                                label={adminCopy.roles_select_all}
+                                checked={isGroupAllOn(g)}
+                                onChange={(v) => toggleAllGroup(g, v)}
+                              />
+                              {g.items.map((item) => (
+                                <SwitchRow
+                                  key={item.key}
+                                  id={item.key}
+                                  label={item.label}
+                                  checked={!!selected.permissions[item.key]}
+                                  onChange={() => togglePerm(item.key)}
+                                />
+                              ))}
                             </div>
-                            <Switch
-                              id={page.key}
-                              checked={!!selected.pageAccess[page.key]}
-                              onCheckedChange={() => togglePageAccess(page.key)}
-                            />
-                          </div>
-                        ))}
-                        <Button size="sm" className="mt-2 gap-2 font-hrsd-medium" onClick={saveRole}>
-                          حفظ إعدادات الوصول <Save className="h-4 w-4" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
-              </div>
-            ) : (
-              <Card className="flex items-center justify-center h-64">
-                <p className="text-muted-foreground font-hrsd">اختر دورًا من القائمة</p>
-              </Card>
-            )}
-          </div>
-        </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
+                  <div className="mt-6 border-t border-border pt-5">
+                    <Button onClick={saveRole}>{adminCopy.roles_save_permissions}</Button>
+                  </div>
+                </Panel>
+              </TabsContent>
 
-      {/* Create Role Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md font-hrsd" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="font-hrsd-bold">إنشاء دور جديد</DialogTitle>
-            <DialogDescription>أدخل بيانات الدور الجديد</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-1.5">
-              <Label className="font-hrsd-medium text-sm">اسم الدور *</Label>
-              <Input className="font-hrsd text-sm" value={createName} onChange={(e) => setCreateName(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label className="font-hrsd-medium text-sm">وصف مختصر</Label>
-              <Textarea className="font-hrsd text-sm resize-none" rows={2} value={createDesc} onChange={(e) => setCreateDesc(e.target.value)} />
-            </div>
+              {/* Page access */}
+              <TabsContent value="pages" className={tabsUi.content}>
+                <Panel title={adminCopy.roles_tab_pages}>
+                  <div className="flex flex-col divide-y divide-border">
+                    {pageAccessList.map((page) => (
+                      <SwitchRow
+                        key={page.key}
+                        id={page.key}
+                        label={page.label}
+                        checked={!!selected.pageAccess[page.key]}
+                        onChange={() => togglePageAccess(page.key)}
+                        aside={
+                          !selected.pageAccess[page.key] && (
+                            <span className="text-caption text-muted-foreground">{adminCopy.roles_hidden}</span>
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-6 border-t border-border pt-5">
+                    <Button onClick={saveRole}>{adminCopy.roles_save_pages}</Button>
+                  </div>
+                </Panel>
+              </TabsContent>
+            </Tabs>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setCreateOpen(false)} className="font-hrsd-medium">إلغاء</Button>
-            <Button onClick={createRole} className="font-hrsd-medium">حفظ</Button>
+        ) : (
+          <Panel>
+            <EmptyState icon={ShieldCheck} message={adminCopy.roles_select} />
+          </Panel>
+        )}
+      </div>
+
+      {/* Create role */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className={dialogUi.content} dir="rtl">
+          <DialogHeader className={dialogUi.header}>
+            <DialogTitle className={dialogUi.title}>{adminCopy.roles_create_title}</DialogTitle>
+            <DialogDescription className={dialogUi.description}>{adminCopy.roles_create_desc}</DialogDescription>
+          </DialogHeader>
+          <form
+            id="create-role-form"
+            className={dialogUi.body}
+            noValidate
+            onSubmit={(e) => { e.preventDefault(); createRole(); }}
+          >
+            <TextField
+              label={adminCopy.roles_name}
+              required
+              value={createName}
+              error={createError}
+              onChange={(e) => setCreateName(e.target.value)}
+            />
+            <FieldShell id="create-role-desc" label={adminCopy.roles_create_desc_label}>
+              <Textarea
+                id="create-role-desc"
+                className="resize-none text-body"
+                rows={2}
+                value={createDesc}
+                onChange={(e) => setCreateDesc(e.target.value)}
+              />
+            </FieldShell>
+          </form>
+          <DialogFooter className={dialogUi.footer}>
+            <Button type="submit" form="create-role-form">{adminCopy.roles_create_submit}</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{adminCopy.cancel}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Role AlertDialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <AlertDialogContent dir="rtl" className="font-hrsd">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-hrsd-bold">حذف الدور</AlertDialogTitle>
-            <AlertDialogDescription>سيتم حذف الدور "{deleteTarget?.name}" نهائيًا. هل تريد المتابعة؟</AlertDialogDescription>
+      {/* Delete role */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader className={dialogUi.header}>
+            <AlertDialogTitle className={dialogUi.title}>{adminCopy.roles_delete_title}</AlertDialogTitle>
+            <AlertDialogDescription className={dialogUi.description}>
+              {adminCopy.roles_delete_desc}
+              <span className="mt-2 block font-hrsd-medium text-ink">{deleteTarget?.name}</span>
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="font-hrsd-medium">إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-hrsd-medium">حذف</AlertDialogAction>
+          <AlertDialogFooter className={dialogUi.footer}>
+            <AlertDialogAction onClick={confirmDelete} className={dialogUi.danger}>{adminCopy.roles_delete_confirm}</AlertDialogAction>
+            <AlertDialogCancel>{adminCopy.cancel}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

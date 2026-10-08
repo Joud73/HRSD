@@ -125,6 +125,7 @@ export default {
       fontFamily: {
         sans: ["HRSDGov-Medium", "Segoe UI", "Tahoma", "sans-serif"],
         hrsd: ["HRSDGov-Regular", "Segoe UI", "Tahoma", "sans-serif"],
+        "hrsd-regular": ["HRSDGov-Regular", "Segoe UI", "Tahoma", "sans-serif"],
         "hrsd-title": ["HRSDGov-Title", "HRSDGov-Bold", "Segoe UI", "Tahoma", "sans-serif"],
         "hrsd-bold": ["HRSDGov-Bold", "Segoe UI", "Tahoma", "sans-serif"],
         "hrsd-semibold": ["HRSDGov-SemiBold", "Segoe UI", "Tahoma", "sans-serif"],
@@ -144,8 +145,18 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "collapsible-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-collapsible-content-height)" },
+        },
+        "collapsible-up": {
+          from: { height: "var(--radix-collapsible-content-height)" },
+          to: { height: "0" },
+        },
       },
       animation: {
+        "collapsible-down": "collapsible-down 240ms cubic-bezier(0.2, 0, 0, 1)",
+        "collapsible-up": "collapsible-up 240ms cubic-bezier(0.2, 0, 0, 1)",
         "accordion-down": "accordion-down 240ms cubic-bezier(0.2, 0, 0, 1)",
         "accordion-up": "accordion-up 240ms cubic-bezier(0.2, 0, 0, 1)",
       },

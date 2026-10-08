@@ -27,6 +27,13 @@ const LEGACY: Record<string, StatusKey> = {
   "مرسل للمراجعة": "submitted",
   "بانتظار رد الجمعية": "returned",
   "معاد للاستكمال": "returned",
+  "مسودة": "in_progress",
+  "تم التقديم": "submitted",
+  "أعيد التقديم": "submitted",
+  "يحتاج تعديل": "returned",
+  "بانتظار الرد": "returned",
+  "غير مُسندة": "not_started",
+  "غير مسندة": "not_started",
   "مكتمل": "approved",
   "معتمد": "approved",
   // Database codes
@@ -41,6 +48,8 @@ const LEGACY: Record<string, StatusKey> = {
   complete: "approved",
   approved: "approved",
   returned: "returned",
+  resubmitted: "submitted",
+  waiting_response: "returned",
   needs_revision: "returned",
   rejected: "returned",
 };

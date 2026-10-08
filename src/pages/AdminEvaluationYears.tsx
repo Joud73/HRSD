@@ -1,203 +1,147 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Eye, Pencil, CalendarDays } from "lucide-react";
+import { CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
+import { copy, adminSetupCopy as t } from "@/lib/copy";
+import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import StatusBadge from "@/components/shared/StatusBadge";
+import PageHeader from "@/components/shared/PageHeader";
+import DataTable, { type Column } from "@/components/shared/DataTable";
+import EmptyState from "@/components/shared/EmptyState";
+import SegmentedControl from "@/components/shared/SegmentedControl";
+import SearchInput from "@/components/admin/setup/SearchInput";
+import YearStateLabel from "@/components/admin/setup/YearStateLabel";
+import { ConfirmDelete } from "@/components/admin/setup/SetupDialogs";
+import { crumbs, YEARS_PATH } from "@/components/admin/setup/crumbs";
+import { getYearState, yearSeed, type EvaluationYear, type YearState } from "@/components/admin/setup/evaluationYears";
 
-export interface EvaluationYear {
-  id: string;
-  yearNumber: number;
-  submissionStart: string;
-  submissionEnd: string;
-  evaluationStart: string;
-  evaluationEnd: string;
-  updatedAt: string;
-}
+type StateFilter = "all" | YearState;
 
-const seed: EvaluationYear[] = [
-  {
-    id: "1",
-    yearNumber: 2024,
-    submissionStart: "2024-01-15",
-    submissionEnd: "2024-03-31",
-    evaluationStart: "2024-04-01",
-    evaluationEnd: "2024-06-30",
-    updatedAt: "2024-06-30",
-  },
-  {
-    id: "2",
-    yearNumber: 2025,
-    submissionStart: "2025-01-01",
-    submissionEnd: "2025-04-30",
-    evaluationStart: "2025-05-01",
-    evaluationEnd: "2025-08-31",
-    updatedAt: "2025-02-15",
-  },
-  {
-    id: "3",
-    yearNumber: 2026,
-    submissionStart: "2026-06-01",
-    submissionEnd: "2026-08-31",
-    evaluationStart: "2026-09-01",
-    evaluationEnd: "2026-12-31",
-    updatedAt: "2026-01-10",
-  },
-];
-
-export const getYearStatus = (y: EvaluationYear): string => {
-  const today = new Date().toISOString().slice(0, 10);
-  if (today < y.submissionStart) return "لم يبدأ بعد";
-  if (today <= y.evaluationEnd) return "جاري";
-  return "مكتمل";
-};
-
-const statusToBadge: Record<string, string> = {
-  "لم يبدأ بعد": "لم تبدأ",
-  "جاري": "قيد التقييم",
-  "مكتمل": "مكتمل",
-};
-
-const formatDate = (d: string) => {
-  const [y, m, day] = d.split("-");
-  return `${day}/${m}/${y}`;
-};
+const Period = ({ start, end }: { start: string; end: string }) => (
+  <span className="flex flex-col text-muted-foreground">
+    <span className="whitespace-nowrap">{formatDate(start)}</span>
+    <span className="whitespace-nowrap text-caption">{formatDate(end)}</span>
+  </span>
+);
 
 const AdminEvaluationYears = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [years, setYears] = useState<EvaluationYear[]>(seed);
+  const [years, setYears] = useState<EvaluationYear[]>(yearSeed);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState<StateFilter>("all");
   const [deleteTarget, setDeleteTarget] = useState<EvaluationYear | null>(null);
 
-  const filtered = useMemo(() => {
-    return years.filter((y) => {
-      const status = getYearStatus(y);
-      if (statusFilter !== "all" && status !== statusFilter) return false;
-      if (search && !String(y.yearNumber).includes(search)) return false;
-      return true;
-    });
-  }, [years, search, statusFilter]);
+  const searched = useMemo(
+    () => years.filter((y) => !search || String(y.yearNumber).includes(search)),
+    [years, search]
+  );
+  const filtered = useMemo(
+    () => searched.filter((y) => stateFilter === "all" || getYearState(y) === stateFilter),
+    [searched, stateFilter]
+  );
 
   const handleDelete = () => {
     if (!deleteTarget) return;
     setYears((prev) => prev.filter((y) => y.id !== deleteTarget.id));
-    toast({ title: "تم حذف سنة التقييم" });
+    toast({ title: t.years_deleted });
     setDeleteTarget(null);
   };
 
+  const openYear = (y: EvaluationYear) => navigate(`${YEARS_PATH}/${y.id}`);
+  const addYear = () => navigate(`${YEARS_PATH}/new`);
+
+  const columns: Column<EvaluationYear>[] = [
+    {
+      key: "year",
+      header: t.years_col_year,
+      cell: (y) => <span className="tabular text-body font-hrsd-bold text-ink">{y.yearNumber}</span>,
+    },
+    { key: "submission", header: t.years_col_submission, cell: (y) => <Period start={y.submissionStart} end={y.submissionEnd} /> },
+    { key: "evaluation", header: t.years_col_evaluation, cell: (y) => <Period start={y.evaluationStart} end={y.evaluationEnd} /> },
+    { key: "state", header: t.status, cell: (y) => <YearStateLabel state={getYearState(y)} /> },
+    {
+      key: "updated",
+      header: t.years_col_updated,
+      cell: (y) => <span className="whitespace-nowrap text-muted-foreground">{formatDate(y.updatedAt)}</span>,
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">{t.actions}</span>,
+      align: "end",
+      className: "w-28",
+      cell: (y) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          <Button size="icon" variant="ghost" onClick={() => openYear(y)} aria-label={`${t.years_edit_aria} ${y.yearNumber}`}>
+            <Pencil aria-hidden />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-danger hover:bg-danger/10 hover:text-danger"
+            onClick={() => setDeleteTarget(y)}
+            aria-label={`${t.years_delete_aria} ${y.yearNumber}`}
+          >
+            <Trash2 aria-hidden />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const count = (s: YearState) => searched.filter((y) => getYearState(y) === s).length;
+  const filterOptions: { value: StateFilter; label: string; count: number }[] = [
+    { value: "all", label: copy.filter_all, count: searched.length },
+    { value: "upcoming", label: t.year_state.upcoming, count: count("upcoming") },
+    { value: "open", label: t.year_state.open, count: count("open") },
+    { value: "closed", label: t.year_state.closed, count: count("closed") },
+  ];
+
   return (
     <>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-hrsd-title text-foreground">إدارة سنوات التقييم</h1>
-              <p className="text-sm font-hrsd text-muted-foreground mt-1">تحديد فترات التقديم والتقييم لكل سنة</p>
-            </div>
-            <Button size="sm" className="gap-2" onClick={() => navigate("/admin/performance/evaluation-years/new")}>
-              <Plus className="h-4 w-4" /> إضافة سنة تقييم
-            </Button>
-          </div>
+      <PageHeader
+        title={t.years_title}
+        description={t.years_desc}
+        breadcrumbs={crumbs.years}
+        actions={
+          <Button onClick={addYear}>
+            <Plus aria-hidden /> {t.years_add}
+          </Button>
+        }
+      />
 
-          {/* Filters */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-52">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="بحث بالسنة..." value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9 text-sm font-hrsd" />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-44 text-sm font-hrsd">
-                <SelectValue placeholder="الحالة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="لم يبدأ بعد">لم يبدأ بعد</SelectItem>
-                <SelectItem value="جاري">جاري</SelectItem>
-                <SelectItem value="مكتمل">مكتمل</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchInput value={search} onChange={setSearch} placeholder={t.years_search} className="sm:w-64" />
+        <SegmentedControl label={t.years_filter_label} value={stateFilter} onChange={setStateFilter} options={filterOptions} />
+      </div>
 
-          {/* Table */}
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            {filtered.length === 0 ? (
-              <div className="p-10 text-center text-sm font-hrsd text-muted-foreground">
-                لا توجد سنوات تقييم
-                <br />
-                <Button size="sm" variant="outline" className="mt-3" onClick={() => navigate("/admin/performance/evaluation-years/new")}>
-                  إضافة سنة تقييم
-                </Button>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-right font-hrsd-medium">السنة</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">فترة التقديم</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">فترة التقييم</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">الحالة</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">آخر تحديث</TableHead>
-                    <TableHead className="text-right font-hrsd-medium">إجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((y) => {
-                    const status = getYearStatus(y);
-                    return (
-                      <TableRow key={y.id}>
-                        <TableCell className="font-hrsd-semibold text-sm">{y.yearNumber}</TableCell>
-                        <TableCell className="text-sm font-hrsd text-muted-foreground">
-                          {formatDate(y.submissionStart)} — {formatDate(y.submissionEnd)}
-                        </TableCell>
-                        <TableCell className="text-sm font-hrsd text-muted-foreground">
-                          {formatDate(y.evaluationStart)} — {formatDate(y.evaluationEnd)}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={statusToBadge[status] ?? status} />
-                        </TableCell>
-                        <TableCell className="text-sm font-hrsd text-muted-foreground">{formatDate(y.updatedAt)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => navigate(`/admin/performance/evaluation-years/${y.id}`)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => navigate(`/admin/performance/evaluation-years/${y.id}`)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(y)}>
-                              <CalendarDays className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        getRowKey={(y) => y.id}
+        onRowClick={openYear}
+        rowLabel={(y) => `${t.years_open_aria} ${y.yearNumber}`}
+        caption={t.years_title}
+        empty={
+          years.length === 0 ? (
+            <EmptyState icon={CalendarDays} message={t.years_empty_all} action={{ label: t.years_add, onClick: addYear }} />
+          ) : (
+            <EmptyState
+              icon={CalendarDays}
+              message={t.years_empty}
+              action={{ label: t.reset_filters, onClick: () => { setSearch(""); setStateFilter("all"); } }}
+            />
+          )
+        }
+      />
 
-          {/* Delete confirmation */}
-          <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-            <DialogContent className="sm:max-w-sm" dir="rtl">
-              <DialogHeader>
-                <DialogTitle className="font-hrsd-semibold">حذف سنة التقييم</DialogTitle>
-                <DialogDescription className="font-hrsd text-sm">
-                  هل أنت متأكد من حذف سنة {deleteTarget?.yearNumber}؟ لا يمكن التراجع عن هذا الإجراء.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={() => setDeleteTarget(null)}>إلغاء</Button>
-                <Button variant="destructive" onClick={handleDelete}>حذف</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+      <ConfirmDelete
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title={t.years_delete_title}
+        description={`${t.years_delete_desc} ${deleteTarget?.yearNumber ?? ""}. ${t.delete_irreversible}`}
+        onConfirm={handleDelete}
+      />
     </>
   );
 };

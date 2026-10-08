@@ -1,35 +1,32 @@
-import { useState, useMemo } from "react";
-import {
-  Users, UserPlus, Shuffle, FileSpreadsheet, Search,
-  MoreHorizontal, Eye, Pencil, Ban, ArrowLeftRight,
-  Clock, TrendingUp, UserCheck, Loader2,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeftRight, Eye, Shuffle, UserCheck } from "lucide-react";
+import { copy, adminCopy } from "@/lib/copy";
+import { formatNumber } from "@/lib/format";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAdminAssociations, useAdminEvaluators, type EvaluatorRow } from "@/hooks/useAdminData";
+import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import StatusBadge from "@/components/shared/StatusBadge";
-import { useAdminEvaluators, useAdminAssociations } from "@/hooks/useAdminData";
-import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import PageHeader from "@/components/shared/PageHeader";
+import DataTable, { type Column } from "@/components/shared/DataTable";
+import EmptyState from "@/components/shared/EmptyState";
+import SegmentedControl from "@/components/shared/SegmentedControl";
+import { FieldShell, FormError } from "@/components/shared/FormField";
+import { RowActionsTrigger, SearchField, Toolbar } from "@/components/admin/AdminParts";
+import ExportMenu from "@/components/admin/ExportMenu";
+import { dialogUi } from "@/components/admin/adminUi";
+
+type LoadFilter = "all" | "with" | "without";
 
 const AdminReviewers = () => {
   const { toast } = useToast();
@@ -39,12 +36,13 @@ const AdminReviewers = () => {
   const { data: evaluators, isLoading } = useAdminEvaluators();
   const { data: associations } = useAdminAssociations();
 
-  const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [loadFilter, setLoadFilter] = useState<LoadFilter>("all");
 
   // Dialogs
   const [distOpen, setDistOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Distribution form
   const [distEvaluator, setDistEvaluator] = useState("");
@@ -57,24 +55,28 @@ const AdminReviewers = () => {
   const [reassignTo, setReassignTo] = useState("");
   const [reassignLoading, setReassignLoading] = useState(false);
 
-  const filtered = useMemo(() => {
+  const searched = useMemo(() => {
     return (evaluators || []).filter((r) => {
       if (search && !r.email.includes(search) && !(r.organization_name || "").includes(search)) return false;
       return true;
     });
   }, [evaluators, search]);
 
-  const totalReviewers = filtered.length;
-  const activeReviewers = filtered.filter((r) => r.assignedCount > 0).length;
+  const withCount = searched.filter((r) => r.assignedCount > 0).length;
+  const filtered = searched.filter((r) =>
+    loadFilter === "all" ? true : loadFilter === "with" ? r.assignedCount > 0 : r.assignedCount === 0
+  );
+  const filtersOn = search !== "" || loadFilter !== "all";
 
-  const comingSoon = () => toast({ title: "قريبًا", description: "سيتم توفير هذه الميزة لاحقًا" });
+  const openAssign = () => { setFormError(null); setDistOpen(true); };
+  const openReassign = () => { setFormError(null); setReassignOpen(true); };
 
-  // Real assignment creation
   const createAssignment = async () => {
     if (!distEvaluator || !distAssociation || !distYear) {
-      toast({ title: "خطأ", description: "يرجى ملء جميع الحقول", variant: "destructive" });
+      setFormError(adminCopy.assign_error);
       return;
     }
+    setFormError(null);
     setDistLoading(true);
     // Look up organization_id from profile
     const { data: prof } = await supabase
@@ -92,7 +94,7 @@ const AdminReviewers = () => {
     });
     setDistLoading(false);
     if (error) {
-      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["admin-evaluators"] });
@@ -101,15 +103,15 @@ const AdminReviewers = () => {
     setDistOpen(false);
     setDistEvaluator("");
     setDistAssociation("");
-    toast({ title: "تم إسناد التقييم بنجاح" });
+    toast({ title: adminCopy.assign_done });
   };
 
-  // Real reassignment
   const executeReassign = async () => {
     if (!reassignAssignment || !reassignTo) {
-      toast({ title: "خطأ", description: "يرجى ملء جميع الحقول", variant: "destructive" });
+      setFormError(adminCopy.reassign_error);
       return;
     }
+    setFormError(null);
     setReassignLoading(true);
     const { error } = await supabase
       .from("evaluator_assignments")
@@ -117,7 +119,7 @@ const AdminReviewers = () => {
       .eq("id", reassignAssignment);
     setReassignLoading(false);
     if (error) {
-      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["admin-evaluators"] });
@@ -125,12 +127,12 @@ const AdminReviewers = () => {
     setReassignOpen(false);
     setReassignAssignment("");
     setReassignTo("");
-    toast({ title: "تم إعادة الإسناد بنجاح" });
+    toast({ title: adminCopy.reassign_done });
   };
 
   // Unassigned associations for the distribution dialog
   const unassignedAssociations = useMemo(() => {
-    return (associations || []).filter((a) => a.status === "غير مُسندة");
+    return (associations || []).filter((a) => !a.assignment_id);
   }, [associations]);
 
   // Active assignments for reassign dialog
@@ -138,192 +140,183 @@ const AdminReviewers = () => {
     return (associations || []).filter((a) => a.assignment_id);
   }, [associations]);
 
+  const columns: Column<EvaluatorRow>[] = [
+    {
+      key: "email",
+      header: adminCopy.col_evaluator,
+      cell: (r) => (
+        <div className="flex flex-col items-start">
+          <span dir="ltr" className="font-hrsd-medium">{r.email}</span>
+          {r.organization_name && <span className="text-caption text-muted-foreground">{r.organization_name}</span>}
+        </div>
+      ),
+    },
+    { key: "assigned", header: adminCopy.col_assigned_count, cell: (r) => <span className="tabular">{formatNumber(r.assignedCount)}</span> },
+    { key: "completed", header: adminCopy.col_completed_count, cell: (r) => <span className="tabular">{formatNumber(r.completedCount)}</span> },
+    { key: "progress", header: adminCopy.col_in_progress_count, cell: (r) => <span className="tabular">{formatNumber(r.inProgressCount)}</span> },
+    {
+      key: "actions",
+      header: <span className="sr-only">{adminCopy.actions_label}</span>,
+      align: "end",
+      className: "w-16",
+      cell: (r) => (
+        <DropdownMenu dir="rtl">
+          <DropdownMenuTrigger asChild>
+            <RowActionsTrigger />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[200px]">
+            <DropdownMenuItem className="gap-2 text-small" onSelect={() => navigate(`/admin/reviewers/${r.id}`)}>
+              <Eye aria-hidden className="h-4 w-4" /> {adminCopy.reviewers_view}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 text-small" onSelect={openReassign}>
+              <ArrowLeftRight aria-hidden className="h-4 w-4" /> {adminCopy.reviewers_reassign}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const evaluatorOptions = (evaluators || []).map((r) => (
+    <SelectItem key={r.id} value={r.id}><bdi dir="ltr">{r.email}</bdi></SelectItem>
+  ));
+
   return (
     <>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-xl font-hrsd-title text-foreground">إدارة المقيمين</h1>
-            <p className="text-sm font-hrsd text-muted-foreground mt-1">متابعة أداء المقيمين وتوزيع التقييمات بكفاءة</p>
-          </div>
+      <PageHeader
+        title={copy.nav_admin.reviewers}
+        description={adminCopy.reviewers_desc}
+        breadcrumbs={[{ label: adminCopy.breadcrumb_root, to: "/admin" }, { label: copy.nav_admin.reviewers }]}
+        actions={
+          <>
+            <Button onClick={openAssign}>
+              <Shuffle aria-hidden /> {adminCopy.reviewers_assign}
+            </Button>
+            <ExportMenu print={false} />
+          </>
+        }
+      />
 
-          {/* Filters + Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="relative">
-                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="ابحث عن مقيم..." value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9 w-52 text-sm font-hrsd" />
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button size="sm" className="gap-2 text-xs font-hrsd-medium h-9" onClick={() => setDistOpen(true)}>
-                إسناد تقييم <Shuffle className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2 text-xs font-hrsd-medium h-9" onClick={comingSoon}>
-                تصدير Excel <FileSpreadsheet className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+      <Toolbar>
+        <SearchField value={search} onChange={setSearch} placeholder={adminCopy.reviewers_search} />
+        <SegmentedControl
+          label={adminCopy.reviewers_filter}
+          value={loadFilter}
+          onChange={setLoadFilter}
+          options={[
+            { value: "all", label: copy.filter_all, count: searched.length },
+            { value: "with", label: adminCopy.reviewers_with, count: withCount },
+            { value: "without", label: adminCopy.reviewers_without, count: searched.length - withCount },
+          ]}
+        />
+      </Toolbar>
 
-          {/* KPI Strip */}
-          <div className="flex flex-wrap gap-4">
-            {[
-              { label: "إجمالي المقيمين", value: totalReviewers, icon: Users },
-              { label: "لديهم تقييمات", value: activeReviewers, icon: UserCheck },
-            ].map((kpi) => (
-              <div key={kpi.label} className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 shadow-sm">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <kpi.icon className="h-4.5 w-4.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-hrsd text-muted-foreground">{kpi.label}</p>
-                  <p className="text-base font-hrsd-bold text-foreground">{kpi.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        loading={isLoading}
+        getRowKey={(r) => r.id}
+        onRowClick={(r) => navigate(`/admin/reviewers/${r.id}`)}
+        rowLabel={(r) => `${adminCopy.reviewers_view}: ${r.email}`}
+        caption={copy.nav_admin.reviewers}
+        empty={
+          filtersOn ? (
+            <EmptyState
+              message={adminCopy.no_results}
+              action={{ label: adminCopy.clear_filters, onClick: () => { setSearch(""); setLoadFilter("all"); } }}
+            />
+          ) : (
+            <EmptyState icon={UserCheck} message={adminCopy.reviewers_empty} action={{ label: adminCopy.reviewers_empty_action, to: "/admin/users" }} />
+          )
+        }
+      />
 
-          {/* Table */}
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-border">
-              <h3 className="text-sm font-hrsd-semibold text-foreground">قائمة المقيمين</h3>
-            </div>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <Users className="h-10 w-10 mb-3 opacity-40" />
-                <p className="text-sm font-hrsd">لا يوجد مقيمون حاليًا</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    {["البريد الإلكتروني", "عدد التقييمات", "مكتمل", "قيد التقييم", "الإجراءات"].map((h) => (
-                      <TableHead key={h} className="text-start font-hrsd-medium text-xs">{h}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((r) => (
-                    <TableRow key={r.id} className="text-sm font-hrsd">
-                      <TableCell className="font-hrsd-medium">{r.email}</TableCell>
-                      <TableCell>{r.assignedCount}</TableCell>
-                      <TableCell>{r.completedCount}</TableCell>
-                      <TableCell>{r.inProgressCount}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="rounded-lg p-1.5 text-muted-foreground hover:text-primary hover:bg-muted transition-colors">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56 font-hrsd text-sm">
-                            <DropdownMenuItem className="gap-2" onClick={() => navigate(`/admin/reviewers/${r.id}`)}>
-                              <Eye className="h-4 w-4" /> عرض أداء المقيم
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onClick={() => setReassignOpen(true)}>
-                              <ArrowLeftRight className="h-4 w-4" /> إعادة إسناد تقييم
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-        </div>
-
-      {/* ── Assignment Dialog ── */}
+      {/* Assign */}
       <Dialog open={distOpen} onOpenChange={setDistOpen}>
-        <DialogContent dir="rtl" className="sm:max-w-md font-hrsd">
-          <DialogHeader><DialogTitle className="font-hrsd-semibold">إسناد تقييم جديد</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="font-hrsd-medium text-sm">المقيم</Label>
-              <Select value={distEvaluator} onValueChange={setDistEvaluator}>
-                <SelectTrigger className="font-hrsd text-sm"><SelectValue placeholder="اختر مقيمًا" /></SelectTrigger>
+        <DialogContent dir="rtl" className={dialogUi.content}>
+          <DialogHeader className={dialogUi.header}>
+            <DialogTitle className={dialogUi.title}>{adminCopy.assign_title}</DialogTitle>
+            <DialogDescription className={dialogUi.description}>{adminCopy.assign_desc}</DialogDescription>
+          </DialogHeader>
+          <div className={dialogUi.body}>
+            <FormError message={formError} />
+            <FieldShell id="assign-evaluator" label={adminCopy.assign_evaluator} required>
+              <Select value={distEvaluator} onValueChange={setDistEvaluator} dir="rtl">
+                <SelectTrigger id="assign-evaluator" className="h-12 text-body">
+                  <SelectValue placeholder={adminCopy.assign_evaluator_placeholder} />
+                </SelectTrigger>
+                <SelectContent>{evaluatorOptions}</SelectContent>
+              </Select>
+            </FieldShell>
+            <FieldShell id="assign-association" label={adminCopy.assign_association} required>
+              <Select value={distAssociation} onValueChange={setDistAssociation} dir="rtl">
+                <SelectTrigger id="assign-association" className="h-12 text-body">
+                  <SelectValue placeholder={adminCopy.assign_association_placeholder} />
+                </SelectTrigger>
                 <SelectContent>
-                  {(evaluators || []).map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.email}</SelectItem>
-                  ))}
+                  {unassignedAssociations.length > 0
+                    ? unassignedAssociations.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      ))
+                    : // Show all associations if none unassigned
+                      (associations || []).map((a) => (
+                        <SelectItem key={`${a.id}-${a.assignment_id}`} value={a.id}>{a.name}</SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="font-hrsd-medium text-sm">الجمعية</Label>
-              <Select value={distAssociation} onValueChange={setDistAssociation}>
-                <SelectTrigger className="font-hrsd text-sm"><SelectValue placeholder="اختر جمعية" /></SelectTrigger>
-                <SelectContent>
-                  {unassignedAssociations.length > 0 ? unassignedAssociations.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  )) : (
-                    // Show all associations if none unassigned
-                    (associations || []).map((a) => (
-                      <SelectItem key={`${a.id}-${a.assignment_id}`} value={a.id}>{a.name}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="font-hrsd-medium text-sm">سنة التقييم</Label>
-              <Select value={distYear} onValueChange={setDistYear}>
-                <SelectTrigger className="font-hrsd text-sm"><SelectValue /></SelectTrigger>
+            </FieldShell>
+            <FieldShell id="assign-year" label={adminCopy.assign_year} required>
+              <Select value={distYear} onValueChange={setDistYear} dir="rtl">
+                <SelectTrigger id="assign-year" className="h-12 text-body"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="2026">2026</SelectItem>
                   <SelectItem value="2025">2025</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </FieldShell>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <DialogClose asChild><Button variant="outline" className="font-hrsd-medium text-sm">إلغاء</Button></DialogClose>
-            <Button className="font-hrsd-medium text-sm" onClick={createAssignment} disabled={distLoading}>
-              {distLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "إسناد"}
-            </Button>
+          <DialogFooter className={dialogUi.footer}>
+            <Button onClick={createAssignment} disabled={distLoading}>{adminCopy.assign_submit}</Button>
+            <DialogClose asChild><Button variant="outline">{adminCopy.cancel}</Button></DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Reassign Dialog ── */}
+      {/* Reassign */}
       <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
-        <DialogContent dir="rtl" className="sm:max-w-md font-hrsd">
-          <DialogHeader><DialogTitle className="font-hrsd-semibold">إعادة إسناد تقييم</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="font-hrsd-medium text-sm">التقييم</Label>
-              <Select value={reassignAssignment} onValueChange={setReassignAssignment}>
-                <SelectTrigger className="font-hrsd text-sm"><SelectValue placeholder="اختر تقييمًا" /></SelectTrigger>
+        <DialogContent dir="rtl" className={dialogUi.content}>
+          <DialogHeader className={dialogUi.header}>
+            <DialogTitle className={dialogUi.title}>{adminCopy.reassign_title}</DialogTitle>
+            <DialogDescription className={dialogUi.description}>{adminCopy.reassign_desc}</DialogDescription>
+          </DialogHeader>
+          <div className={dialogUi.body}>
+            <FormError message={formError} />
+            <FieldShell id="reassign-assignment" label={adminCopy.reassign_assignment} required>
+              <Select value={reassignAssignment} onValueChange={setReassignAssignment} dir="rtl">
+                <SelectTrigger id="reassign-assignment" className="h-12 text-body">
+                  <SelectValue placeholder={adminCopy.reassign_assignment_placeholder} />
+                </SelectTrigger>
                 <SelectContent>
                   {activeAssignments.map((a) => (
                     <SelectItem key={a.assignment_id} value={a.assignment_id!}>
-                      {a.name} - {a.year}
+                      {a.name} ({a.year})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="font-hrsd-medium text-sm">المقيم الجديد</Label>
-              <Select value={reassignTo} onValueChange={setReassignTo}>
-                <SelectTrigger className="font-hrsd text-sm"><SelectValue placeholder="اختر مقيمًا" /></SelectTrigger>
-                <SelectContent>
-                  {(evaluators || []).map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.email}</SelectItem>
-                  ))}
-                </SelectContent>
+            </FieldShell>
+            <FieldShell id="reassign-to" label={adminCopy.reassign_to} required>
+              <Select value={reassignTo} onValueChange={setReassignTo} dir="rtl">
+                <SelectTrigger id="reassign-to" className="h-12 text-body">
+                  <SelectValue placeholder={adminCopy.assign_evaluator_placeholder} />
+                </SelectTrigger>
+                <SelectContent>{evaluatorOptions}</SelectContent>
               </Select>
-            </div>
+            </FieldShell>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <DialogClose asChild><Button variant="outline" className="font-hrsd-medium text-sm">إلغاء</Button></DialogClose>
-            <Button className="font-hrsd-medium text-sm" onClick={executeReassign} disabled={reassignLoading}>
-              {reassignLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "تنفيذ"}
-            </Button>
+          <DialogFooter className={dialogUi.footer}>
+            <Button onClick={executeReassign} disabled={reassignLoading}>{adminCopy.reassign_submit}</Button>
+            <DialogClose asChild><Button variant="outline">{adminCopy.cancel}</Button></DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,81 +1,73 @@
-import { useState } from "react";
-import {
-  Building2, Users, ClipboardList, TrendingUp,
-  FileSpreadsheet, FileText, Printer, Loader2,
-} from "lucide-react";
+import { Link } from "react-router-dom";
+import { Building2, ChevronLeft, ClipboardList, TrendingUp, Users } from "lucide-react";
+import { copy, adminCopy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import KpiCard from "@/components/admin/KpiCard";
-import StatusBadge from "@/components/shared/StatusBadge";
-import { useAdminDashboardStats } from "@/hooks/useAdminData";
+import PageHeader from "@/components/shared/PageHeader";
+import KpiCard from "@/components/shared/KpiCard";
+import { SkeletonKpis, SkeletonPanel } from "@/components/shared/Skeletons";
+import { Panel } from "@/components/admin/AdminParts";
+import ExportMenu from "@/components/admin/ExportMenu";
+import StatusChart from "@/components/admin/StatusChart";
+import RecentEvaluations from "@/components/admin/RecentEvaluations";
+import { useAdminAssociations, useAdminDashboardStats } from "@/hooks/useAdminData";
 
 const AdminDashboard = () => {
-  const { toast } = useToast();
   const { data: stats, isLoading } = useAdminDashboardStats();
-
-  const comingSoon = () =>
-    toast({ title: "قريبًا", description: "سيتم توفير هذه الميزة لاحقًا" });
+  const { data: associations, isLoading: associationsLoading } = useAdminAssociations();
 
   return (
     <>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-xl font-hrsd-title text-foreground">لوحة التحكم</h1>
-            <p className="text-sm font-hrsd text-muted-foreground mt-1">نظرة شاملة وفورية عن حالة المنصة</p>
-          </div>
+      <PageHeader
+        title={copy.nav_admin.dashboard}
+        description={adminCopy.dashboard_desc}
+        breadcrumbs={[{ label: adminCopy.breadcrumb_root }]}
+        actions={<ExportMenu />}
+      />
 
-          {/* Actions */}
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <div className="flex items-center gap-0 rounded-[10px] border border-border overflow-hidden">
-              <Button variant="ghost" size="sm" onClick={comingSoon} className="rounded-none border-e border-border gap-2 text-xs font-hrsd-medium px-4 h-9">
-                تصدير Excel <FileSpreadsheet className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={comingSoon} className="rounded-none border-e border-border gap-2 text-xs font-hrsd-medium px-4 h-9">
-                تصدير PDF <FileText className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={comingSoon} className="rounded-none gap-2 text-xs font-hrsd-medium px-4 h-9">
-                طباعة <Printer className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+      <div className="flex flex-col gap-6">
+        {isLoading ? (
+          <SkeletonKpis />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard label={adminCopy.kpi_associations} value={stats?.totalAssociations} icon={Building2} />
+            <KpiCard label={adminCopy.kpi_evaluators} value={stats?.totalEvaluators} icon={Users} />
+            <KpiCard label={adminCopy.kpi_ongoing} value={stats?.ongoingEvaluations} icon={ClipboardList} />
+            <KpiCard
+              label={adminCopy.kpi_completion}
+              value={stats?.completionRate}
+              suffix="%"
+              icon={TrendingUp}
+              hint={adminCopy.kpi_completion_hint}
+            />
           </div>
+        )}
 
+        <div className="grid gap-6 xl:grid-cols-5">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <SkeletonPanel lines={6} className="xl:col-span-2" />
           ) : (
-            <>
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <KpiCard title="إجمالي الجمعيات المسجلة" value={stats?.totalAssociations ?? 0} icon={<Building2 className="h-5 w-5" />} />
-                <KpiCard title="عدد المقيمين" value={stats?.totalEvaluators ?? 0} icon={<Users className="h-5 w-5" />} />
-                <KpiCard title="التقييمات الجارية" value={stats?.ongoingEvaluations ?? 0} icon={<ClipboardList className="h-5 w-5" />} />
-                <KpiCard
-                  title="نسبة الإنجاز العامة"
-                  value={`${stats?.completionRate ?? 0}%`}
-                  icon={<TrendingUp className="h-5 w-5" />}
-                  highlight
-                  showProgress
-                  progressValue={stats?.completionRate ?? 0}
-                />
-              </div>
-
-              {/* Status Distribution */}
-              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-                <h3 className="text-sm font-hrsd-semibold text-foreground mb-4">حالة التقييمات</h3>
-                {(stats?.statusCounts?.length ?? 0) > 0 ? (
-                  <div className="flex flex-wrap gap-3">
-                    {stats!.statusCounts.map((s) => (
-                      <StatusBadge key={s.label} status={s.label} count={s.count} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm font-hrsd text-muted-foreground">لا توجد تقييمات حاليًا</p>
-                )}
-              </div>
-            </>
+            <Panel title={adminCopy.chart_title} description={adminCopy.chart_desc} className="xl:col-span-2">
+              <StatusChart statusCounts={stats?.statusCounts ?? []} />
+            </Panel>
           )}
+
+          <Panel
+            title={adminCopy.recent_title}
+            className="min-w-0 xl:col-span-3"
+            bodyClassName="p-0"
+            aside={
+              <Button asChild variant="ghost" size="sm" className="text-primary">
+                <Link to="/admin/associations">
+                  {adminCopy.recent_view_all}
+                  <ChevronLeft aria-hidden />
+                </Link>
+              </Button>
+            }
+          >
+            <RecentEvaluations rows={associations} loading={associationsLoading} />
+          </Panel>
         </div>
+      </div>
     </>
   );
 };

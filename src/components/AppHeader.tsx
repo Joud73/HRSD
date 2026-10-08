@@ -242,7 +242,7 @@ const AppHeader = () => {
                         className="h-4 w-4 text-muted-foreground transition-transform duration-ui ease-standard group-data-[state=open]:rotate-180"
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="overflow-hidden pb-2 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                    <CollapsibleContent className="overflow-hidden pb-2 data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                       {entry.children.map((child) =>
                         child.to ? (
                           <SheetClose asChild key={child.label}>

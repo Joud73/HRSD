@@ -199,7 +199,7 @@ export interface AdminUserRow {
 
 const roleArMap: Record<string, string> = {
   admin: "مدير النظام",
-  evaluator: "مقيم",
+  evaluator: "مدقق",
   organization: "جمعية",
   individual: "أفراد",
 };

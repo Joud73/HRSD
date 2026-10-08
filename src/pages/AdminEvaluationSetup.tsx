@@ -1,57 +1,41 @@
-import { useNavigate } from "react-router-dom";
-import { Building2, ListTree } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Building2, ChevronLeft, ListTree } from "lucide-react";
+import { copy, adminSetupCopy as t } from "@/lib/copy";
+import PageHeader from "@/components/shared/PageHeader";
+import { crumbs, ENTITIES_PATH, RUBRIC_PATH } from "@/components/admin/setup/crumbs";
 
 const tiles = [
-  {
-    title: "تعريف الكيانات الأهلية",
-    desc: "تعريف أنواع الكيانات المستخدمة في التقييم",
-    icon: Building2,
-    path: "/admin/performance/evaluation-setup/entities",
-  },
-  {
-    title: "تهيئة نموذج التقييم",
-    desc: "إدارة المساقات والمعايير والمؤشرات والبنود",
-    icon: ListTree,
-    path: "/admin/performance/evaluation-setup/rubric",
-  },
+  { title: t.tile_entities_title, desc: t.tile_entities_desc, icon: Building2, path: ENTITIES_PATH },
+  { title: t.tile_rubric_title, desc: t.tile_rubric_desc, icon: ListTree, path: RUBRIC_PATH },
 ];
 
-const AdminEvaluationSetup = () => {
-  const navigate = useNavigate();
+const AdminEvaluationSetup = () => (
+  <>
+    <PageHeader title={copy.nav_admin.setup} description={t.setup_desc} breadcrumbs={crumbs.setup} />
 
-  return (
-    <>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-xl font-hrsd-title text-foreground">تهيئة التقييم</h1>
-            <p className="text-sm font-hrsd text-muted-foreground mt-1">
-              إعداد وتهيئة عناصر التقييم الأساسية
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {tiles.map((t) => (
-              <div
-                key={t.path}
-                className="rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col gap-4"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <t.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <h2 className="text-base font-hrsd-semibold text-foreground">{t.title}</h2>
-                </div>
-                <p className="text-sm font-hrsd text-muted-foreground">{t.desc}</p>
-                <Button size="sm" className="self-start" onClick={() => navigate(t.path)}>
-                  فتح
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-    </>
-  );
-};
+    <ul aria-label={t.setup_tiles_label} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {tiles.map((tile) => (
+        <li key={tile.path}>
+          <Link
+            to={tile.path}
+            className="group flex h-full items-center gap-4 rounded-lg border border-border bg-card p-6 transition-colors duration-micro ease-standard hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <tile.icon aria-hidden className="h-6 w-6" strokeWidth={1.75} />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-h3 font-hrsd-title text-ink transition-colors duration-micro group-hover:text-primary">{tile.title}</span>
+              <span className="text-small text-muted-foreground">{tile.desc}</span>
+            </span>
+            <ChevronLeft
+              aria-hidden
+              className="h-5 w-5 shrink-0 text-muted-foreground transition-[color,transform] duration-micro ease-standard group-hover:-translate-x-1 group-hover:text-primary motion-reduce:transform-none"
+            />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  </>
+);
 
 export default AdminEvaluationSetup;
