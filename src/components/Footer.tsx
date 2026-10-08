@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { copy } from "@/lib/copy";
+import Container from "@/components/layout/Container";
 import hrsdWhiteLogo from "@/assets/logos/hrsd-white.png";
 import vision2030White from "@/assets/logos/vision-2030-white.webp";
 
@@ -21,15 +22,15 @@ const COL2_LINKS: { label: string; href?: string }[] = [
 ];
 
 const linkClass =
-  "rounded-sm text-small font-hrsd-regular text-primary-foreground/75 transition-colors hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground";
+  "rounded-sm text-small font-hrsd-regular text-primary-foreground/75 underline-offset-4 transition-colors duration-micro ease-standard hover:text-primary-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary";
 const headingClass = "mb-4 font-hrsd-bold text-body text-primary-foreground";
 
-/** Site footer for public, organization and individual pages. */
+/** Site footer for public and individual pages, aligned to the Container line. */
 const Footer = () => (
   <footer dir="rtl" className="bg-primary text-primary-foreground">
-    <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-12 sm:grid-cols-2 md:px-6 lg:grid-cols-[1.4fr_1fr_1.3fr_1fr] lg:gap-12 lg:py-16">
+    <Container className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.3fr_1fr] lg:gap-12 lg:py-16">
       <div>
-        <img src={hrsdWhiteLogo} alt="وزارة الموارد البشرية والتنمية الاجتماعية" className="h-14 w-auto" />
+        <img src={hrsdWhiteLogo} alt={copy.logo_alt} className="h-14 w-auto" />
         <p className="mt-5 max-w-[40ch] text-small font-hrsd-regular text-primary-foreground/75">{copy.footer_about}</p>
       </div>
 
@@ -56,7 +57,7 @@ const Footer = () => (
                   {link.label}
                 </a>
               ) : (
-                <span className="text-small font-hrsd-regular text-primary-foreground/75">{link.label}</span>
+                <span className="text-small font-hrsd-regular text-primary-foreground/60">{link.label}</span>
               )}
             </li>
           ))}
@@ -65,22 +66,22 @@ const Footer = () => (
 
       <section>
         <h2 className={headingClass}>{copy.footer_col3}</h2>
-        {/* Contact details not provided yet: dash placeholders */}
+        {/* Contact details not provided yet: muted dashes */}
         <ul className="flex flex-col gap-3 text-small font-hrsd-regular text-primary-foreground/60">
-          <li aria-label="البريد الإلكتروني غير متوفر">—</li>
-          <li aria-label="رقم الهاتف غير متوفر">—</li>
+          <li aria-label={copy.footer_email_missing}>—</li>
+          <li aria-label={copy.footer_phone_missing}>—</li>
         </ul>
       </section>
-    </div>
+    </Container>
 
     <div className="border-t border-primary-foreground/15">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-6">
-        <p className="text-xs font-hrsd-regular text-primary-foreground/70">{copy.footer_legal}</p>
+      <Container className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
+        <p className="text-caption font-hrsd-regular text-primary-foreground/70">{copy.footer_legal}</p>
         <div className="flex items-center gap-4">
-          <p className="text-xs font-hrsd-regular text-primary-foreground/70">{copy.footer_credit}</p>
-          <img src={vision2030White} alt="رؤية المملكة 2030" className="h-8 w-auto" />
+          <p className="text-caption font-hrsd-regular text-primary-foreground/70">{copy.footer_credit}</p>
+          <img src={vision2030White} alt={copy.vision_alt} className="h-8 w-auto" />
         </div>
-      </div>
+      </Container>
     </div>
   </footer>
 );
