@@ -1,21 +1,24 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
 import { copy, adminSetupCopy as t } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useCycleMutations, useCycles } from "@/hooks/useCycles";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable, { type Column } from "@/components/shared/DataTable";
 import EmptyState from "@/components/shared/EmptyState";
 import SegmentedControl from "@/components/shared/SegmentedControl";
 import SearchInput from "@/components/admin/setup/SearchInput";
-import YearStateLabel from "@/components/admin/setup/YearStateLabel";
+import CycleStatusLabel from "@/components/admin/setup/CycleStatusLabel";
 import { ConfirmDelete } from "@/components/admin/setup/SetupDialogs";
-import { crumbs, YEARS_PATH } from "@/components/admin/setup/crumbs";
-import { getYearState, yearSeed, type EvaluationYear, type YearState } from "@/components/admin/setup/evaluationYears";
+import { crumbs, CYCLES_PATH } from "@/components/admin/setup/crumbs";
+import type { Cycle, CycleStatus } from "@/services/cycleService";
 
-type StateFilter = "all" | YearState;
+type StatusFilter = "all" | CycleStatus;
+
+const STATUSES: CycleStatus[] = ["draft", "open", "closed", "archived"];
 
 const Period = ({ start, end }: { start: string; end: string }) => (
   <span className="flex flex-col text-muted-foreground">
@@ -27,110 +30,109 @@ const Period = ({ start, end }: { start: string; end: string }) => (
 const AdminEvaluationYears = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [years, setYears] = useState<EvaluationYear[]>(yearSeed);
+  const { data: cycles = [], isLoading, isError, refetch } = useCycles();
+  const { remove } = useCycleMutations();
   const [search, setSearch] = useState("");
-  const [stateFilter, setStateFilter] = useState<StateFilter>("all");
-  const [deleteTarget, setDeleteTarget] = useState<EvaluationYear | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [deleteTarget, setDeleteTarget] = useState<Cycle | null>(null);
 
-  const searched = useMemo(
-    () => years.filter((y) => !search || String(y.yearNumber).includes(search)),
-    [years, search]
-  );
+  const searched = useMemo(() => cycles.filter((cy) => !search || cy.name.includes(search)), [cycles, search]);
   const filtered = useMemo(
-    () => searched.filter((y) => stateFilter === "all" || getYearState(y) === stateFilter),
-    [searched, stateFilter]
+    () => searched.filter((cy) => statusFilter === "all" || cy.status === statusFilter),
+    [searched, statusFilter]
   );
 
   const handleDelete = () => {
     if (!deleteTarget) return;
-    setYears((prev) => prev.filter((y) => y.id !== deleteTarget.id));
-    toast({ title: t.years_deleted });
+    remove.mutate(deleteTarget.id, {
+      onSuccess: () => toast({ title: t.cycles_deleted }),
+      onError: (e) => toast({ title: e.message, variant: "destructive" }),
+    });
     setDeleteTarget(null);
   };
 
-  const openYear = (y: EvaluationYear) => navigate(`${YEARS_PATH}/${y.id}`);
-  const addYear = () => navigate(`${YEARS_PATH}/new`);
+  const openCycle = (cy: Cycle) => navigate(`${CYCLES_PATH}/${cy.id}`);
+  const addCycle = () => navigate(`${CYCLES_PATH}/new`);
 
-  const columns: Column<EvaluationYear>[] = [
+  const columns: Column<Cycle>[] = [
     {
-      key: "year",
-      header: t.years_col_year,
-      cell: (y) => <span className="tabular text-body font-hrsd-bold text-ink">{y.yearNumber}</span>,
+      key: "name",
+      header: t.name,
+      cell: (cy) => <span className="text-body font-hrsd-bold text-ink">{cy.name}</span>,
     },
-    { key: "submission", header: t.years_col_submission, cell: (y) => <Period start={y.submissionStart} end={y.submissionEnd} /> },
-    { key: "evaluation", header: t.years_col_evaluation, cell: (y) => <Period start={y.evaluationStart} end={y.evaluationEnd} /> },
-    { key: "state", header: t.status, cell: (y) => <YearStateLabel state={getYearState(y)} /> },
-    {
-      key: "updated",
-      header: t.years_col_updated,
-      cell: (y) => <span className="whitespace-nowrap text-muted-foreground">{formatDate(y.updatedAt)}</span>,
-    },
+    { key: "status", header: t.status, cell: (cy) => <CycleStatusLabel status={cy.status} /> },
+    { key: "submission", header: t.cycles_col_submission, cell: (cy) => <Period start={cy.submissionStart} end={cy.submissionEnd} /> },
+    { key: "review", header: t.cycles_col_review, cell: (cy) => <Period start={cy.reviewStart} end={cy.reviewEnd} /> },
+    { key: "approval", header: t.cycles_col_approval, cell: (cy) => <Period start={cy.approvalStart} end={cy.approvalEnd} /> },
     {
       key: "actions",
       header: <span className="sr-only">{t.actions}</span>,
       align: "end",
       className: "w-28",
-      cell: (y) => (
+      cell: (cy) => (
         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-          <Button size="icon" variant="ghost" onClick={() => openYear(y)} aria-label={`${t.years_edit_aria} ${y.yearNumber}`}>
+          <Button size="icon" variant="ghost" onClick={() => openCycle(cy)} aria-label={`${t.cycles_edit_aria} ${cy.name}`}>
             <Pencil aria-hidden />
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="text-danger hover:bg-danger/10 hover:text-danger"
-            onClick={() => setDeleteTarget(y)}
-            aria-label={`${t.years_delete_aria} ${y.yearNumber}`}
-          >
-            <Trash2 aria-hidden />
-          </Button>
+          {cy.status === "draft" && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-danger hover:bg-danger/10 hover:text-danger"
+              onClick={() => setDeleteTarget(cy)}
+              aria-label={`${t.cycles_delete_aria} ${cy.name}`}
+            >
+              <Trash2 aria-hidden />
+            </Button>
+          )}
         </div>
       ),
     },
   ];
 
-  const count = (s: YearState) => searched.filter((y) => getYearState(y) === s).length;
-  const filterOptions: { value: StateFilter; label: string; count: number }[] = [
+  const filterOptions: { value: StatusFilter; label: string; count: number }[] = [
     { value: "all", label: copy.filter_all, count: searched.length },
-    { value: "upcoming", label: t.year_state.upcoming, count: count("upcoming") },
-    { value: "open", label: t.year_state.open, count: count("open") },
-    { value: "closed", label: t.year_state.closed, count: count("closed") },
+    ...STATUSES.map((s) => ({ value: s, label: t.cycle_status[s], count: searched.filter((cy) => cy.status === s).length })),
   ];
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+  };
 
   return (
     <>
       <PageHeader
-        title={t.years_title}
-        description={t.years_desc}
-        breadcrumbs={crumbs.years}
+        title={t.cycles_title}
+        description={t.cycles_desc}
+        breadcrumbs={crumbs.cycles}
         actions={
-          <Button onClick={addYear}>
-            <Plus aria-hidden /> {t.years_add}
+          <Button onClick={addCycle}>
+            <Plus aria-hidden /> {t.cycles_add}
           </Button>
         }
       />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SearchInput value={search} onChange={setSearch} placeholder={t.years_search} className="sm:w-64" />
-        <SegmentedControl label={t.years_filter_label} value={stateFilter} onChange={setStateFilter} options={filterOptions} />
+        <SearchInput value={search} onChange={setSearch} placeholder={t.cycles_search} className="sm:w-64" />
+        <SegmentedControl label={t.cycles_filter_label} value={statusFilter} onChange={setStatusFilter} options={filterOptions} />
       </div>
 
       <DataTable
         columns={columns}
         rows={filtered}
-        getRowKey={(y) => y.id}
-        onRowClick={openYear}
-        rowLabel={(y) => `${t.years_open_aria} ${y.yearNumber}`}
-        caption={t.years_title}
+        loading={isLoading}
+        getRowKey={(cy) => cy.id}
+        onRowClick={openCycle}
+        rowLabel={(cy) => `${t.cycles_open_aria} ${cy.name}`}
+        caption={t.cycles_title}
         empty={
-          years.length === 0 ? (
-            <EmptyState icon={CalendarDays} message={t.years_empty_all} action={{ label: t.years_add, onClick: addYear }} />
+          isError ? (
+            <EmptyState icon={AlertCircle} message={t.cycles_load_error} action={{ label: t.retry, onClick: () => void refetch() }} />
+          ) : cycles.length === 0 ? (
+            <EmptyState icon={CalendarDays} message={t.cycles_empty_all} action={{ label: t.cycles_add, onClick: addCycle }} />
           ) : (
-            <EmptyState
-              icon={CalendarDays}
-              message={t.years_empty}
-              action={{ label: t.reset_filters, onClick: () => { setSearch(""); setStateFilter("all"); } }}
-            />
+            <EmptyState icon={CalendarDays} message={t.cycles_empty} action={{ label: t.reset_filters, onClick: resetFilters }} />
           )
         }
       />
@@ -138,8 +140,8 @@ const AdminEvaluationYears = () => {
       <ConfirmDelete
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
-        title={t.years_delete_title}
-        description={`${t.years_delete_desc} ${deleteTarget?.yearNumber ?? ""}. ${t.delete_irreversible}`}
+        title={t.cycles_delete_title}
+        description={`${t.cycles_delete_desc} ${deleteTarget?.name ?? ""}. ${t.delete_irreversible}`}
         onConfirm={handleDelete}
       />
     </>

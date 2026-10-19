@@ -6,6 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { copy, orgCopy, TRACKS, TRACK_INDICATORS } from "@/lib/copy";
 import { revealGroup, revealItem, inViewOnce } from "@/lib/motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useOpenCycle } from "@/hooks/useCycles";
+import { formatDate } from "@/lib/format";
 import type { StatusKey } from "@/lib/status";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/shared/PageHeader";
@@ -63,6 +65,7 @@ const Dash = () => <span className="text-muted-foreground">—</span>;
 const Dashboard = () => {
   const { organizationName } = useAuth();
   const reduced = useReducedMotion();
+  const { data: openCycle } = useOpenCycle();
 
   const tracks = useMemo<TrackProgress[]>(
     () =>
@@ -111,10 +114,10 @@ const Dashboard = () => {
               <StatusBadge status={overallStatus} />
             </Fact>
             <Fact label={orgCopy.summary_cycle}>
-              <Dash />
+              {openCycle ? openCycle.name : <Dash />}
             </Fact>
             <Fact label={orgCopy.summary_deadline}>
-              <Dash />
+              {openCycle ? formatDate(openCycle.submissionEnd) : <Dash />}
             </Fact>
           </dl>
         }

@@ -1,32 +1,66 @@
 import { useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, CalendarIcon, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { AlertCircle, CalendarDays, CalendarIcon, Trash2 } from "lucide-react";
 import { adminSetupCopy as t } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useCycle, useCycleMutations } from "@/hooks/useCycles";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
+import { SkeletonPanel } from "@/components/shared/Skeletons";
 import { FieldShell, FormError, TextField } from "@/components/shared/FormField";
-import YearStateLabel from "@/components/admin/setup/YearStateLabel";
+import CycleStatusLabel from "@/components/admin/setup/CycleStatusLabel";
 import { ConfirmDelete } from "@/components/admin/setup/SetupDialogs";
-import { crumbs, YEARS_PATH } from "@/components/admin/setup/crumbs";
-import { getYearState, yearSeed, type EvaluationYear } from "@/components/admin/setup/evaluationYears";
+import { crumbs, CYCLES_PATH } from "@/components/admin/setup/crumbs";
+import type { Cycle, CycleInput, CycleStatus } from "@/services/cycleService";
 
-type DateKey = "submissionStart" | "submissionEnd" | "evaluationStart" | "evaluationEnd";
-type Errors = Partial<Record<DateKey, string>>;
+type DateKey = "submissionStart" | "submissionEnd" | "reviewStart" | "reviewEnd" | "approvalStart" | "approvalEnd";
+type Dates = Record<DateKey, string>;
+type Errors = Partial<Record<DateKey | "name", string>>;
 
-const toDate = (s: string) => new Date(s + "T00:00:00");
-const toStr = (d: Date) => d.toISOString().slice(0, 10);
+/** Periods in their required order; each must start on or after the previous one ends (cycle_periods_ordered). */
+const PERIODS: { legend: string; start: DateKey; end: DateKey; startLabel: string; endLabel: string; id: string }[] = [
+  { legend: t.cycle_submission_group, start: "submissionStart", end: "submissionEnd", startLabel: t.cycle_submission_start, endLabel: t.cycle_submission_end, id: "submission" },
+  { legend: t.cycle_review_group, start: "reviewStart", end: "reviewEnd", startLabel: t.cycle_review_start, endLabel: t.cycle_review_end, id: "review" },
+  { legend: t.cycle_approval_group, start: "approvalStart", end: "approvalEnd", startLabel: t.cycle_approval_start, endLabel: t.cycle_approval_end, id: "approval" },
+];
+
+/** Statuses an admin sets from the form; archived is shown only when the cycle already has it. */
+const FORM_STATUSES: CycleStatus[] = ["draft", "open", "closed"];
+
+const EMPTY_DATES: Dates = { submissionStart: "", submissionEnd: "", reviewStart: "", reviewEnd: "", approvalStart: "", approvalEnd: "" };
+
+/** yyyy-mm-dd <-> local calendar day (no UTC shift) */
+const toDate = (s: string) => (s ? new Date(`${s}T00:00:00`) : undefined);
+const toStr = (d: Date) => format(d, "yyyy-MM-dd");
+
+/** Same rules as the database constraint, attached to the field they concern. Dates compare as yyyy-mm-dd strings. */
+const validate = (name: string, dates: Dates): Errors => {
+  const errs: Errors = {};
+  if (!name.trim()) errs.name = t.error_name_required;
+  PERIODS.forEach((p, i) => {
+    const start = dates[p.start];
+    const end = dates[p.end];
+    if (!start) errs[p.start] = t.cycle_err_date_required;
+    if (!end) errs[p.end] = t.cycle_err_date_required;
+    if (start && end && end < start) errs[p.end] = t.cycle_err_end_before_start;
+    const prevEnd = i > 0 ? dates[PERIODS[i - 1].end] : "";
+    if (start && prevEnd && start < prevEnd) errs[p.start] = t.cycle_err_period_order;
+  });
+  return errs;
+};
 
 interface DateFieldProps {
   id: string;
   label: string;
-  value?: Date;
-  onChange: (d?: Date) => void;
+  value: string;
+  onChange: (value: string) => void;
   error?: string;
 }
 
@@ -47,11 +81,18 @@ const DateField = ({ id, label, value, onChange, error }: DateFieldProps) => (
           )}
         >
           <CalendarIcon aria-hidden className="text-muted-foreground" />
-          {value ? formatDate(value) : t.year_pick_date}
+          {value ? formatDate(value) : t.cycle_pick_date}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto rounded-lg p-0 shadow-float" align="start">
-        <Calendar mode="single" selected={value} onSelect={(d) => onChange(d ?? undefined)} initialFocus className="pointer-events-auto p-3" />
+        <Calendar
+          mode="single"
+          selected={toDate(value)}
+          defaultMonth={toDate(value)}
+          onSelect={(d) => onChange(d ? toStr(d) : "")}
+          initialFocus
+          className="pointer-events-auto p-3"
+        />
       </PopoverContent>
     </Popover>
   </FieldShell>
@@ -71,91 +112,81 @@ const Panel = ({ title, children }: { title: string; children: ReactNode }) => (
   </section>
 );
 
-const AdminEvaluationYearDetail = () => {
-  const { yearId } = useParams<{ yearId: string }>();
+/** New / edit form. `existing` is null for a new cycle. */
+const CycleForm = ({ existing }: { existing: Cycle | null }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const isNew = yearId === "new";
+  const { create, update, remove } = useCycleMutations();
+  const isNew = !existing;
 
-  const existing = !isNew ? yearSeed.find((y) => y.id === yearId) : null;
-
-  const [yearNumber, setYearNumber] = useState(existing?.yearNumber ?? new Date().getFullYear());
-  const [submissionStart, setSubmissionStart] = useState<Date | undefined>(existing ? toDate(existing.submissionStart) : undefined);
-  const [submissionEnd, setSubmissionEnd] = useState<Date | undefined>(existing ? toDate(existing.submissionEnd) : undefined);
-  const [evaluationStart, setEvaluationStart] = useState<Date | undefined>(existing ? toDate(existing.evaluationStart) : undefined);
-  const [evaluationEnd, setEvaluationEnd] = useState<Date | undefined>(existing ? toDate(existing.evaluationEnd) : undefined);
+  const [name, setName] = useState(existing?.name ?? "");
+  const [status, setStatus] = useState<CycleStatus>(existing?.status ?? "draft");
+  const [dates, setDates] = useState<Dates>(() =>
+    existing
+      ? {
+          submissionStart: existing.submissionStart,
+          submissionEnd: existing.submissionEnd,
+          reviewStart: existing.reviewStart,
+          reviewEnd: existing.reviewEnd,
+          approvalStart: existing.approvalStart,
+          approvalEnd: existing.approvalEnd,
+        }
+      : EMPTY_DATES
+  );
   const [errors, setErrors] = useState<Errors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const currentYear: EvaluationYear | null =
-    submissionStart && submissionEnd && evaluationStart && evaluationEnd
-      ? {
-          id: yearId ?? "new",
-          yearNumber,
-          submissionStart: toStr(submissionStart),
-          submissionEnd: toStr(submissionEnd),
-          evaluationStart: toStr(evaluationStart),
-          evaluationEnd: toStr(evaluationEnd),
-          updatedAt: new Date().toISOString().slice(0, 10),
-        }
-      : null;
-  const state = currentYear ? getYearState(currentYear) : null;
-
-  /** Same rules as before, attached to the field they concern */
-  const validate = (): Errors => {
-    const errs: Errors = {};
-    if (!submissionStart) errs.submissionStart = t.year_err_submission_start;
-    if (!submissionEnd) errs.submissionEnd = t.year_err_submission_end;
-    if (!evaluationStart) errs.evaluationStart = t.year_err_evaluation_start;
-    if (!evaluationEnd) errs.evaluationEnd = t.year_err_evaluation_end;
-    if (submissionStart && submissionEnd && submissionEnd < submissionStart) errs.submissionEnd = t.year_err_submission_order;
-    if (evaluationStart && evaluationEnd && evaluationEnd < evaluationStart) errs.evaluationEnd = t.year_err_evaluation_order;
-    if (evaluationStart && submissionStart && evaluationStart < submissionStart) errs.evaluationStart = t.year_err_evaluation_after;
-    return errs;
-  };
+  const saving = create.isPending || update.isPending;
 
   const save = () => {
-    const errs = validate();
+    const errs = validate(name, dates);
     setErrors(errs);
+    setServerError(null);
     if (Object.keys(errs).length > 0) return;
-    toast({ title: isNew ? t.year_added : t.year_saved });
-    navigate(YEARS_PATH);
+    const input: CycleInput = { name, status, ...dates };
+    const options = {
+      onSuccess: () => {
+        toast({ title: isNew ? t.cycle_added : t.cycle_saved });
+        navigate(CYCLES_PATH);
+      },
+      onError: (e: Error) => setServerError(e.message),
+    };
+    if (existing) update.mutate({ id: existing.id, input }, options);
+    else create.mutate(input, options);
   };
 
   const handleDelete = () => {
-    toast({ title: t.years_deleted });
-    navigate(YEARS_PATH);
+    if (!existing) return;
+    remove.mutate(existing.id, {
+      onSuccess: () => {
+        toast({ title: t.cycles_deleted });
+        navigate(CYCLES_PATH);
+      },
+      onError: (e) => setServerError(e.message),
+    });
   };
 
-  const setDate = (key: DateKey, setter: (d?: Date) => void) => (d?: Date) => {
-    setter(d);
+  const setDate = (key: DateKey) => (value: string) => {
+    setDates((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  if (!isNew && !existing) {
-    return (
-      <>
-        <PageHeader title={t.year_title} breadcrumbs={crumbs.year(t.year_title)} />
-        <div className="rounded-lg border border-border bg-card">
-          <EmptyState icon={CalendarDays} message={t.year_not_found} action={{ label: t.year_back, to: YEARS_PATH }} />
-        </div>
-      </>
-    );
-  }
-
-  const title = isNew ? t.year_new_title : `${t.year_title} ${existing?.yearNumber ?? ""}`;
+  const title = isNew ? t.cycle_new_title : `${t.cycle_title} ${existing.name}`;
   const hasErrors = Object.values(errors).some(Boolean);
+  const statusOptions = existing?.status === "archived" ? [...FORM_STATUSES, "archived" as const] : FORM_STATUSES;
 
   const meta = existing ? (
-    <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-      <Fact label={t.status}>{state ? <YearStateLabel state={state} /> : "—"}</Fact>
-      <Fact label={t.year_submission_group}>
-        {formatDate(existing.submissionStart)} – {formatDate(existing.submissionEnd)}
+    <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-5">
+      <Fact label={t.status}>
+        <CycleStatusLabel status={existing.status} />
       </Fact>
-      <Fact label={t.year_evaluation_group}>
-        {formatDate(existing.evaluationStart)} – {formatDate(existing.evaluationEnd)}
-      </Fact>
-      <Fact label={t.years_col_updated}>{formatDate(existing.updatedAt)}</Fact>
+      {PERIODS.map((p) => (
+        <Fact key={p.id} label={p.legend}>
+          {formatDate(existing[p.start])} – {formatDate(existing[p.end])}
+        </Fact>
+      ))}
+      <Fact label={t.cycle_updated_at}>{formatDate(existing.updatedAt)}</Fact>
     </dl>
   ) : undefined;
 
@@ -163,15 +194,22 @@ const AdminEvaluationYearDetail = () => {
     <>
       <PageHeader
         title={title}
-        description={isNew ? t.year_new_desc : t.year_desc}
-        breadcrumbs={crumbs.year(title)}
+        description={isNew ? t.cycle_new_desc : t.cycle_desc}
+        breadcrumbs={crumbs.cycle(title)}
         meta={meta}
         actions={
           <>
-            <Button onClick={save}>{isNew ? t.year_save_new : t.year_save}</Button>
-            {!isNew && (
-              <Button variant="outline" className="border-danger/40 text-danger hover:bg-danger/5 hover:text-danger" onClick={() => setDeleteOpen(true)}>
-                <Trash2 aria-hidden /> {t.year_delete}
+            <Button onClick={save} disabled={saving}>
+              {isNew ? t.cycle_save_new : t.cycle_save}
+            </Button>
+            {existing?.status === "draft" && (
+              <Button
+                variant="outline"
+                className="border-danger/40 text-danger hover:bg-danger/5 hover:text-danger"
+                onClick={() => setDeleteOpen(true)}
+                disabled={remove.isPending}
+              >
+                <Trash2 aria-hidden /> {t.cycle_delete}
               </Button>
             )}
           </>
@@ -179,39 +217,48 @@ const AdminEvaluationYearDetail = () => {
       />
 
       <div className="flex flex-col gap-6">
-        <FormError message={hasErrors ? t.year_form_error : null} />
+        <FormError message={serverError ?? (hasErrors ? t.cycle_form_error : null)} />
 
-        <Panel title={t.year_info}>
-          <TextField
-            label={t.year_field_year}
-            type="number"
-            inputMode="numeric"
-            value={yearNumber}
-            onChange={(e) => setYearNumber(Number(e.target.value))}
-            disabled={!isNew}
-            fieldClassName="max-w-[240px]"
-            className="tabular"
-          />
+        <Panel title={t.cycle_info}>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <TextField
+              label={t.name}
+              required
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              error={errors.name}
+            />
+            <FieldShell id="cycle-status" label={t.status} required>
+              <Select value={status} onValueChange={(v) => setStatus(v as CycleStatus)} dir="rtl">
+                <SelectTrigger id="cycle-status" className="h-12 text-body">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((s) => (
+                    <SelectItem key={s} value={s} disabled={s === "archived"}>
+                      {t.cycle_status[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FieldShell>
+          </div>
         </Panel>
 
-        <Panel title={t.year_periods}>
+        <Panel title={t.cycle_periods}>
           <div className="flex flex-col gap-6">
-            <fieldset>
-              <legend className="mb-4 text-small font-hrsd-bold text-ink">{t.year_submission_group}</legend>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <DateField id="submission-start" label={t.year_submission_start} value={submissionStart} onChange={setDate("submissionStart", setSubmissionStart)} error={errors.submissionStart} />
-                <DateField id="submission-end" label={t.year_submission_end} value={submissionEnd} onChange={setDate("submissionEnd", setSubmissionEnd)} error={errors.submissionEnd} />
-              </div>
-            </fieldset>
-            <div className="border-t border-border pt-6">
-              <fieldset>
-                <legend className="mb-4 text-small font-hrsd-bold text-ink">{t.year_evaluation_group}</legend>
+            {PERIODS.map((p, i) => (
+              <fieldset key={p.id} className={cn(i > 0 && "border-t border-border pt-6")}>
+                <legend className="mb-4 text-small font-hrsd-bold text-ink">{p.legend}</legend>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <DateField id="evaluation-start" label={t.year_evaluation_start} value={evaluationStart} onChange={setDate("evaluationStart", setEvaluationStart)} error={errors.evaluationStart} />
-                  <DateField id="evaluation-end" label={t.year_evaluation_end} value={evaluationEnd} onChange={setDate("evaluationEnd", setEvaluationEnd)} error={errors.evaluationEnd} />
+                  <DateField id={`${p.id}-start`} label={p.startLabel} value={dates[p.start]} onChange={setDate(p.start)} error={errors[p.start]} />
+                  <DateField id={`${p.id}-end`} label={p.endLabel} value={dates[p.end]} onChange={setDate(p.end)} error={errors[p.end]} />
                 </div>
               </fieldset>
-            </div>
+            ))}
           </div>
         </Panel>
       </div>
@@ -219,12 +266,41 @@ const AdminEvaluationYearDetail = () => {
       <ConfirmDelete
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title={t.years_delete_title}
-        description={`${t.years_delete_desc} ${yearNumber}. ${t.delete_irreversible}`}
+        title={t.cycles_delete_title}
+        description={`${t.cycles_delete_desc} ${existing?.name ?? ""}. ${t.delete_irreversible}`}
         onConfirm={handleDelete}
       />
     </>
   );
+};
+
+const AdminEvaluationYearDetail = () => {
+  const { cycleId } = useParams<{ cycleId: string }>();
+  const isNew = cycleId === "new";
+  const { data: cycle, isLoading, isError, refetch } = useCycle(isNew ? undefined : cycleId);
+
+  if (isNew) return <CycleForm existing={null} />;
+
+  if (isLoading || isError || !cycle) {
+    return (
+      <>
+        <PageHeader title={t.cycle_title} breadcrumbs={crumbs.cycle(t.cycle_title)} />
+        {isLoading ? (
+          <SkeletonPanel lines={6} />
+        ) : (
+          <div className="rounded-lg border border-border bg-card">
+            {isError ? (
+              <EmptyState icon={AlertCircle} message={t.cycles_load_error} action={{ label: t.retry, onClick: () => void refetch() }} />
+            ) : (
+              <EmptyState icon={CalendarDays} message={t.cycle_not_found} action={{ label: t.cycle_back, to: CYCLES_PATH }} />
+            )}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return <CycleForm key={cycle.id} existing={cycle} />;
 };
 
 export default AdminEvaluationYearDetail;

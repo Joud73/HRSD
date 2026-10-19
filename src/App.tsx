@@ -94,7 +94,7 @@ const App = () => (
                 <Route path="/admin/performance/evaluation-setup/entities" element={<AdminEntities />} />
                 <Route path="/admin/performance/evaluation-setup/rubric" element={<AdminRubric />} />
                 <Route path="/admin/performance/evaluation-years" element={<AdminEvaluationYears />} />
-                <Route path="/admin/performance/evaluation-years/:yearId" element={<AdminEvaluationYearDetail />} />
+                <Route path="/admin/performance/evaluation-years/:cycleId" element={<AdminEvaluationYearDetail />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/roles" element={<AdminRoles />} />
                 <Route path="/admin/associations" element={<AdminAssociations />} />
