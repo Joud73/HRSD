@@ -72,4 +72,12 @@ export const evaluatorCopy = {
   toast_sent_desc: "أُرسلت الملاحظة إلى الجمعية.",
   toast_send_error_title: "تعذر الإرسال",
   toast_send_error_desc: "تحقق من الاتصال ثم أعد المحاولة.",
+
+  // Profile: evaluator (المقيم) data
+  profile_data_desc: "حدّث الجوال والبريد الإلكتروني وجهة العمل. يعدّل مدير النظام رقم الهوية والاسم.",
+  profile_missing: "لم تُسجَّل بياناتك بعد. تواصل مع مدير النظام لاستكمالها.",
+  profile_load_error: "تعذّر تحميل بياناتك.",
+  profile_retry: "إعادة المحاولة",
+  profile_save: "حفظ التغييرات",
+  profile_saved: "حُفظت التغييرات",
 } as const;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { copy, authCopy } from "@/lib/copy";
+import { copy, authCopy, fieldsCopy as f } from "@/lib/copy";
 import { formatNumber } from "@/lib/format";
 import { transition } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -135,6 +135,7 @@ const Register = () => {
   const [subClassificationId, setSubClassificationId] = useState("");
   const [socialDevCenterId, setSocialDevCenterId] = useState("");
   const [region, setRegion] = useState("");
+  const [regionPrefilled, setRegionPrefilled] = useState(false);
   const [city, setCity] = useState("");
   const [district, setDistrict] = useState("");
   const [address, setAddress] = useState("");
@@ -195,6 +196,16 @@ const Register = () => {
     el.focus({ preventScroll: true });
     if (el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
   }, [step]);
+
+  // Choosing a center prefills المنطقة from social_dev_centers.region; the field stays editable
+  const chooseCenter = (id: string) => {
+    setSocialDevCenterId(id);
+    const centerRegion = socialDevCenters.data?.find((c) => c.id === id)?.region;
+    if (centerRegion) {
+      setRegion(centerRegion);
+      setRegionPrefilled(true);
+    }
+  };
 
   // A selection clears its error immediately
   const selectError = (value: string, field: Field) => (value ? undefined : errors[field]);
@@ -298,25 +309,16 @@ const Register = () => {
                 <div className="grid gap-4 md:grid-cols-2">
                   <SelectField
                     id="reg-entity-type"
-                    label={authCopy.entity_type}
+                    label={f.entity_type}
                     placeholder={authCopy.entity_type_placeholder}
                     value={entityType}
                     onChange={(v) => setEntityType(v as EntityType)}
-                    options={ENTITY_TYPES.map((v) => ({ value: v, label: authCopy.entity_types[v] }))}
+                    options={ENTITY_TYPES.map((v) => ({ value: v, label: f.entity_types[v] }))}
                     error={selectError(entityType, "entityType")}
                   />
 
                   <TextField
-                    label={authCopy.org_name}
-                    value={organizationName}
-                    onChange={(e) => setOrganizationName(e.target.value)}
-                    onBlur={blur("organizationName")}
-                    error={errors.organizationName}
-                    required
-                  />
-
-                  <TextField
-                    label={authCopy.reg_number}
+                    label={f.org.registration_number}
                     inputMode="numeric"
                     dir="ltr"
                     value={registrationNumber}
@@ -327,7 +329,7 @@ const Register = () => {
                   />
 
                   <TextField
-                    label={authCopy.reg_date}
+                    label={f.org.registration_date}
                     type="date"
                     dir="ltr"
                     value={registrationDate}
@@ -337,9 +339,18 @@ const Register = () => {
                     required
                   />
 
+                  <TextField
+                    label={f.org.name}
+                    value={organizationName}
+                    onChange={(e) => setOrganizationName(e.target.value)}
+                    onBlur={blur("organizationName")}
+                    error={errors.organizationName}
+                    required
+                  />
+
                   <SelectField
                     id="reg-sub-classification"
-                    label={authCopy.sub_classification}
+                    label={f.org.sub_classification}
                     placeholder={authCopy.sub_classification_placeholder}
                     value={subClassificationId}
                     onChange={setSubClassificationId}
@@ -349,25 +360,29 @@ const Register = () => {
 
                   <SelectField
                     id="reg-social-dev-center"
-                    label={authCopy.social_dev_center}
+                    label={f.org.social_dev_center}
                     placeholder={authCopy.social_dev_center_placeholder}
                     value={socialDevCenterId}
-                    onChange={setSocialDevCenterId}
+                    onChange={chooseCenter}
                     options={(socialDevCenters.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
                     error={selectError(socialDevCenterId, "socialDevCenterId")}
                   />
 
                   <TextField
-                    label={authCopy.region}
+                    label={f.org.region}
+                    hint={regionPrefilled ? f.region_prefilled : undefined}
                     value={region}
-                    onChange={(e) => setRegion(e.target.value)}
+                    onChange={(e) => {
+                      setRegion(e.target.value);
+                      setRegionPrefilled(false);
+                    }}
                     onBlur={blur("region")}
                     error={errors.region}
                     required
                   />
 
                   <TextField
-                    label={authCopy.city}
+                    label={f.org.city}
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     onBlur={blur("city")}
@@ -376,21 +391,21 @@ const Register = () => {
                   />
 
                   <TextField
-                    label={authCopy.district}
+                    label={f.org.district}
                     hint={authCopy.optional_hint}
                     value={district}
                     onChange={(e) => setDistrict(e.target.value)}
                   />
 
                   <TextField
-                    label={authCopy.address}
+                    label={f.org.address}
                     hint={authCopy.optional_hint}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                   />
 
                   <TextField
-                    label={authCopy.employees_count}
+                    label={f.org.employees_count}
                     hint={authCopy.optional_hint}
                     inputMode="numeric"
                     dir="ltr"
@@ -401,7 +416,7 @@ const Register = () => {
                   />
 
                   <TextField
-                    label={authCopy.org_email}
+                    label={f.org.email}
                     type="email"
                     inputMode="email"
                     dir="ltr"
@@ -414,7 +429,7 @@ const Register = () => {
                   />
 
                   <TextField
-                    label={authCopy.website}
+                    label={f.org.website}
                     hint={authCopy.optional_hint}
                     type="url"
                     inputMode="url"
@@ -468,18 +483,7 @@ const Register = () => {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <TextField
-                    label={authCopy.rep_full_name}
-                    autoComplete="name"
-                    placeholder={authCopy.rep_full_name_placeholder}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    onBlur={blur("fullName")}
-                    error={errors.fullName}
-                    required
-                  />
-
-                  <TextField
-                    label={authCopy.rep_id_number}
+                    label={f.delegate.id_number}
                     inputMode="numeric"
                     dir="ltr"
                     maxLength={10}
@@ -492,7 +496,18 @@ const Register = () => {
                   />
 
                   <TextField
-                    label={authCopy.rep_mobile}
+                    label={f.delegate.name}
+                    autoComplete="name"
+                    placeholder={authCopy.rep_full_name_placeholder}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    onBlur={blur("fullName")}
+                    error={errors.fullName}
+                    required
+                  />
+
+                  <TextField
+                    label={f.delegate.mobile}
                     type="tel"
                     autoComplete="tel"
                     dir="ltr"
@@ -505,7 +520,7 @@ const Register = () => {
                   />
 
                   <TextField
-                    label={authCopy.rep_email}
+                    label={f.delegate.email}
                     type="email"
                     autoComplete="email"
                     inputMode="email"

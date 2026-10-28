@@ -141,6 +141,29 @@ Signed in as `supervisor.test@tamkeen.local` through the Auth API, read only: `u
 - A supervisor row shows "لم يبدأ" for a draft at 0 % progress, matching the organization dashboard's rule for a draft with nothing marked.
 - Not done: `approve-organization` is still the old deployed version (see flags).
 
+## Before Step 6
+
+- [x] `approve-organization` deployed to staging (`--use-api`). Preflight from `http://localhost:8080` and the Vercel URL returns 204 with the matching allow-origin, another origin gets 403, and a POST without a token gets 401.
+
+## Step 6: HRSD data fields (done before Step 5, at the owner's request)
+
+- [x] One source for the labels and their order: `src/lib/strings/fields.ts` (`fieldsCopy`): نوع الكيان; بيانات المنظمة (12 fields, المدينة أو المحافظة, المركز أو الحي, عدد العاملين بالمنظمة); بيانات المفوض (رقم الهوية، الاسم، الجوال، البريد الإلكتروني); بيانات المقيم (the same four plus جهة العمل). The old per-page labels in `auth.ts` and `admin.ts` were removed.
+- [x] Shared fields: `components/shared/ProfileFields.tsx` (`OrganizationFields`, `DelegateFields`, `EvaluatorFields`) and `profileForm.ts` (form values, conversion, validation). Choosing a center prefills المنطقة from `social_dev_centers.region` with the hint "عُبئت من مركز التنمية الاجتماعية، ويمكن تعديلها."; typing in المنطقة clears the hint.
+- [x] Lookups: sub-classifications by `sort_order`, centers by `code` (was by name).
+- [x] `Register`: step 1 in the HRSD order (نوع الكيان first, then رقم التسجيل, تاريخ التسجيل, اسم المنظمة, ...); step 3 is now "بيانات المفوض" in the order رقم الهوية, الاسم, الجوال, البريد الإلكتروني. The login email stays its own step: it is the account, not an HRSD field.
+- [x] `AdminAssociationDetail`: overview facts and both edit dialogs use the shared fields and order. Section titles "بيانات المنظمة" and "بيانات المفوض".
+- [x] `AdminOrganizationRequests` detail: every request field is shown (a dash when empty), in two sections, before the approve and reject buttons. The dialog scrolls. Approval already copies all fields (checked in `approve-organization`).
+- [x] `Settings` (organization): was a static mock with hardcoded cities and no save. Now reads the signed-in organization (`getMyOrganization`, `current_org_id`) and saves through `updateOrganization` / `saveDelegate`. نوع الكيان, رقم التسجيل and تاريخ التسجيل are read only with "يعدّلها مدير النظام فقط." (the trigger enforces it too). The delegate's ID is read only once recorded.
+- [x] `AdminReviewers`: new "إضافة مدقق" dialog with the five evaluator fields. It invites the account through `create-user` (role evaluator) and then saves `evaluator_profiles`. `AdminReviewerDetail`: facts and edit dialog in the HRSD order.
+- [x] `EvaluatorProfile`: a "بيانات المقيم" section under the account card. The evaluator edits الجوال, البريد الإلكتروني and جهة العمل (`updateMyContact`, a plain update because evaluators have no insert policy); رقم الهوية and الاسم are read only.
+- Em dashes used as empty values in the touched files are now "-".
+
+### Step 6 decisions
+
+- Organization name stays editable by the organization in Settings: the database protects only رقم التسجيل, نوع الكيان and تاريخ التسجيل.
+- An evaluator added from `AdminUsers` still gets no profile row; the reviewers page is the place to add evaluators with their HRSD data. The evaluator's profile page says so when the row is missing.
+- If `create-user` succeeds and the profile save fails, the account exists without data; the administrator completes it from the evaluator's page.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.
@@ -159,7 +182,7 @@ Signed in as `supervisor.test@tamkeen.local` through the Auth API, read only: `u
 
 ## Flags for later steps
 
-- The deployed edge functions predate the shared CORS module and the invites. `create-user` is deployed in Step 4. `approve-organization` also needs `npx supabase functions deploy approve-organization` before approving a request on staging.
+- The deployed edge functions predate the shared CORS module and the invites. `create-user` was deployed in Step 4 and `approve-organization` before Step 6, so both are current on staging.
 
 ## Not finished
 

@@ -235,3 +235,4 @@ export { adminSetupCopy } from "@/lib/strings/adminSetup";
 export { assessmentCopy } from "@/lib/strings/assessment";
 export { pagesCopy } from "@/lib/strings/pages";
 export { supervisorCopy } from "@/lib/strings/supervisor";
+export { fieldsCopy } from "@/lib/strings/fields";

@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, ClipboardList, Pencil, UserCheck } from "lucide-react";
-import { copy, adminCopy } from "@/lib/copy";
+import { copy, adminCopy, fieldsCopy as fc } from "@/lib/copy";
 import { formatDate, formatNumber } from "@/lib/format";
 import { STATUS, toStatusKey, type StatusKey } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useEvaluator, useEvaluatorAssessments, useUpsertEvaluatorProfile } from "@/hooks/useEvaluators";
-import { SAUDI_ID_RE } from "@/services/errors";
-import type { Evaluator, EvaluatorAssessment, EvaluatorProfileInput } from "@/services/evaluatorService";
+import type { Evaluator, EvaluatorAssessment } from "@/services/evaluatorService";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +16,9 @@ import DataTable, { type Column } from "@/components/shared/DataTable";
 import EmptyState from "@/components/shared/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { SkeletonPanel } from "@/components/shared/Skeletons";
-import { FieldShell, FormError, TextField } from "@/components/shared/FormField";
+import { FieldShell, FormError } from "@/components/shared/FormField";
+import { EvaluatorFields } from "@/components/shared/ProfileFields";
+import { validateEvaluator, type EvaluatorErrors, type EvaluatorFormValues } from "@/components/shared/profileForm";
 import { Fact, KeyFacts, Panel } from "@/components/admin/AdminParts";
 import { FormDialog, fieldRowClass } from "@/components/admin/setup/SetupDialogs";
 import { tabsUi } from "@/components/admin/adminUi";
@@ -31,7 +32,7 @@ const crumbs = (name: string) => [
 /** Status groups counted in the header, in workflow order */
 const COUNTED: StatusKey[] = ["in_progress", "submitted", "returned", "approved"];
 
-const orDash = (v: string | null | undefined) => (v ? v : "—");
+const orDash = (v: string | null | undefined) => (v ? v : "-");
 
 const ActiveState = ({ active }: { active: boolean }) => (
   <span className={cn("inline-flex items-center gap-2", active ? "text-ink" : "text-muted-foreground")}>
@@ -42,56 +43,45 @@ const ActiveState = ({ active }: { active: boolean }) => (
 
 /* ── Profile dialog ── */
 
-type Errors = Partial<Record<"fullName" | "idNumber", string>>;
-
 const ProfileDialog = ({ evaluator, onOpenChange }: { evaluator: Evaluator; onOpenChange: (o: boolean) => void }) => {
   const { toast } = useToast();
   const upsert = useUpsertEvaluatorProfile(evaluator.userId);
-  const [form, setForm] = useState<EvaluatorProfileInput>(() => ({
-    fullName: evaluator.hasProfile ? evaluator.fullName : "",
+  const [form, setForm] = useState<EvaluatorFormValues>(() => ({
     idNumber: evaluator.idNumber ?? "",
+    fullName: evaluator.hasProfile ? evaluator.fullName : "",
     mobile: evaluator.mobile ?? "",
     email: evaluator.email ?? evaluator.accountEmail ?? "",
     employer: evaluator.employer ?? "",
-    isActive: evaluator.isActive,
   }));
-  const [errors, setErrors] = useState<Errors>({});
+  const [isActive, setIsActive] = useState(evaluator.isActive);
+  const [errors, setErrors] = useState<EvaluatorErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const field = (key: "fullName" | "idNumber" | "mobile" | "email" | "employer") => ({
-    value: form[key] ?? "",
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [key]: e.target.value })),
-  });
-
   const submit = () => {
-    const id = form.idNumber?.trim();
-    const errs: Errors = {};
-    if (!form.fullName.trim()) errs.fullName = adminCopy.error_required;
-    if (id && !SAUDI_ID_RE.test(id)) errs.idNumber = adminCopy.err_id_number_format;
+    const errs = validateEvaluator(form);
     setErrors(errs);
     setServerError(null);
     if (Object.keys(errs).length > 0) return;
-    upsert.mutate(form, {
-      onSuccess: () => {
-        toast({ title: adminCopy.saved });
-        onOpenChange(false);
-      },
-      onError: (e) => setServerError(e.message),
-    });
+    upsert.mutate(
+      { ...form, isActive },
+      {
+        onSuccess: () => {
+          toast({ title: adminCopy.saved });
+          onOpenChange(false);
+        },
+        onError: (e) => setServerError(e.message),
+      }
+    );
   };
 
   return (
     <FormDialog open onOpenChange={onOpenChange} title={adminCopy.reviewer_edit} description={adminCopy.assoc_edit_desc} onSubmit={submit}>
       <FormError message={serverError} />
-      <TextField label={adminCopy.reviewer_name} required {...field("fullName")} error={errors.fullName} />
-      <TextField label={adminCopy.reviewer_id_number} dir="ltr" inputMode="numeric" maxLength={10} {...field("idNumber")} error={errors.idNumber} />
-      <TextField label={adminCopy.reviewer_phone} type="tel" dir="ltr" {...field("mobile")} />
-      <TextField label={adminCopy.reviewer_email} type="email" dir="ltr" {...field("email")} />
-      <TextField label={adminCopy.reviewer_employer} {...field("employer")} />
+      <EvaluatorFields idPrefix="reviewer" values={form} onChange={setForm} errors={errors} />
       <FieldShell id="reviewer-active" label={adminCopy.reviewer_status}>
         <div className={fieldRowClass}>
-          <span className="text-small text-ink">{form.isActive ? adminCopy.reviewer_active : adminCopy.reviewer_inactive}</span>
-          <Switch id="reviewer-active" checked={form.isActive} onCheckedChange={(v) => setForm((p) => ({ ...p, isActive: v }))} />
+          <span className="text-small text-ink">{isActive ? adminCopy.reviewer_active : adminCopy.reviewer_inactive}</span>
+          <Switch id="reviewer-active" checked={isActive} onCheckedChange={setIsActive} />
         </div>
       </FieldShell>
     </FormDialog>
@@ -169,15 +159,15 @@ const AdminReviewerDetail = () => {
         </TabsList>
 
         <TabsContent value="overview" className={tabsUi.content}>
-          <Panel title={adminCopy.reviewer_info_title}>
+          <Panel title={fc.section_evaluator}>
             {!evaluator.hasProfile && <p className="mb-5 text-small text-muted-foreground">{adminCopy.reviewer_profile_missing}</p>}
             <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-              <Fact label={adminCopy.reviewer_name}>{evaluator.fullName}</Fact>
-              <Fact label={adminCopy.reviewer_id_number}><span className="tabular">{orDash(evaluator.idNumber)}</span></Fact>
-              <Fact label={adminCopy.reviewer_phone}>{evaluator.mobile ? <bdi dir="ltr" className="tabular">{evaluator.mobile}</bdi> : "—"}</Fact>
-              <Fact label={adminCopy.reviewer_email}>{evaluator.email ? <bdi dir="ltr">{evaluator.email}</bdi> : "—"}</Fact>
-              <Fact label={adminCopy.reviewer_account_email}>{evaluator.accountEmail ? <bdi dir="ltr">{evaluator.accountEmail}</bdi> : "—"}</Fact>
-              <Fact label={adminCopy.reviewer_employer}>{orDash(evaluator.employer)}</Fact>
+              <Fact label={fc.evaluator.id_number}><span className="tabular">{orDash(evaluator.idNumber)}</span></Fact>
+              <Fact label={fc.evaluator.name}>{evaluator.fullName}</Fact>
+              <Fact label={fc.evaluator.mobile}>{evaluator.mobile ? <bdi dir="ltr" className="tabular">{evaluator.mobile}</bdi> : "-"}</Fact>
+              <Fact label={fc.evaluator.email}>{evaluator.email ? <bdi dir="ltr">{evaluator.email}</bdi> : "-"}</Fact>
+              <Fact label={fc.evaluator.employer}>{orDash(evaluator.employer)}</Fact>
+              <Fact label={adminCopy.reviewer_account_email}>{evaluator.accountEmail ? <bdi dir="ltr">{evaluator.accountEmail}</bdi> : "-"}</Fact>
               <Fact label={adminCopy.reviewer_status}><ActiveState active={evaluator.isActive} /></Fact>
             </dl>
           </Panel>

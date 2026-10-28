@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, ChevronLeft } from "lucide-react";
-import { copy, adminCopy } from "@/lib/copy";
+import { copy, adminCopy, fieldsCopy } from "@/lib/copy";
 import { STATUS, toStatusKey, type StatusKey } from "@/lib/status";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import type { OrganizationListRow } from "@/services/organizationService";
@@ -42,8 +42,8 @@ const AdminAssociations = () => {
     { key: "registration", header: adminCopy.col_registration, cell: (r) => <span className="tabular">{r.registrationNumber}</span> },
     {
       key: "type",
-      header: adminCopy.assoc_type,
-      cell: (r) => <span className="text-muted-foreground">{r.entityType ? adminCopy.entity_types[r.entityType] : "—"}</span>,
+      header: fieldsCopy.entity_type,
+      cell: (r) => <span className="text-muted-foreground">{r.entityType ? fieldsCopy.entity_types[r.entityType] : "-"}</span>,
     },
     {
       key: "status",

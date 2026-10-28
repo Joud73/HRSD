@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  assignEvaluator, getEvaluator, listEvaluatorAssessments, listEvaluators, upsertEvaluatorProfile, type EvaluatorProfileInput,
+  assignEvaluator, createEvaluator, getEvaluator, listEvaluatorAssessments, listEvaluators, updateMyContact, upsertEvaluatorProfile,
+  type EvaluatorContactInput, type EvaluatorProfileInput,
 } from "@/services/evaluatorService";
 import { ensureAssessmentFor } from "@/services/assessmentService";
 
@@ -30,6 +31,24 @@ export function useUpsertEvaluatorProfile(userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: EvaluatorProfileInput) => upsertEvaluatorProfile(userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: EVALUATORS_KEY }),
+  });
+}
+
+/** Admin: new evaluator account plus profile. */
+export function useCreateEvaluator() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createEvaluator,
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: EVALUATORS_KEY }), queryClient.invalidateQueries({ queryKey: ["admin-users"] })]),
+  });
+}
+
+/** Evaluator: own contact fields. */
+export function useUpdateMyContact(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: EvaluatorContactInput) => updateMyContact(userId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: EVALUATORS_KEY }),
   });
 }

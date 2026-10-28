@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, Eye, Shuffle, UserCheck } from "lucide-react";
+import { ArrowLeftRight, Eye, Shuffle, UserCheck, UserPlus } from "lucide-react";
 import { copy, adminCopy } from "@/lib/copy";
 import { formatNumber } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAssociations } from "@/hooks/useAdminData";
-import { useEvaluators } from "@/hooks/useEvaluators";
+import { useCreateEvaluator, useEvaluators } from "@/hooks/useEvaluators";
 import type { EvaluatorListRow } from "@/services/evaluatorService";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,49 @@ import { FieldShell, FormError } from "@/components/shared/FormField";
 import { RowActionsTrigger, SearchField, Toolbar } from "@/components/admin/AdminParts";
 import ExportMenu from "@/components/admin/ExportMenu";
 import { dialogUi } from "@/components/admin/adminUi";
+import { FormDialog } from "@/components/admin/setup/SetupDialogs";
+import { EvaluatorFields } from "@/components/shared/ProfileFields";
+import { validateEvaluator, type EvaluatorErrors, type EvaluatorFormValues } from "@/components/shared/profileForm";
+
+const EMPTY_EVALUATOR: EvaluatorFormValues = { idNumber: "", fullName: "", mobile: "", email: "", employer: "" };
+
+/** New evaluator: the HRSD fields; the account is invited by email (create-user), then the profile is saved. */
+const CreateEvaluatorDialog = ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => {
+  const { toast } = useToast();
+  const create = useCreateEvaluator();
+  const [form, setForm] = useState<EvaluatorFormValues>(EMPTY_EVALUATOR);
+  const [errors, setErrors] = useState<EvaluatorErrors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const submit = () => {
+    if (create.isPending) return;
+    const errs = validateEvaluator(form, { requireEmail: true });
+    setErrors(errs);
+    setServerError(null);
+    if (Object.keys(errs).length > 0) return;
+    create.mutate(form, {
+      onSuccess: () => {
+        toast({ title: adminCopy.reviewers_created, description: adminCopy.invite_sent_note });
+        onOpenChange(false);
+      },
+      onError: (e) => setServerError(e.message),
+    });
+  };
+
+  return (
+    <FormDialog
+      open
+      onOpenChange={onOpenChange}
+      title={adminCopy.reviewers_create_title}
+      description={adminCopy.reviewers_create_desc}
+      submitLabel={adminCopy.reviewers_create_submit}
+      onSubmit={submit}
+    >
+      <FormError message={serverError} />
+      <EvaluatorFields idPrefix="new-reviewer" values={form} onChange={setForm} errors={errors} requireEmail />
+    </FormDialog>
+  );
+};
 
 type LoadFilter = "all" | "with" | "without";
 
@@ -44,6 +87,7 @@ const AdminReviewers = () => {
   // Dialogs
   const [distOpen, setDistOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Distribution form
@@ -198,7 +242,10 @@ const AdminReviewers = () => {
         breadcrumbs={[{ label: adminCopy.breadcrumb_root, to: "/admin" }, { label: copy.nav_admin.reviewers }]}
         actions={
           <>
-            <Button onClick={openAssign}>
+            <Button onClick={() => setCreateOpen(true)}>
+              <UserPlus aria-hidden /> {adminCopy.reviewers_create}
+            </Button>
+            <Button variant="outline" onClick={openAssign}>
               <Shuffle aria-hidden /> {adminCopy.reviewers_assign}
             </Button>
             <ExportMenu print={false} />
@@ -235,10 +282,13 @@ const AdminReviewers = () => {
               action={{ label: adminCopy.clear_filters, onClick: () => { setSearch(""); setLoadFilter("all"); } }}
             />
           ) : (
-            <EmptyState icon={UserCheck} message={adminCopy.reviewers_empty} action={{ label: adminCopy.reviewers_empty_action, to: "/admin/users" }} />
+            <EmptyState icon={UserCheck} message={adminCopy.reviewers_empty} action={{ label: adminCopy.reviewers_create, onClick: () => setCreateOpen(true) }} />
           )
         }
       />
+
+      {/* Mounted while open, so each opening starts empty */}
+      {createOpen && <CreateEvaluatorDialog onOpenChange={setCreateOpen} />}
 
       {/* Assign */}
       <Dialog open={distOpen} onOpenChange={setDistOpen}>

@@ -64,7 +64,7 @@ type ProfileRow = {
 
 const toEvaluator = (userId: string, p: ProfileRow | undefined, accountEmail: string | null): Evaluator => ({
   userId,
-  fullName: p?.full_name ?? accountEmail ?? "—",
+  fullName: p?.full_name ?? accountEmail ?? "-",
   idNumber: p?.id_number ?? null,
   mobile: p?.mobile ?? null,
   email: p?.email ?? null,
@@ -136,8 +136,8 @@ export async function listEvaluatorAssessments(userId: string): Promise<Evaluato
             assessmentId: r.assessments.id,
             status: r.assessments.status,
             organizationId: r.assessments.organization_id,
-            organizationName: r.assessments.organizations?.name ?? "—",
-            cycleName: r.assessments.assessment_cycles?.name ?? "—",
+            organizationName: r.assessments.organizations?.name ?? "-",
+            cycleName: r.assessments.assessment_cycles?.name ?? "-",
             assignedAt: r.assigned_at,
           },
         ]
@@ -160,6 +160,30 @@ export async function upsertEvaluatorProfile(userId: string, input: EvaluatorPro
     { onConflict: "user_id" }
   );
   if (error) throw mapError(error);
+}
+
+export type EvaluatorContactInput = Pick<EvaluatorProfileInput, "mobile" | "email" | "employer">;
+
+/** The evaluator edits their own contact fields and employer; the ID and name stay with the administrator. */
+export async function updateMyContact(userId: string, input: EvaluatorContactInput): Promise<void> {
+  const clean = (v: string | null) => (v && v.trim() ? v.trim() : null);
+  const { error } = await supabase
+    .from("evaluator_profiles")
+    .update({ mobile: clean(input.mobile), email: clean(input.email), employer: clean(input.employer) })
+    .eq("user_id", userId);
+  if (error) throw mapError(error);
+}
+
+/**
+ * Admin: creates the evaluator account (email invitation through the create-user function), then records
+ * the HRSD fields in evaluator_profiles. Returns the new user id.
+ */
+export async function createEvaluator(input: Omit<EvaluatorProfileInput, "isActive"> & { email: string }): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("create-user", { body: { email: input.email.trim(), role: "evaluator" } });
+  const message = (data as { error?: string } | null)?.error;
+  if (error || message || !data?.id) throw new ServiceError(message ? `${t.users_create_failed}: ${message}` : t.users_create_failed, error ?? undefined);
+  await upsertEvaluatorProfile(data.id as string, { ...input, isActive: true });
+  return data.id as string;
 }
 
 /** Assigns (or reassigns) the evaluator of an assessment. Admin only (MoM point 12); the database enforces it. */

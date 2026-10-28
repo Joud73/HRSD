@@ -117,6 +117,13 @@ export async function getOrganization(id: string): Promise<OrganizationDetail | 
   };
 }
 
+/** The signed-in organization's profile and delegate; null when the user has no organization. */
+export async function getMyOrganization(): Promise<OrganizationDetail | null> {
+  const { data, error } = await supabase.rpc("current_org_id");
+  if (error) throw error;
+  return data ? getOrganization(data) : null;
+}
+
 /** Empty strings are stored as null. */
 const clean = (v: string | null) => (v && v.trim() ? v.trim() : null);
 

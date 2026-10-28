@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getOrganization, listOrganizations, saveDelegate, updateOrganization,
+  getMyOrganization, getOrganization, listOrganizations, saveDelegate, updateOrganization,
   type DelegateInput, type OrganizationInput,
 } from "@/services/organizationService";
 
@@ -16,6 +16,11 @@ export function useOrganization(id: string | undefined) {
     queryFn: () => getOrganization(id as string),
     enabled: !!id,
   });
+}
+
+/** The signed-in organization (settings page). */
+export function useMyOrganization() {
+  return useQuery({ queryKey: [...ORGS_KEY, "mine"], queryFn: getMyOrganization });
 }
 
 /** Profile and delegate edits; each refreshes every organization query on success. */

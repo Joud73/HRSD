@@ -25,7 +25,7 @@ export async function getSubClassifications(): Promise<SubClassification[]> {
 }
 
 export async function getSocialDevCenters(): Promise<SocialDevCenter[]> {
-  const { data, error } = await supabase.from("social_dev_centers").select("id, code, name, region").order("name");
+  const { data, error } = await supabase.from("social_dev_centers").select("id, code, name, region").order("code");
   if (error) throw error;
   return data;
 }

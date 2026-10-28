@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, Inbox, XCircle } from "lucide-react";
-import { copy, adminCopy } from "@/lib/copy";
+import { copy, adminCopy, fieldsCopy as fc } from "@/lib/copy";
 import { formatDate, formatNumber } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +93,17 @@ const DetailRow = ({ label, children }: { label: string; children: ReactNode }) 
   </div>
 );
 
+const DetailSection = ({ title, children }: { title: string; children: ReactNode }) => (
+  <section className="flex flex-col pt-5">
+    <h3 className="pb-1 text-body font-hrsd-bold text-ink">{title}</h3>
+    <dl className="flex flex-col">{children}</dl>
+  </section>
+);
+
+/** Empty request fields show a dash, so the administrator sees every HRSD field before approving. */
+const val = (v: ReactNode) => (v === null || v === undefined || v === "" ? "-" : v);
+const ltr = (v: string | null, tabular = false) => (v ? <bdi dir="ltr" className={tabular ? "tabular" : undefined}>{v}</bdi> : "-");
+
 const AdminOrganizationRequests = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -160,7 +172,7 @@ const AdminOrganizationRequests = () => {
 
   const columns: Column<OrgRequest>[] = [
     { key: "name", header: adminCopy.col_association, cell: (r) => <span className="font-hrsd-medium">{r.organization_name}</span> },
-    { key: "reg", header: adminCopy.col_registration, cell: (r) => <span className="tabular text-muted-foreground">{r.registration_number || "—"}</span> },
+    { key: "reg", header: adminCopy.col_registration, cell: (r) => <span className="tabular text-muted-foreground">{r.registration_number || "-"}</span> },
     { key: "email", header: adminCopy.col_email, cell: (r) => <span dir="ltr" className="text-muted-foreground">{r.email}</span> },
     {
       key: "submitted",
@@ -247,52 +259,49 @@ const AdminOrganizationRequests = () => {
 
       {/* Request detail */}
       <Dialog open={!!detailTarget} onOpenChange={(open) => !open && setDetailTarget(null)}>
-        <DialogContent className={dialogUi.content} dir="rtl">
+        <DialogContent className={cn(dialogUi.content, "max-h-[90vh] overflow-y-auto")} dir="rtl">
           <DialogHeader className={dialogUi.header}>
             <DialogTitle className={dialogUi.title}>{detailTarget?.organization_name ?? adminCopy.requests_detail_title}</DialogTitle>
             <DialogDescription className={dialogUi.description}>{adminCopy.requests_detail_desc}</DialogDescription>
           </DialogHeader>
           {detailTarget && (
-            <dl className="flex flex-col">
-              <DetailRow label={adminCopy.col_request_status}><RequestStatusLabel status={detailTarget.request_status} /></DetailRow>
-              <DetailRow label={adminCopy.col_registration}><span className="tabular">{detailTarget.registration_number || "—"}</span></DetailRow>
-              <DetailRow label={adminCopy.col_email}><bdi dir="ltr">{detailTarget.email}</bdi></DetailRow>
-              {detailTarget.entity_type && <DetailRow label={adminCopy.assoc_type}>{adminCopy.entity_types[detailTarget.entity_type]}</DetailRow>}
-              {detailTarget.registration_date && (
-                <DetailRow label={adminCopy.assoc_registration_date}><span className="tabular">{formatDate(detailTarget.registration_date)}</span></DetailRow>
-              )}
-              {detailTarget.sub_classifications && (
-                <DetailRow label={adminCopy.assoc_sub_classification}>{detailTarget.sub_classifications.name}</DetailRow>
-              )}
-              {detailTarget.social_dev_centers && (
-                <DetailRow label={adminCopy.assoc_social_dev_center}>{detailTarget.social_dev_centers.name}</DetailRow>
-              )}
-              {(detailTarget.region || detailTarget.city || detailTarget.district) && (
-                <DetailRow label={`${adminCopy.assoc_region} / ${adminCopy.assoc_city} / ${adminCopy.assoc_district}`}>
-                  {[detailTarget.region, detailTarget.city, detailTarget.district].filter(Boolean).join(" / ")}
+            <div className="flex flex-col">
+              <dl className="flex flex-col">
+                <DetailRow label={adminCopy.col_request_status}><RequestStatusLabel status={detailTarget.request_status} /></DetailRow>
+                <DetailRow label={adminCopy.col_submitted_at}><span className="tabular">{formatDate(detailTarget.submitted_at)}</span></DetailRow>
+                <DetailRow label={adminCopy.col_email}>{ltr(detailTarget.email)}</DetailRow>
+              </dl>
+              <DetailSection title={fc.section_org}>
+                <DetailRow label={fc.entity_type}>{detailTarget.entity_type ? fc.entity_types[detailTarget.entity_type] : "-"}</DetailRow>
+                <DetailRow label={fc.org.registration_number}><span className="tabular">{val(detailTarget.registration_number)}</span></DetailRow>
+                <DetailRow label={fc.org.registration_date}>
+                  <span className="tabular">{detailTarget.registration_date ? formatDate(detailTarget.registration_date) : "-"}</span>
                 </DetailRow>
+                <DetailRow label={fc.org.name}>{val(detailTarget.organization_name)}</DetailRow>
+                <DetailRow label={fc.org.sub_classification}>{val(detailTarget.sub_classifications?.name)}</DetailRow>
+                <DetailRow label={fc.org.social_dev_center}>{val(detailTarget.social_dev_centers?.name)}</DetailRow>
+                <DetailRow label={fc.org.region}>{val(detailTarget.region)}</DetailRow>
+                <DetailRow label={fc.org.city}>{val(detailTarget.city)}</DetailRow>
+                <DetailRow label={fc.org.district}>{val(detailTarget.district)}</DetailRow>
+                <DetailRow label={fc.org.address}>{val(detailTarget.address)}</DetailRow>
+                <DetailRow label={fc.org.employees_count}>
+                  <span className="tabular">{detailTarget.employees_count === null ? "-" : formatNumber(detailTarget.employees_count)}</span>
+                </DetailRow>
+                <DetailRow label={fc.org.email}>{ltr(detailTarget.organization_email)}</DetailRow>
+                <DetailRow label={fc.org.website}>{ltr(detailTarget.website)}</DetailRow>
+              </DetailSection>
+              <DetailSection title={fc.section_delegate}>
+                <DetailRow label={fc.delegate.id_number}><span className="tabular">{val(detailTarget.delegate_id_number)}</span></DetailRow>
+                <DetailRow label={fc.delegate.name}>{val(detailTarget.delegate_name)}</DetailRow>
+                <DetailRow label={fc.delegate.mobile}>{ltr(detailTarget.delegate_mobile, true)}</DetailRow>
+                <DetailRow label={fc.delegate.email}>{ltr(detailTarget.delegate_email)}</DetailRow>
+              </DetailSection>
+              {detailTarget.notes && (
+                <dl className="flex flex-col pt-5">
+                  <DetailRow label={adminCopy.requests_notes}>{detailTarget.notes}</DetailRow>
+                </dl>
               )}
-              {detailTarget.address && <DetailRow label={adminCopy.assoc_address}>{detailTarget.address}</DetailRow>}
-              {detailTarget.employees_count !== null && (
-                <DetailRow label={adminCopy.assoc_employees}><span className="tabular">{formatNumber(detailTarget.employees_count)}</span></DetailRow>
-              )}
-              {detailTarget.organization_email && (
-                <DetailRow label={adminCopy.requests_org_email}><bdi dir="ltr">{detailTarget.organization_email}</bdi></DetailRow>
-              )}
-              {detailTarget.website && <DetailRow label={adminCopy.assoc_website}><bdi dir="ltr">{detailTarget.website}</bdi></DetailRow>}
-              <DetailRow label={adminCopy.col_submitted_at}><span className="tabular">{formatDate(detailTarget.submitted_at)}</span></DetailRow>
-              {detailTarget.delegate_name && <DetailRow label={adminCopy.requests_delegate_name}>{detailTarget.delegate_name}</DetailRow>}
-              {detailTarget.delegate_id_number && (
-                <DetailRow label={adminCopy.requests_delegate_id}><span className="tabular">{detailTarget.delegate_id_number}</span></DetailRow>
-              )}
-              {detailTarget.delegate_mobile && (
-                <DetailRow label={adminCopy.requests_delegate_mobile}><bdi dir="ltr" className="tabular">{detailTarget.delegate_mobile}</bdi></DetailRow>
-              )}
-              {detailTarget.delegate_email && (
-                <DetailRow label={adminCopy.requests_delegate_email}><bdi dir="ltr">{detailTarget.delegate_email}</bdi></DetailRow>
-              )}
-              {detailTarget.notes && <DetailRow label={adminCopy.requests_notes}>{detailTarget.notes}</DetailRow>}
-            </dl>
+            </div>
           )}
           {detailTarget?.request_status === "pending" && (
             <DialogFooter className={dialogUi.footer}>
