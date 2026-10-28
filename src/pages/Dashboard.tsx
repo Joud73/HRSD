@@ -7,7 +7,6 @@ import { useAssessment, useEvidences, useIndicatorScores, useProgress, useTrackS
 import { useMyOrganization } from "@/hooks/useOrganizations";
 import EmptyState from "@/components/shared/EmptyState";
 import { SkeletonPanel, SkeletonProgressRows } from "@/components/shared/Skeletons";
-import { scoreLevel } from "@/components/assessment/indicatorUtils";
 import IdentityBand from "@/components/dashboard/IdentityBand";
 import NextAction from "@/components/dashboard/NextAction";
 import SummaryPanel from "@/components/dashboard/SummaryPanel";
@@ -90,12 +89,12 @@ const Dashboard = () => {
           />
           {assessment && p && (
             <>
-              <SummaryPanel progress={p} evidenceCount={evidences.data?.length ?? 0} level={scoreLevel(p.scorePct, bands, labels)} firstUncounted={firstUncounted} />
+              <SummaryPanel progress={p} evidenceCount={evidences.data?.length ?? 0} firstUncounted={firstUncounted} />
               <TracksPanel tracks={tracks} levelLabels={labels} editable={editable} />
               <HowCalculated bands={bands} labels={labels} />
             </>
           )}
-          <HistoryTable bands={bands} labels={labels} />
+          <HistoryTable />
         </>
       )}
     </div>

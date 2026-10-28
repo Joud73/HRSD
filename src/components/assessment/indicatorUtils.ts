@@ -34,28 +34,14 @@ export function deadlineCountdown(deadline: string): { text: string; warning: bo
 }
 
 /** Colour of a result level (0, 1, 2, 4). Styling only: the level itself comes from the scoring views. */
-export const LEVEL_TONE: Record<number, { dot: string; text: string; chip: string; square: string }> = {
-  0: { dot: "bg-neutral", text: "text-ink", chip: "bg-neutral/10 text-ink", square: "border border-neutral bg-transparent" },
-  1: { dot: "bg-danger", text: "text-danger", chip: "bg-danger/10 text-danger", square: "bg-danger/15" },
-  2: { dot: "bg-warning", text: "text-warning-ink", chip: "bg-warning/15 text-warning-ink", square: "bg-warning/20" },
-  4: { dot: "bg-success", text: "text-success", chip: "bg-success/10 text-success", square: "bg-success" },
+export const LEVEL_TONE: Record<number, { dot: string; text: string; square: string }> = {
+  0: { dot: "bg-neutral", text: "text-ink", square: "border border-neutral bg-transparent" },
+  1: { dot: "bg-danger", text: "text-danger", square: "bg-danger/15" },
+  2: { dot: "bg-warning", text: "text-warning-ink", square: "bg-warning/20" },
+  4: { dot: "bg-success", text: "text-success", square: "bg-success" },
 };
 
 export const levelTone = (level: number) => LEVEL_TONE[level] ?? LEVEL_TONE[0];
-
-/**
- * The level of a percentage and its result label, read from the tool's level_bands and level_labels
- * (never hardcoded). The band is the last one whose minimum the percentage reaches.
- */
-export function scoreLevel(
-  pct: number,
-  bands: { level: number; minPct: number; maxPct: number }[],
-  labels: Record<number, string>
-): { level: number; label: string } {
-  const band = [...bands].sort((a, b) => a.minPct - b.minPct).filter((b) => pct >= b.minPct).pop();
-  const level = band?.level ?? 0;
-  return { level, label: labels[level] ?? "" };
-}
 
 /** Journey step (1 to 5) from the assessment status: self-assessment, sent, review, approval, improvement plan. */
 export function journeyStep(status: AssessmentStatus | undefined): number {

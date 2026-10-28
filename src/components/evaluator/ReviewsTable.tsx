@@ -4,12 +4,9 @@ import type { ReactNode } from "react";
 import { evaluatorCopy as t } from "@/lib/copy";
 import { formatDate, formatNumber } from "@/lib/format";
 import { reviewStatusKey } from "@/lib/status";
-import { cn } from "@/lib/utils";
-import { useApprovedTool } from "@/hooks/useApprovedTool";
 import type { ReviewRow } from "@/services/evaluatorService";
 import DataTable, { type Column } from "@/components/shared/DataTable";
 import StatusBadge from "@/components/shared/StatusBadge";
-import { levelTone, scoreLevel } from "@/components/assessment/indicatorUtils";
 
 interface ReviewsTableProps {
   rows: ReviewRow[];
@@ -21,9 +18,6 @@ interface ReviewsTableProps {
 /** Assigned assessments; a row opens /evaluator/assessments/:id. Shared by the dashboard and the full list. */
 const ReviewsTable = ({ rows, loading, caption, empty }: ReviewsTableProps) => {
   const navigate = useNavigate();
-  const tool = useApprovedTool();
-  const bands = tool.data?.levelBands ?? [];
-  const labels = tool.data?.levelLabels ?? {};
 
   const columns: Column<ReviewRow>[] = [
     {
@@ -42,15 +36,7 @@ const ReviewsTable = ({ rows, loading, caption, empty }: ReviewsTableProps) => {
     {
       key: "score",
       header: t.col_score,
-      cell: (r) => {
-        const { level, label } = scoreLevel(r.scorePct, bands, labels);
-        return (
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="tabular font-hrsd-medium">{formatNumber(r.scorePct)}%</span>
-            {label && <span className={cn("text-caption", levelTone(level).text)}>{label}</span>}
-          </span>
-        );
-      },
+      cell: (r) => <span className="tabular font-hrsd-medium">{formatNumber(r.scorePct)}%</span>,
     },
     {
       key: "submitted",

@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import EmptyState from "@/components/shared/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { SkeletonPanel } from "@/components/shared/Skeletons";
-import { assessmentStatusKey, levelTone, scoreLevel } from "@/components/assessment/indicatorUtils";
+import { assessmentStatusKey, levelTone } from "@/components/assessment/indicatorUtils";
 
 const range = (b: LevelBand) => (b.minPct === b.maxPct ? `${formatNumber(b.minPct)}%` : assessmentCopy.result_range_span(formatNumber(b.minPct), formatNumber(b.maxPct)));
 
@@ -47,8 +47,8 @@ export const HowCalculated = ({ bands, labels }: { bands: LevelBand[]; labels: R
   </Collapsible>
 );
 
-/** النتائج حسب الدورة: cycle, status, result (percentage and band label); an unapproved result is tagged تقديرية. */
-export const HistoryTable = ({ bands, labels }: { bands: LevelBand[]; labels: Record<number, string> }) => {
+/** النتائج حسب الدورة: cycle, status, overall result as a percentage only; an unapproved result is tagged تقديرية. */
+export const HistoryTable = () => {
   const { data, isLoading, isError, refetch } = useAssessmentHistory();
   return (
     <section aria-labelledby="history-title" className="rounded-lg border border-border bg-card">
@@ -73,7 +73,6 @@ export const HistoryTable = ({ bands, labels }: { bands: LevelBand[]; labels: Re
             </thead>
             <tbody>
               {data.map((row) => {
-                const { level, label } = scoreLevel(row.scorePct, bands, labels);
                 return (
                   <tr key={row.assessmentId} className="border-b border-border last:border-0">
                     <td className="px-5 py-3 font-hrsd-medium text-ink md:px-6">{row.cycleName}</td>
@@ -83,7 +82,6 @@ export const HistoryTable = ({ bands, labels }: { bands: LevelBand[]; labels: Re
                     <td className="px-5 py-3 md:px-6">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="tabular font-hrsd-bold text-ink">{formatNumber(row.scorePct)}%</span>
-                        {label && <span className={levelTone(level).text}>{label}</span>}
                         {row.status !== "approved" && (
                           <span className="rounded-full bg-section-alt px-2.5 py-0.5 text-caption text-muted-foreground">{t.history_estimated}</span>
                         )}

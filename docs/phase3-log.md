@@ -314,6 +314,10 @@ Adjustments to `rls_scenarios.md`, written when evaluator2 was unassigned: case 
 
 Advisor warnings (no ERROR): 22 are "security definer function executable by anon/authenticated" for assessment_editable_by_org, assessment_reviewable_by_me, current_org_id, ensure_assessment_for, ensure_my_assessment, has_role, is_admin, is_assigned_evaluator, is_evaluator, is_supervisor, transition_assessment (each checks `auth.uid()` inside, so anon gets false or an error); 1 is leaked-password protection disabled in Auth. Recommended follow-up: a migration revoking EXECUTE on these functions from anon, and turning on leaked-password protection in the dashboard.
 
+## Fixes before the demo
+
+- [x] 1. Overall results are a percentage only, without a level label: the dashboard's النتيجة التقديرية, the results-by-cycle table, and the evaluator's tables (the supervisor and admin tables show progress only, no score). Level labels stay at indicator level (workspace result bar, indicator squares and tooltips, legend, the band table in "كيف تُحتسب النتيجة؟"). `scoreLevel` and the `chip` tone are deleted.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

@@ -7,7 +7,6 @@ import { ease } from "@/lib/motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import type { AssessmentProgress, IndicatorScore } from "@/services/assessmentService";
 import CountUp from "@/components/shared/CountUp";
-import { levelTone } from "@/components/assessment/indicatorUtils";
 
 const RING = 44;
 
@@ -41,15 +40,14 @@ const Ring = ({ pct }: { pct: number }) => {
 interface SummaryPanelProps {
   progress: AssessmentProgress;
   evidenceCount: number;
-  level: { level: number; label: string };
   /** First indicator with items marked met but not counted (no evidence) */
   firstUncounted: IndicatorScore | undefined;
 }
 
 /** إنجاز التقييم and النتيجة التقديرية side by side, split by a rule (stacked on small screens). */
-const SummaryPanel = ({ progress: p, evidenceCount, level, firstUncounted }: SummaryPanelProps) => {
+/** The overall result is a percentage only: level labels belong to indicators. */
+const SummaryPanel = ({ progress: p, evidenceCount, firstUncounted }: SummaryPanelProps) => {
   const uncounted = p.itemsMet - p.itemsCounted;
-  const tone = levelTone(level.level);
   return (
     <section aria-label={t.summary_label} className="grid rounded-lg border border-border bg-card md:grid-cols-2">
       <div className="flex flex-col gap-4 p-5 md:p-6">
@@ -73,10 +71,7 @@ const SummaryPanel = ({ progress: p, evidenceCount, level, firstUncounted }: Sum
 
       <div className="flex flex-col gap-4 border-t border-border p-5 md:border-s md:border-t-0 md:p-6">
         <h2 className="text-h3 text-ink">{t.result_title}</h2>
-        <div className="flex flex-wrap items-center gap-3">
-          <CountUp value={p.scorePct} suffix="%" className="tabular text-h2 font-hrsd-bold text-ink" />
-          {level.label && <span className={`rounded-full px-3 py-1 text-small font-hrsd-medium ${tone.chip}`}>{level.label}</span>}
-        </div>
+        <CountUp value={p.scorePct} suffix="%" className="tabular text-h2 font-hrsd-bold text-ink" />
         <p className="text-small text-muted-foreground">{t.result_note}</p>
         {uncounted > 0 && firstUncounted && (
           <Link
