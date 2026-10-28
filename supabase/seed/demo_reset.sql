@@ -94,22 +94,28 @@ begin
   end if;
 end $$;
 
--- HRSD profile and delegate of both test organizations (organization card on the evaluator's review page)
+-- HRSD profile and delegate of both test organizations (organization card on the evaluator's review page).
+-- Lookups by official code; never SC-01 in demo data.
 do $$
-declare
-  v_sub    uuid := (select id from public.sub_classifications order by sort_order, name limit 1);
-  v_center uuid := (select id from public.social_dev_centers order by code limit 1);
-  v_region text := (select region from public.social_dev_centers order by code limit 1);
 begin
+  if not exists (select 1 from public.social_dev_centers where code in ('SDC-07', 'SDC-28') having count(*) = 2)
+     or not exists (select 1 from public.sub_classifications where code in ('SC-04', 'SC-05') having count(*) = 2) then
+    raise exception 'Demo lookups missing: SDC-07, SDC-28, SC-04, SC-05';
+  end if;
+
   update public.organizations set
-    entity_type = 'association', registration_date = date '2019-03-10', sub_classification_id = v_sub,
-    social_dev_center_id = v_center, region = v_region, city = 'الرياض', district = 'العليا',
+    entity_type = 'association', registration_date = date '2019-03-10',
+    sub_classification_id = (select id from public.sub_classifications where code = 'SC-04'),
+    social_dev_center_id  = (select id from public.social_dev_centers where code = 'SDC-07'),
+    region = 'الرياض', city = 'الرياض', district = 'العليا',
     address = 'طريق الملك فهد', employees_count = 24, email = 'info@org-a.example', website = 'https://org-a.example'
   where id = 'aaaaaaaa-0000-0000-0000-000000000001';
   update public.organizations set
-    entity_type = 'foundation', registration_date = date '2021-09-01', sub_classification_id = v_sub,
-    social_dev_center_id = v_center, region = v_region, city = 'الرياض', district = 'الملز',
-    address = 'شارع الجامعة', employees_count = 9, email = 'info@org-b.example', website = null
+    entity_type = 'foundation', registration_date = date '2021-09-01',
+    sub_classification_id = (select id from public.sub_classifications where code = 'SC-05'),
+    social_dev_center_id  = (select id from public.social_dev_centers where code = 'SDC-28'),
+    region = 'الشرقية', city = 'الدمام', district = 'الفيصلية',
+    address = 'شارع الملك سعود', employees_count = 9, email = 'info@org-b.example', website = null
   where id = 'aaaaaaaa-0000-0000-0000-000000000002';
 
   delete from public.delegates where organization_id in ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002')

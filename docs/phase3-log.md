@@ -317,6 +317,7 @@ Advisor warnings (no ERROR): 22 are "security definer function executable by ano
 ## Fixes before the demo
 
 - [x] 1. Overall results are a percentage only, without a level label: the dashboard's النتيجة التقديرية, the results-by-cycle table, and the evaluator's tables (the supervisor and admin tables show progress only, no score). Level labels stay at indicator level (workspace result bar, indicator squares and tooltips, legend, the band table in "كيف تُحتسب النتيجة؟"). `scoreLevel` and the `chip` tone are deleted.
+- [x] 2. Demo data by official code in `demo_reset.sql`: org A SDC-07 (الرياض), region الرياض, city الرياض, district العليا, SC-04 (خدمات الأسرة); org B SDC-28 (الدمام), region الشرقية, city الدمام, district الفيصلية, SC-05 (خدمات التنمية الاجتماعية). The script stops if any of the four codes is missing; SC-01 is no longer used.
 
 ## Decisions
 
