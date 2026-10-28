@@ -229,6 +229,35 @@ Cause of the owner's finding: the evaluator pages read the legacy `evaluator_ass
 - [x] A score is shown as score_pct plus the label of its band: `scoreLevel(pct, levelBands, levelLabels)` in `indicatorUtils`, read from the database, never hardcoded. Used by the dashboard and the evaluator tables.
 - [x] Fractions read "68 من 75": track progress facts, the indicator list, `ProgressRow`, the certificate score. New `copy.of`.
 
+### C. Organization dashboard redesign
+
+Design plan (frontend-design skill, written before code):
+
+1. Tokens: primary #0D3F29 for the identity band and primary actions; accent gold only on the current journey step (and the days number under 7 days); success, warning, danger, neutral only for levels and status; surface for the page, card white.
+2. Type: h1 40/48 (organization name, white), h2 28/36 for the two big numbers (days left, estimated score), h3 20/28 panel titles, body 16/26, small 14/20; at most two sizes per panel.
+3. The element that carries the page: the next-action panel (one sentence, one primary button), overlapping the band by 32px.
+4. Wireframe 1440px (RTL, start = right):
+   | band: [name h1 / رقم التسجيل · الدورة]                      [12 / يوماً متبقياً / الموعد النهائي] |
+   | band: (1)✓——(2)◎——(3)○——(4)○——(5)○  with one caption each                                        |
+   |   [next action: sentence ........................ [secondary] [primary]]  (-32px into band)     |
+   |   [summary: إنجاز التقييم ring + facts | النتيجة التقديرية 48% + chip + note + warning]          |
+   |   [tracks: legend; 5 rows: name, من, bar, badge, action; indicator squares]                    |
+   |   [كيف تُحتسب النتيجة؟ (closed)]   [النتائج حسب الدورة table]                                   |
+5. 390px: band stacks (name, then days), stepper becomes a vertical list; summary columns stack with a horizontal rule; track rows wrap with squares on their own line.
+6. Cards only where content is a unit (next action, summary, tracks, history); the explainer is a plain disclosure; no KPI card grid.
+7. Rules carry meaning: the vertical rule splits progress from result; row dividers in the tracks list.
+8. Motion once per mount, reduced motion respected: count-up, ring and bars fill 600ms with the existing ease, squares fade in with a 15ms stagger, next-action crossfade on state change, current step ring scales in.
+9. Copy: buttons name the result (ابدأ التقييم، متابعة التقييم: {المسار}، إرسال التقييم للمراجعة، استكمال التقييم); fractions "x من y"; missing data shows a dash.
+10. Generic-default review: no identical KPI cards, no gradient, no hover lift, one gold use, no all-caps or numbered markers beyond the real five-step sequence.
+
+Built (`components/dashboard/`):
+- [x] `IdentityBand`: organization name (h1), "رقم التسجيل {n} · {cycle}", days left (count-up once, gold under 7 days, "انتهت فترة التقييم الذاتي" after), "الموعد النهائي {date}", and `JourneyStepper tone="inverse"` with one caption per step (done solid with check, current gold ring scaling in once, upcoming at 40 %; vertical list under md).
+- [x] `NextAction`: one sentence and one primary action per state (start, in progress with the remaining tracks and an outline submit, all ticked, returned with the note, in review since {date}, approved with "عرض النتيجة" disabled, no cycle; also period not open yet and period closed). Crossfades on state change.
+- [x] `SummaryPanel`: إنجاز التقييم (ring of progress_pct, "{met} من {total} محدداً", indicators complete and evidences) and النتيجة التقديرية (score_pct, band label chip, note, and the warning link to the first indicator with items met without evidence), split by a rule.
+- [x] `TracksPanel`: legend from `level_labels`; per track the items "x من y", a bar, status, action (ابدأ / تابع / عرض المسار) and one 14px square per indicator (tooltip and aria-label "المؤشر {n}: {label} ({pct}%)") opening `/assessment/{track}?indicator={id}`. The workspace now reads `?indicator=`.
+- [x] `ResultsSections`: "كيف تُحتسب النتيجة؟" (closed; three lines; band table from `level_bands` and `level_labels`) and the results-by-cycle table (الدورة، الحالة، النتيجة with band label; unapproved tagged "تقديرية").
+- Critique after build (screenshots at 1440 and 390): `cn()` (tailwind-merge) dropped the custom `text-h1` size when a text colour followed, so the days number rendered small; those class lists are now plain strings. Removed one element: the "1." prefix before each track name. 390 px: band stacks, stepper vertical, summary columns stack, track rows wrap.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

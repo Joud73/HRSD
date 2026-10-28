@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Info, Loader2, RotateCcw } from "lucide-react";
 import { assessmentCopy as t } from "@/lib/copy";
@@ -290,7 +291,9 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
   const exclusions = useExcludedItems(assessment?.cycleId);
   const { saving, savedAt } = useSaveStatus(id);
 
-  const [selectedId, setSelectedId] = useState("");
+  // ?indicator={id} (dashboard indicator squares, warnings) opens that indicator first
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState(() => searchParams.get("indicator") ?? "");
   const formTopRef = useRef<HTMLDivElement | null>(null);
 
   const rawTrack = tool.data?.tracks.find((tr) => tr.number === trackNumber);

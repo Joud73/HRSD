@@ -34,11 +34,11 @@ export function deadlineCountdown(deadline: string): { text: string; warning: bo
 }
 
 /** Colour of a result level (0, 1, 2, 4). Styling only: the level itself comes from the scoring views. */
-export const LEVEL_TONE: Record<number, { dot: string; text: string }> = {
-  0: { dot: "bg-neutral", text: "text-ink" },
-  1: { dot: "bg-danger", text: "text-danger" },
-  2: { dot: "bg-warning", text: "text-warning-ink" },
-  4: { dot: "bg-success", text: "text-success" },
+export const LEVEL_TONE: Record<number, { dot: string; text: string; chip: string; square: string }> = {
+  0: { dot: "bg-neutral", text: "text-ink", chip: "bg-neutral/10 text-ink", square: "border border-neutral bg-transparent" },
+  1: { dot: "bg-danger", text: "text-danger", chip: "bg-danger/10 text-danger", square: "bg-danger/15" },
+  2: { dot: "bg-warning", text: "text-warning-ink", chip: "bg-warning/15 text-warning-ink", square: "bg-warning/20" },
+  4: { dot: "bg-success", text: "text-success", chip: "bg-success/10 text-success", square: "bg-success" },
 };
 
 export const levelTone = (level: number) => LEVEL_TONE[level] ?? LEVEL_TONE[0];
@@ -55,4 +55,17 @@ export function scoreLevel(
   const band = [...bands].sort((a, b) => a.minPct - b.minPct).filter((b) => pct >= b.minPct).pop();
   const level = band?.level ?? 0;
   return { level, label: labels[level] ?? "" };
+}
+
+/** Journey step (1 to 5) from the assessment status: self-assessment, sent, review, approval, improvement plan. */
+export function journeyStep(status: AssessmentStatus | undefined): number {
+  switch (status) {
+    case "submitted":
+    case "under_review":
+      return 3;
+    case "approved":
+      return 5;
+    default:
+      return 1;
+  }
 }

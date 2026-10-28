@@ -19,6 +19,8 @@ interface SubmitAssessmentProps {
   editable: boolean;
   /** Called after the database accepted the submission */
   onSubmitted: () => void;
+  /** outline when it sits beside a primary action (dashboard) */
+  variant?: "default" | "outline";
 }
 
 const Fact = ({ label, value, total }: { label: string; value: number; total?: number }) => (
@@ -130,7 +132,7 @@ const SubmitDialog = ({ assessmentId, onOpenChange, onSubmitted }: { assessmentI
 };
 
 /** "إرسال التقييم للمراجعة": opens the submit dialog; disabled with a tooltip when the assessment is not editable. */
-const SubmitAssessment = ({ assessmentId, editable, onSubmitted }: SubmitAssessmentProps) => {
+const SubmitAssessment = ({ assessmentId, editable, onSubmitted, variant = "default" }: SubmitAssessmentProps) => {
   const [open, setOpen] = useState(false);
 
   if (!editable || !assessmentId) {
@@ -139,7 +141,7 @@ const SubmitAssessment = ({ assessmentId, editable, onSubmitted }: SubmitAssessm
         <TooltipTrigger asChild>
           {/* A disabled button fires no pointer events, so the wrapper carries focus and hover */}
           <span tabIndex={0} className="inline-flex rounded-md focus-ring">
-            <Button disabled aria-describedby="submit-disabled-tip" className="pointer-events-none">
+            <Button variant={variant} disabled aria-describedby="submit-disabled-tip" className="pointer-events-none">
               <Send aria-hidden />
               {t.submit_action}
             </Button>
@@ -154,7 +156,7 @@ const SubmitAssessment = ({ assessmentId, editable, onSubmitted }: SubmitAssessm
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button onClick={() => setOpen(true)}>
+      <Button variant={variant} onClick={() => setOpen(true)}>
         <Send aria-hidden />
         {t.submit_action}
       </Button>
