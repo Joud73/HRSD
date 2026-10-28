@@ -34,7 +34,7 @@ const StatusChart = ({ statusCounts }: { statusCounts: { label: string; count: n
   const reduced = useReducedMotion();
 
   const data = useMemo<Datum[]>(() => {
-    const totals: Record<StatusKey, number> = { not_started: 0, in_progress: 0, submitted: 0, returned: 0, approved: 0 };
+    const totals: Record<StatusKey, number> = { not_started: 0, in_progress: 0, submitted: 0, under_review: 0, returned: 0, approved: 0 };
     for (const s of statusCounts) totals[assessmentStatus(s.label)] += s.count;
     return ORDER.map((key) => ({ key, label: STATUS[key].label, count: totals[key] }));
   }, [statusCounts]);

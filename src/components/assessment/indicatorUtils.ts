@@ -42,3 +42,17 @@ export const LEVEL_TONE: Record<number, { dot: string; text: string }> = {
 };
 
 export const levelTone = (level: number) => LEVEL_TONE[level] ?? LEVEL_TONE[0];
+
+/**
+ * The level of a percentage and its result label, read from the tool's level_bands and level_labels
+ * (never hardcoded). The band is the last one whose minimum the percentage reaches.
+ */
+export function scoreLevel(
+  pct: number,
+  bands: { level: number; minPct: number; maxPct: number }[],
+  labels: Record<number, string>
+): { level: number; label: string } {
+  const band = [...bands].sort((a, b) => a.minPct - b.minPct).filter((b) => pct >= b.minPct).pop();
+  const level = band?.level ?? 0;
+  return { level, label: labels[level] ?? "" };
+}

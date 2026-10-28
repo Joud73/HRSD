@@ -13,6 +13,7 @@
 --            (shows the warning in the submit dialog)
 --   tracks 4 and 5: empty
 -- Org B: draft with no responses or evidences.
+-- Both: HRSD profile fields and one delegate (test values), so the evaluator's organization card is complete.
 
 begin;
 
@@ -91,6 +92,34 @@ begin
   if v_eval is not null then
     insert into public.assessment_reviews (assessment_id, evaluator_id, assigned_by) values (v_a, v_eval, v_by);
   end if;
+end $$;
+
+-- HRSD profile and delegate of both test organizations (organization card on the evaluator's review page)
+do $$
+declare
+  v_sub    uuid := (select id from public.sub_classifications order by sort_order, name limit 1);
+  v_center uuid := (select id from public.social_dev_centers order by code limit 1);
+  v_region text := (select region from public.social_dev_centers order by code limit 1);
+begin
+  update public.organizations set
+    entity_type = 'association', registration_date = date '2019-03-10', sub_classification_id = v_sub,
+    social_dev_center_id = v_center, region = v_region, city = 'الرياض', district = 'العليا',
+    address = 'طريق الملك فهد', employees_count = 24, email = 'info@org-a.example', website = 'https://org-a.example'
+  where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  update public.organizations set
+    entity_type = 'foundation', registration_date = date '2021-09-01', sub_classification_id = v_sub,
+    social_dev_center_id = v_center, region = v_region, city = 'الرياض', district = 'الملز',
+    address = 'شارع الجامعة', employees_count = 9, email = 'info@org-b.example', website = null
+  where id = 'aaaaaaaa-0000-0000-0000-000000000002';
+
+  delete from public.delegates where organization_id in ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002')
+     or user_id in (select id from auth.users where email in ('org.a@tamkeen.local', 'org.b@tamkeen.local'));
+  insert into public.delegates (organization_id, user_id, full_name, id_number, mobile, email)
+  select 'aaaaaaaa-0000-0000-0000-000000000001', id, 'سارة العتيبي', '1000000001', '0550000001', 'delegate.a@org-a.example'
+  from auth.users where email = 'org.a@tamkeen.local';
+  insert into public.delegates (organization_id, user_id, full_name, id_number, mobile, email)
+  select 'aaaaaaaa-0000-0000-0000-000000000002', id, 'خالد الشمري', '1000000002', '0550000002', 'delegate.b@org-b.example'
+  from auth.users where email = 'org.b@tamkeen.local';
 end $$;
 
 commit;

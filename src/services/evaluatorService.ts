@@ -34,6 +34,22 @@ export interface EvaluatorAssessment {
   assignedAt: string;
 }
 
+/** One assessment assigned to the signed-in evaluator (assessment_reviews), with its organization and progress. */
+export interface ReviewRow {
+  assessmentId: string;
+  status: AssessmentStatus;
+  submittedAt: string | null;
+  assignedAt: string;
+  organizationId: string;
+  organizationName: string;
+  registrationNumber: string;
+  cycleName: string;
+  /** yyyy-mm-dd */
+  reviewStart: string;
+  progressPct: number;
+  scorePct: number;
+}
+
 export interface EvaluatorProfileInput {
   fullName: string;
   idNumber: string | null;
@@ -143,6 +159,45 @@ export async function listEvaluatorAssessments(userId: string): Promise<Evaluato
         ]
       : []
   );
+}
+
+/** Assessments assigned to me, newest assignment first. Reads only assessment_reviews and the real assessment tables. */
+export async function listMyReviews(): Promise<ReviewRow[]> {
+  const { data: session } = await supabase.auth.getSession();
+  const me = session.session?.user.id;
+  if (!me) return [];
+  const { data, error } = await supabase
+    .from("assessment_reviews")
+    .select(
+      "assigned_at, assessments!inner(id, status, submitted_at, organization_id, organizations(name, registration_number), assessment_cycles(name, review_start))"
+    )
+    .eq("evaluator_id", me)
+    .order("assigned_at", { ascending: false });
+  if (error) throw error;
+  const ids = data.map((r) => r.assessments.id);
+  const progress = new Map<string, { progress_pct: number | null; score_pct: number | null }>();
+  if (ids.length > 0) {
+    const res = await supabase.from("v_assessment_progress").select("assessment_id, progress_pct, score_pct").in("assessment_id", ids);
+    if (res.error) throw res.error;
+    for (const p of res.data) if (p.assessment_id) progress.set(p.assessment_id, p);
+  }
+  return data.map((r) => {
+    const a = r.assessments;
+    const p = progress.get(a.id);
+    return {
+      assessmentId: a.id,
+      status: a.status,
+      submittedAt: a.submitted_at,
+      assignedAt: r.assigned_at,
+      organizationId: a.organization_id,
+      organizationName: a.organizations?.name ?? "-",
+      registrationNumber: a.organizations?.registration_number ?? "-",
+      cycleName: a.assessment_cycles?.name ?? "-",
+      reviewStart: a.assessment_cycles?.review_start ?? "",
+      progressPct: p?.progress_pct ?? 0,
+      scorePct: p?.score_pct ?? 0,
+    };
+  });
 }
 
 export async function upsertEvaluatorProfile(userId: string, input: EvaluatorProfileInput): Promise<void> {

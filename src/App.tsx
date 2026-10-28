@@ -43,7 +43,7 @@ import AdminRoles from "./pages/AdminRoles";
 import AdminOrganizationRequests from "./pages/AdminOrganizationRequests";
 import EvaluatorDashboard from "./pages/EvaluatorDashboard";
 import EvaluatorAssignments from "./pages/EvaluatorAssignments";
-import EvaluationDetails from "./pages/EvaluationDetails";
+import EvaluatorReview from "./pages/EvaluatorReview";
 import PendingApproval from "./pages/PendingApproval";
 import AdminProfile from "./pages/AdminProfile";
 import EvaluatorProfile from "./pages/EvaluatorProfile";
@@ -113,7 +113,7 @@ const App = () => (
                 <Route path="/admin/profile" element={<AdminProfile />} />
               </Route>
 
-              {/* Evaluator */}
+              {/* Supervisor */}
               <Route element={guard(["supervisor"], <AppShell role="supervisor" />)}>
                 <Route path="/supervisor" element={<SupervisorDashboard />} />
                 <Route path="/supervisor/organizations" element={<SupervisorOrganizations />} />
@@ -121,10 +121,12 @@ const App = () => (
                 <Route path="/supervisor/profile" element={<AccountProfile role="supervisor" home="/supervisor" />} />
               </Route>
 
+              {/* Evaluator */}
               <Route element={guard(["evaluator"], <AppShell role="evaluator" />)}>
                 <Route path="/evaluator" element={<EvaluatorDashboard />} />
                 <Route path="/evaluator/assignments" element={<EvaluatorAssignments />} />
-                <Route path="/evaluator/assignment/:assignmentId" element={<EvaluationDetails />} />
+                <Route path="/evaluator/assessments/:assessmentId" element={<EvaluatorReview />} />
+                <Route path="/evaluator/assignment/:assignmentId" element={<Navigate to="/evaluator/assignments" replace />} />
                 <Route path="/evaluator/profile" element={<EvaluatorProfile />} />
               </Route>
             </Routes>

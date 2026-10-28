@@ -1,21 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftRight, Eye, Shuffle, UserCheck, UserPlus } from "lucide-react";
+import { Eye, UserCheck, UserPlus } from "lucide-react";
 import { copy, adminCopy } from "@/lib/copy";
 import { formatNumber } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAdminAssociations } from "@/hooks/useAdminData";
 import { useCreateEvaluator, useEvaluators } from "@/hooks/useEvaluators";
 import type { EvaluatorListRow } from "@/services/evaluatorService";
 import { Button } from "@/components/ui/button";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -23,10 +14,9 @@ import PageHeader from "@/components/shared/PageHeader";
 import DataTable, { type Column } from "@/components/shared/DataTable";
 import EmptyState from "@/components/shared/EmptyState";
 import SegmentedControl from "@/components/shared/SegmentedControl";
-import { FieldShell, FormError } from "@/components/shared/FormField";
+import { FormError } from "@/components/shared/FormField";
 import { RowActionsTrigger, SearchField, Toolbar } from "@/components/admin/AdminParts";
 import ExportMenu from "@/components/admin/ExportMenu";
-import { dialogUi } from "@/components/admin/adminUi";
 import { FormDialog } from "@/components/admin/setup/SetupDialogs";
 import { EvaluatorFields } from "@/components/shared/ProfileFields";
 import { validateEvaluator, type EvaluatorErrors, type EvaluatorFormValues } from "@/components/shared/profileForm";
@@ -74,32 +64,13 @@ const CreateEvaluatorDialog = ({ onOpenChange }: { onOpenChange: (open: boolean)
 type LoadFilter = "all" | "with" | "without";
 
 const AdminReviewers = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: evaluators, isLoading } = useEvaluators();
-  const { data: associations } = useAdminAssociations();
 
   const [search, setSearch] = useState("");
   const [loadFilter, setLoadFilter] = useState<LoadFilter>("all");
-
-  // Dialogs
-  const [distOpen, setDistOpen] = useState(false);
-  const [reassignOpen, setReassignOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  // Distribution form
-  const [distEvaluator, setDistEvaluator] = useState("");
-  const [distAssociation, setDistAssociation] = useState("");
-  const [distYear, setDistYear] = useState(String(new Date().getFullYear()));
-  const [distLoading, setDistLoading] = useState(false);
-
-  // Reassign form
-  const [reassignAssignment, setReassignAssignment] = useState("");
-  const [reassignTo, setReassignTo] = useState("");
-  const [reassignLoading, setReassignLoading] = useState(false);
 
   const searched = useMemo(() => {
     return (evaluators || []).filter((r) => {
@@ -113,78 +84,6 @@ const AdminReviewers = () => {
     loadFilter === "all" ? true : loadFilter === "with" ? r.counts.total > 0 : r.counts.total === 0
   );
   const filtersOn = search !== "" || loadFilter !== "all";
-
-  const openAssign = () => { setFormError(null); setDistOpen(true); };
-  const openReassign = () => { setFormError(null); setReassignOpen(true); };
-
-  const createAssignment = async () => {
-    if (!distEvaluator || !distAssociation || !distYear) {
-      setFormError(adminCopy.assign_error);
-      return;
-    }
-    setFormError(null);
-    setDistLoading(true);
-    // Look up organization_id from profile
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", distAssociation)
-      .single();
-    const { error } = await supabase.from("evaluator_assignments").insert({
-      evaluator_id: distEvaluator,
-      association_id: distAssociation,
-      organization_id: prof?.organization_id || null,
-      year: Number(distYear),
-      status: "not_started",
-      completion_percentage: 0,
-    });
-    setDistLoading(false);
-    if (error) {
-      toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ["evaluators"] });
-    queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
-    queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
-    setDistOpen(false);
-    setDistEvaluator("");
-    setDistAssociation("");
-    toast({ title: adminCopy.assign_done });
-  };
-
-  const executeReassign = async () => {
-    if (!reassignAssignment || !reassignTo) {
-      setFormError(adminCopy.reassign_error);
-      return;
-    }
-    setFormError(null);
-    setReassignLoading(true);
-    const { error } = await supabase
-      .from("evaluator_assignments")
-      .update({ evaluator_id: reassignTo })
-      .eq("id", reassignAssignment);
-    setReassignLoading(false);
-    if (error) {
-      toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ["evaluators"] });
-    queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
-    setReassignOpen(false);
-    setReassignAssignment("");
-    setReassignTo("");
-    toast({ title: adminCopy.reassign_done });
-  };
-
-  // Unassigned associations for the distribution dialog
-  const unassignedAssociations = useMemo(() => {
-    return (associations || []).filter((a) => !a.assignment_id);
-  }, [associations]);
-
-  // Active assignments for reassign dialog
-  const activeAssignments = useMemo(() => {
-    return (associations || []).filter((a) => a.assignment_id);
-  }, [associations]);
 
   const columns: Column<EvaluatorListRow>[] = [
     {
@@ -221,18 +120,11 @@ const AdminReviewers = () => {
             <DropdownMenuItem className="gap-2 text-small" onSelect={() => navigate(`/admin/reviewers/${r.userId}`)}>
               <Eye aria-hidden className="h-4 w-4" /> {adminCopy.reviewers_view}
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 text-small" onSelect={openReassign}>
-              <ArrowLeftRight aria-hidden className="h-4 w-4" /> {adminCopy.reviewers_reassign}
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
   ];
-
-  const evaluatorOptions = (evaluators || []).map((r) => (
-    <SelectItem key={r.userId} value={r.userId}>{r.fullName}</SelectItem>
-  ));
 
   return (
     <>
@@ -244,9 +136,6 @@ const AdminReviewers = () => {
           <>
             <Button onClick={() => setCreateOpen(true)}>
               <UserPlus aria-hidden /> {adminCopy.reviewers_create}
-            </Button>
-            <Button variant="outline" onClick={openAssign}>
-              <Shuffle aria-hidden /> {adminCopy.reviewers_assign}
             </Button>
             <ExportMenu print={false} />
           </>
@@ -289,96 +178,6 @@ const AdminReviewers = () => {
 
       {/* Mounted while open, so each opening starts empty */}
       {createOpen && <CreateEvaluatorDialog onOpenChange={setCreateOpen} />}
-
-      {/* Assign */}
-      <Dialog open={distOpen} onOpenChange={setDistOpen}>
-        <DialogContent dir="rtl" className={dialogUi.content}>
-          <DialogHeader className={dialogUi.header}>
-            <DialogTitle className={dialogUi.title}>{adminCopy.assign_title}</DialogTitle>
-            <DialogDescription className={dialogUi.description}>{adminCopy.assign_desc}</DialogDescription>
-          </DialogHeader>
-          <div className={dialogUi.body}>
-            <FormError message={formError} />
-            <FieldShell id="assign-evaluator" label={adminCopy.assign_evaluator} required>
-              <Select value={distEvaluator} onValueChange={setDistEvaluator} dir="rtl">
-                <SelectTrigger id="assign-evaluator" className="h-12 text-body">
-                  <SelectValue placeholder={adminCopy.assign_evaluator_placeholder} />
-                </SelectTrigger>
-                <SelectContent>{evaluatorOptions}</SelectContent>
-              </Select>
-            </FieldShell>
-            <FieldShell id="assign-association" label={adminCopy.assign_association} required>
-              <Select value={distAssociation} onValueChange={setDistAssociation} dir="rtl">
-                <SelectTrigger id="assign-association" className="h-12 text-body">
-                  <SelectValue placeholder={adminCopy.assign_association_placeholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  {unassignedAssociations.length > 0
-                    ? unassignedAssociations.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                      ))
-                    : // Show all associations if none unassigned
-                      (associations || []).map((a) => (
-                        <SelectItem key={`${a.id}-${a.assignment_id}`} value={a.id}>{a.name}</SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-            </FieldShell>
-            <FieldShell id="assign-year" label={adminCopy.assign_year} required>
-              <Select value={distYear} onValueChange={setDistYear} dir="rtl">
-                <SelectTrigger id="assign-year" className="h-12 text-body"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2026">2026</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                </SelectContent>
-              </Select>
-            </FieldShell>
-          </div>
-          <DialogFooter className={dialogUi.footer}>
-            <Button onClick={createAssignment} disabled={distLoading}>{adminCopy.assign_submit}</Button>
-            <DialogClose asChild><Button variant="outline">{adminCopy.cancel}</Button></DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reassign */}
-      <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
-        <DialogContent dir="rtl" className={dialogUi.content}>
-          <DialogHeader className={dialogUi.header}>
-            <DialogTitle className={dialogUi.title}>{adminCopy.reassign_title}</DialogTitle>
-            <DialogDescription className={dialogUi.description}>{adminCopy.reassign_desc}</DialogDescription>
-          </DialogHeader>
-          <div className={dialogUi.body}>
-            <FormError message={formError} />
-            <FieldShell id="reassign-assignment" label={adminCopy.reassign_assignment} required>
-              <Select value={reassignAssignment} onValueChange={setReassignAssignment} dir="rtl">
-                <SelectTrigger id="reassign-assignment" className="h-12 text-body">
-                  <SelectValue placeholder={adminCopy.reassign_assignment_placeholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeAssignments.map((a) => (
-                    <SelectItem key={a.assignment_id} value={a.assignment_id!}>
-                      {a.name} ({a.year})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldShell>
-            <FieldShell id="reassign-to" label={adminCopy.reassign_to} required>
-              <Select value={reassignTo} onValueChange={setReassignTo} dir="rtl">
-                <SelectTrigger id="reassign-to" className="h-12 text-body">
-                  <SelectValue placeholder={adminCopy.assign_evaluator_placeholder} />
-                </SelectTrigger>
-                <SelectContent>{evaluatorOptions}</SelectContent>
-              </Select>
-            </FieldShell>
-          </div>
-          <DialogFooter className={dialogUi.footer}>
-            <Button onClick={executeReassign} disabled={reassignLoading}>{adminCopy.reassign_submit}</Button>
-            <DialogClose asChild><Button variant="outline">{adminCopy.cancel}</Button></DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

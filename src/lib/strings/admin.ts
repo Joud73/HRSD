@@ -61,7 +61,6 @@ export const adminCopy = {
   recent_title: "أحدث التقييمات",
   recent_view_all: "عرض كل الجمعيات",
   recent_empty: "لا توجد تقييمات مسندة بعد.",
-  recent_empty_action: "إسناد تقييم",
 
   // ---------- Tables (shared column labels) ----------
   col_association: "الجمعية",
@@ -252,7 +251,6 @@ export const adminCopy = {
 
   // ---------- Reviewers ----------
   reviewers_desc: "المدققون والتقييمات المسندة إلى كل مدقق",
-  reviewers_assign: "إسناد تقييم",
   reviewers_search: "ابحث بالاسم أو البريد الإلكتروني",
   reviewers_filter: "التقييمات المسندة",
   reviewers_with: "لديهم تقييمات",
@@ -264,25 +262,6 @@ export const adminCopy = {
   reviewers_create_submit: "إضافة المدقق",
   reviewers_created: "أُضيف المدقق",
   reviewers_view: "عرض بيانات المدقق",
-  reviewers_reassign: "إعادة إسناد تقييم",
-  assign_title: "إسناد تقييم",
-  assign_desc: "اختر المدقق والجمعية وسنة التقييم.",
-  assign_evaluator: "المدقق",
-  assign_evaluator_placeholder: "اختر مدققاً",
-  assign_association: "الجمعية",
-  assign_association_placeholder: "اختر جمعية",
-  assign_year: "سنة التقييم",
-  assign_submit: "إسناد التقييم",
-  assign_error: "اختر المدقق والجمعية وسنة التقييم.",
-  assign_done: "تم إسناد التقييم",
-  reassign_title: "إعادة إسناد تقييم",
-  reassign_desc: "انقل التقييم إلى مدقق آخر.",
-  reassign_assignment: "التقييم",
-  reassign_assignment_placeholder: "اختر تقييماً",
-  reassign_to: "المدقق الجديد",
-  reassign_submit: "نقل التقييم",
-  reassign_error: "اختر التقييم والمدقق الجديد.",
-  reassign_done: "تمت إعادة إسناد التقييم",
 
   // ---------- Reviewer detail ----------
   reviewer_detail_desc: "بيانات المدقق والتقييمات المسندة إليه",

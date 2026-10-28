@@ -368,6 +368,49 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
   const title = `${t.page_title_prefix} ${track.name}`;
   const standardCount = track.standards.length;
 
+  const progressPanel = (
+    <section aria-label={t.progress_label} className="rounded-lg border border-border bg-card p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <p className="text-small font-hrsd-medium text-ink">
+          {t.progress_label} <span className="tabular ms-2 text-primary">{formatNumber(trackPct)}%</span>
+        </p>
+        <dl className="flex flex-wrap gap-x-6 gap-y-1 text-small text-muted-foreground">
+          <div className="flex gap-2">
+            <dt>{t.progress_items}</dt>
+            <dd className="tabular font-hrsd-medium text-ink">
+              {formatNumber(trackMet)} / {formatNumber(trackTotal)}
+            </dd>
+          </div>
+          <div className="flex gap-2">
+            <dt>{t.progress_indicators}</dt>
+            <dd className="tabular font-hrsd-medium text-ink">
+              {formatNumber(trackComplete)} / {formatNumber(indicators.length)}
+            </dd>
+          </div>
+          <div className="flex gap-2">
+            <dt>{t.progress_evidence}</dt>
+            <dd className="tabular font-hrsd-medium text-ink">{formatNumber(trackWithEvidence)}</dd>
+          </div>
+        </dl>
+      </div>
+      <div
+        role="progressbar"
+        aria-label={t.progress_label}
+        aria-valuemin={0}
+        aria-valuemax={trackTotal}
+        aria-valuenow={trackMet}
+        className="mt-3 h-2 overflow-hidden rounded-full bg-section-alt"
+      >
+        <motion.div
+          className="h-full rounded-full bg-primary"
+          initial={false}
+          animate={{ width: `${trackPct}%` }}
+          transition={reduced ? { duration: 0 } : { duration: 0.6, ease }}
+        />
+      </div>
+    </section>
+  );
+
   const goTo = (index: number) => {
     const next = indicators[index];
     if (!next) return;
@@ -375,87 +418,55 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
     formTopRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   };
 
+  // Review mode (the evaluator, scope by id): no page header, banner or submit; the host page frames it
+  const reviewMode = scope.kind === "assessment";
+
   return (
     <>
-      <PageHeader
-        title={title}
-        description={`${counted(standardCount, t.standards_forms)}، ${counted(indicators.length, t.indicators_forms)}. ${t.page_desc}`}
-        breadcrumbs={[...breadcrumbs, { label: title }]}
-        actions={<SubmitAssessment assessmentId={id} editable={editable} onSubmitted={onSubmitted} />}
-        meta={
-          <div className="flex flex-col gap-4">
-            {banner}
-            <dl aria-label={t.facts_label} className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg border border-border bg-card px-5 py-4">
-              <Fact label={t.status_label}>
-                <StatusBadge status={assessmentStatusKey(assessment.status, progress.data)} />
-              </Fact>
-              <Fact label={t.cycle_label}>{assessment.cycle.name}</Fact>
-              <Fact label={t.deadline_label}>
-                <span className="tabular">{formatDate(assessment.deadline)}</span>
-                {editable && (
-                  <span className={cn("ms-2 text-caption font-hrsd-regular", countdown.warning ? "text-warning-ink" : "text-muted-foreground")}>
-                    ({countdown.text})
-                  </span>
-                )}
-              </Fact>
-              <p className="ms-auto flex items-center gap-1.5 text-caption text-muted-foreground" aria-live="polite">
-                {saving ? (
-                  <>
-                    <Loader2 aria-hidden className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
-                    {t.saving}
-                  </>
-                ) : savedAt ? (
-                  <>
-                    <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-success" />
-                    <span className="tabular">{t.saved_at(formatTime(savedAt))}</span>
-                  </>
-                ) : null}
-              </p>
-            </dl>
-            <Banner kind={kind} assessment={assessment} editable={editable} />
-            <section aria-label={t.progress_label} className="rounded-lg border border-border bg-card p-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                <p className="text-small font-hrsd-medium text-ink">
-                  {t.progress_label} <span className="tabular ms-2 text-primary">{formatNumber(trackPct)}%</span>
+      {reviewMode ? (
+        <div className="mb-6">{progressPanel}</div>
+      ) : (
+        <PageHeader
+          title={title}
+          description={`${counted(standardCount, t.standards_forms)}، ${counted(indicators.length, t.indicators_forms)}. ${t.page_desc}`}
+          breadcrumbs={[...breadcrumbs, { label: title }]}
+          actions={<SubmitAssessment assessmentId={id} editable={editable} onSubmitted={onSubmitted} />}
+          meta={
+            <div className="flex flex-col gap-4">
+              {banner}
+              <dl aria-label={t.facts_label} className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg border border-border bg-card px-5 py-4">
+                <Fact label={t.status_label}>
+                  <StatusBadge status={assessmentStatusKey(assessment.status, progress.data)} />
+                </Fact>
+                <Fact label={t.cycle_label}>{assessment.cycle.name}</Fact>
+                <Fact label={t.deadline_label}>
+                  <span className="tabular">{formatDate(assessment.deadline)}</span>
+                  {editable && (
+                    <span className={cn("ms-2 text-caption font-hrsd-regular", countdown.warning ? "text-warning-ink" : "text-muted-foreground")}>
+                      ({countdown.text})
+                    </span>
+                  )}
+                </Fact>
+                <p className="ms-auto flex items-center gap-1.5 text-caption text-muted-foreground" aria-live="polite">
+                  {saving ? (
+                    <>
+                      <Loader2 aria-hidden className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                      {t.saving}
+                    </>
+                  ) : savedAt ? (
+                    <>
+                      <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-success" />
+                      <span className="tabular">{t.saved_at(formatTime(savedAt))}</span>
+                    </>
+                  ) : null}
                 </p>
-                <dl className="flex flex-wrap gap-x-6 gap-y-1 text-small text-muted-foreground">
-                  <div className="flex gap-2">
-                    <dt>{t.progress_items}</dt>
-                    <dd className="tabular font-hrsd-medium text-ink">
-                      {formatNumber(trackMet)} / {formatNumber(trackTotal)}
-                    </dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt>{t.progress_indicators}</dt>
-                    <dd className="tabular font-hrsd-medium text-ink">
-                      {formatNumber(trackComplete)} / {formatNumber(indicators.length)}
-                    </dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt>{t.progress_evidence}</dt>
-                    <dd className="tabular font-hrsd-medium text-ink">{formatNumber(trackWithEvidence)}</dd>
-                  </div>
-                </dl>
-              </div>
-              <div
-                role="progressbar"
-                aria-label={t.progress_label}
-                aria-valuemin={0}
-                aria-valuemax={trackTotal}
-                aria-valuenow={trackMet}
-                className="mt-3 h-2 overflow-hidden rounded-full bg-section-alt"
-              >
-                <motion.div
-                  className="h-full rounded-full bg-primary"
-                  initial={false}
-                  animate={{ width: `${trackPct}%` }}
-                  transition={reduced ? { duration: 0 } : { duration: 0.6, ease }}
-                />
-              </div>
-            </section>
-          </div>
-        }
-      />
+              </dl>
+              <Banner kind={kind} assessment={assessment} editable={editable} />
+              {progressPanel}
+            </div>
+          }
+        />
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-8">
         <IndicatorNav track={track} selectedId={indicator.id} onSelect={setSelectedId} progressOf={progressOf} />

@@ -164,5 +164,9 @@ export const assessmentCopy = {
   err_upload: "تعذّر رفع الملف. حاول مرة أخرى.",
   err_link_invalid: "أدخل رابطاً يبدأ بـ http:// أو https://.",
   err_evidence_open: "تعذّر فتح الشاهد. حاول مرة أخرى.",
+  err_return_note_required: "اكتب ملاحظة الإعادة للمنظمة.",
+  err_cycle_not_open: "دورة التقييم غير مفتوحة.",
+  err_review_not_allowed: "لا يمكن تنفيذ هذا الإجراء الآن: تحقق من حالة التقييم ومن فترة المراجعة.",
+  err_review_failed: "تعذّر تنفيذ الإجراء. حاول مرة أخرى.",
   err_cannot_submit: "لا يمكن إرسال التقييم الآن: تحقق من حالته ومن موعد انتهاء فترة التقييم الذاتي.",
 } as const;

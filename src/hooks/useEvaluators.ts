@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  assignEvaluator, createEvaluator, getEvaluator, listEvaluatorAssessments, listEvaluators, updateMyContact, upsertEvaluatorProfile,
+  assignEvaluator, createEvaluator, getEvaluator, listEvaluatorAssessments, listEvaluators, listMyReviews, updateMyContact, upsertEvaluatorProfile,
   type EvaluatorContactInput, type EvaluatorProfileInput,
 } from "@/services/evaluatorService";
 import { ensureAssessmentFor } from "@/services/assessmentService";
@@ -71,4 +71,9 @@ export function useAssignEvaluator() {
         queryClient.invalidateQueries({ queryKey: ["assessment", "scope"] }),
       ]),
   });
+}
+
+/** The signed-in evaluator's assigned assessments (evaluator portal). */
+export function useMyReviews() {
+  return useQuery({ queryKey: ["evaluator", "reviews"], queryFn: listMyReviews });
 }

@@ -9,11 +9,24 @@ import { Panel } from "@/components/admin/AdminParts";
 import ExportMenu from "@/components/admin/ExportMenu";
 import StatusChart from "@/components/admin/StatusChart";
 import RecentEvaluations from "@/components/admin/RecentEvaluations";
-import { useAdminAssociations, useAdminDashboardStats } from "@/hooks/useAdminData";
+import { useReportSummary } from "@/hooks/useReports";
+import { useOrganizations } from "@/hooks/useOrganizations";
 
+/** Admin home on the real data: organizations, evaluators and open-cycle assessments (assessments, assessment_reviews). */
 const AdminDashboard = () => {
-  const { data: stats, isLoading } = useAdminDashboardStats();
-  const { data: associations, isLoading: associationsLoading } = useAdminAssociations();
+  const { data: summary, isLoading } = useReportSummary();
+  const { data: organizations, isLoading: organizationsLoading } = useOrganizations();
+
+  const byStatus = summary?.assessmentsByStatus;
+  const total = byStatus ? Object.values(byStatus).reduce((n, c) => n + c, 0) : 0;
+  const ongoing = byStatus ? byStatus.draft + byStatus.submitted + byStatus.under_review + byStatus.returned : undefined;
+  const completion = byStatus && total > 0 ? Math.round((byStatus.approved / total) * 100) : summary ? 0 : undefined;
+  const statusCounts = summary
+    ? [
+        { label: "not_started", count: summary.notStarted },
+        ...Object.entries(summary.assessmentsByStatus).map(([label, count]) => ({ label, count })),
+      ]
+    : [];
 
   return (
     <>
@@ -29,12 +42,12 @@ const AdminDashboard = () => {
           <SkeletonKpis />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label={adminCopy.kpi_associations} value={stats?.totalAssociations} icon={Building2} />
-            <KpiCard label={adminCopy.kpi_evaluators} value={stats?.totalEvaluators} icon={Users} />
-            <KpiCard label={adminCopy.kpi_ongoing} value={stats?.ongoingEvaluations} icon={ClipboardList} />
+            <KpiCard label={adminCopy.kpi_associations} value={summary?.organizations} icon={Building2} />
+            <KpiCard label={adminCopy.kpi_evaluators} value={summary?.evaluators} icon={Users} />
+            <KpiCard label={adminCopy.kpi_ongoing} value={ongoing} icon={ClipboardList} />
             <KpiCard
               label={adminCopy.kpi_completion}
-              value={stats?.completionRate}
+              value={completion}
               suffix="%"
               icon={TrendingUp}
               hint={adminCopy.kpi_completion_hint}
@@ -47,7 +60,7 @@ const AdminDashboard = () => {
             <SkeletonPanel lines={6} className="xl:col-span-2" />
           ) : (
             <Panel title={adminCopy.chart_title} description={adminCopy.chart_desc} className="xl:col-span-2">
-              <StatusChart statusCounts={stats?.statusCounts ?? []} />
+              <StatusChart statusCounts={statusCounts} />
             </Panel>
           )}
 
@@ -64,7 +77,7 @@ const AdminDashboard = () => {
               </Button>
             }
           >
-            <RecentEvaluations rows={associations} loading={associationsLoading} />
+            <RecentEvaluations rows={organizations} loading={organizationsLoading} />
           </Panel>
         </div>
       </div>

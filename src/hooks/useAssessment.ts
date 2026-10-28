@@ -6,8 +6,8 @@ import { ServiceError } from "@/services/errors";
 import {
   addFileEvidence, addLinkEvidence, ensureAssessmentFor, ensureMyAssessment, getAssessment, getIndicatorScores,
   getProgress, getTrackScores, isEditable, listEvidences, listExcludedItemIds, listMyAssessmentHistory, listResponses,
-  removeEvidence, setItemMet, setSubmissionDue, submitAssessment,
-  type Assessment, type AssessmentScope, type Evidence, type ItemResponse,
+  removeEvidence, setItemMet, setSubmissionDue, submitAssessment, transitionAssessment,
+  type Assessment, type AssessmentScope, type Evidence, type ItemResponse, type ReviewTransition,
 } from "@/services/assessmentService";
 
 /** Everything about one assessment lives under ["assessment", id]; one invalidation refreshes answers, scores and progress. */
@@ -16,7 +16,8 @@ const assessmentKey = (id: string | undefined) => ["assessment", id] as const;
 const SCOPE_KEY = ["assessment", "scope"] as const;
 const HISTORY_KEY = ["assessment", "history"] as const;
 
-const scopeKey = (scope: AssessmentScope) => (scope.kind === "mine" ? [...SCOPE_KEY, "mine"] : [...SCOPE_KEY, "org", scope.orgId]);
+const scopeKey = (scope: AssessmentScope) =>
+  scope.kind === "mine" ? [...SCOPE_KEY, "mine"] : scope.kind === "org" ? [...SCOPE_KEY, "org", scope.orgId] : [...SCOPE_KEY, "assessment", scope.id];
 
 /** No cycle in its submission period: not an error for the page, it shows the empty state. */
 const isPeriodClosed = (err: unknown) => err instanceof ServiceError && err.message === assessmentCopy.err_period_closed;
@@ -32,11 +33,11 @@ export function useAssessment(scope: AssessmentScope, { ensure = true }: { ensur
   // Read-only lookups get their own key: one key, one query function
   const key = ensure ? scopeKey(scope) : [...scopeKey(scope), "read"];
   const keyId = key.join(":");
-  const canEnsure = ensure && (scope.kind === "org" || userRole === "organization");
+  const canEnsure = ensure && (scope.kind === "org" || (scope.kind === "mine" && userRole === "organization"));
 
   const query = useQuery({
     queryKey: key,
-    enabled: scope.kind === "org" || userRole !== null,
+    enabled: scope.kind !== "mine" || userRole !== null,
     // A retry would skip ensure (it runs once) and resolve to null, hiding the real error behind the no-cycle state
     retry: false,
     queryFn: async (): Promise<Assessment | null> => {
@@ -59,7 +60,8 @@ export function useAssessment(scope: AssessmentScope, { ensure = true }: { ensur
     assessment,
     cycle: assessment?.cycle ?? null,
     deadline: assessment?.deadline ?? null,
-    editable: assessment ? isEditable(assessment) : false,
+    // An assessment opened by id (the evaluator) is always read only
+    editable: assessment && scope.kind !== "assessment" ? isEditable(assessment) : false,
   };
 }
 
@@ -222,6 +224,21 @@ export function useSetSubmissionDue() {
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: SCOPE_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["organizations"] }),
+      ]),
+  });
+}
+
+/** Evaluator review actions. Refreshes the assessment, the scope lookups, the evaluator's list and organization lists. */
+export function useTransitionAssessment(assessmentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ to, note }: { to: ReviewTransition; note?: string }) => transitionAssessment(assessmentId, to, note),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: assessmentKey(assessmentId) }),
+        queryClient.invalidateQueries({ queryKey: SCOPE_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["evaluator", "reviews"] }),
         queryClient.invalidateQueries({ queryKey: ["organizations"] }),
       ]),
   });

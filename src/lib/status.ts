@@ -1,12 +1,16 @@
 import { copy } from "@/lib/copy";
 
-/** The only five statuses the product shows (brief phase 6.5). */
-export type StatusKey = "not_started" | "in_progress" | "submitted" | "returned" | "approved";
+/**
+ * Statuses the product shows. Organizations see five (under review reads as submitted, brief phase 6.5);
+ * the evaluator also sees قيد المراجعة, through reviewStatusKey().
+ */
+export type StatusKey = "not_started" | "in_progress" | "submitted" | "under_review" | "returned" | "approved";
 
 export const STATUS: Record<StatusKey, { label: string; className: string; dot: string }> = {
   not_started: { label: copy.status_not_started, className: "bg-neutral/10 text-ink/80", dot: "bg-neutral" },
   in_progress: { label: copy.status_in_progress, className: "bg-warning/10 text-warning-ink", dot: "bg-warning" },
   submitted: { label: copy.status_submitted, className: "bg-primary/10 text-primary", dot: "bg-primary" },
+  under_review: { label: copy.status_under_review, className: "bg-accent/15 text-ink", dot: "bg-accent" },
   returned: { label: copy.status_returned, className: "bg-danger/10 text-danger", dot: "bg-danger" },
   approved: { label: copy.status_approved, className: "bg-success/10 text-success", dot: "bg-success" },
 };
@@ -59,3 +63,8 @@ export function toStatusKey(raw: string | null | undefined): StatusKey {
   return LEGACY[raw] ?? LEGACY[raw.toLowerCase()] ?? "not_started";
 }
 
+
+/** Evaluator view: an assessment's database status, with under_review kept apart from submitted. */
+export function reviewStatusKey(status: string): StatusKey {
+  return status === "under_review" ? "under_review" : toStatusKey(status);
+}

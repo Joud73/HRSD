@@ -206,6 +206,23 @@ Before the meeting: `node e2e/reset-demo.mjs` (about 20 seconds).
 5. Sign in as `supervisor.test@tamkeen.local`: follow-up dashboard, then المنظمات (both organizations, status, progress, deadline, evaluator). Open org B with "إدخال التقييم نيابة عن المنظمة", tick one item with a link: the banner names org B.
 6. Sign in as `admin.test@tamkeen.local`: on org B's page, assign evaluator2 and extend the deadline (مسار التقييم في الدورة الحالية). Then سنوات التقييم → الدورة التجريبية 2026 → "نطاق التقييم في الدورة": untick one item, give a reason; the count drops to 377 من 378. Tick it back after the demo (or rerun the reset).
 
+## Fixes A to E (after the rehearsal)
+
+### A. Evaluator portal on the real data
+
+Cause of the owner's finding: the evaluator pages read the legacy `evaluator_assignments` and `evaluation_criteria` tables, and "إعادة للاستكمال" updated `evaluator_assignments`, so the organization's assessment never changed.
+
+- [x] Migration 10 `20261028180000_evaluator_reads_org.sql`: "delegates: evaluator reads assessed" (the assigned evaluator reads the organization's delegate). Pushed to staging; the dry run listed only this file.
+- [x] `evaluatorService.listMyReviews()`: `assessment_reviews` of the signed-in evaluator, with the assessment (status, submitted_at), the organization (name, registration number), the cycle (name, review start) and `v_assessment_progress` (progress_pct, score_pct). Hook `useMyReviews` (`["evaluator", "reviews"]`).
+- [x] `EvaluatorDashboard` (KPIs المسندة، بانتظار المراجعة، قيد المراجعة، معادة للاستكمال، معتمدة; latest five) and `EvaluatorAssignments` (status filter) use only `listMyReviews`, through one shared `components/evaluator/ReviewsTable`. Score column: score_pct plus the band's label.
+- [x] `/evaluator/assessments/:assessmentId` (`EvaluatorReview`): organization name as title with status, cycle, submission date and progress; action bar; organization card (name, registration number, entity type, registration date, sub-classification, development center, region and city, employees; delegate name, mobile, email); answers in five track tabs through `AssessmentWorkspace` with the new scope `{ kind: "assessment", id }` (read only, no page header, banner or submit; every evidence opens).
+- [x] Actions through `transition_assessment` only: "بدء المراجعة" (submitted), "اعتماد التقييم" and "إعادة للاستكمال" (under_review; the return dialog requires a note). Before `review_start` the buttons are disabled with "تبدأ فترة المراجعة في {date}"; after `approval_end` with "انتهت فترة المراجعة والاعتماد.". Errors map to Arabic (note required, cycle not open, not allowed now). `AssessmentCycle` gained `reviewStart`, `reviewEnd`, `approvalEnd`. No item-level verdicts.
+- [x] New status key `under_review` (قيد المراجعة), used only on the evaluator side through `reviewStatusKey()`; organizations keep seeing "مرسل للمراجعة".
+- [x] Deleted: `EvaluationDetails.tsx`, `useEvaluatorAssignments.ts`; `/evaluator/assignment/:id` redirects to `/evaluator/assignments`. The admin dashboard and `RecentEvaluations` moved to `getReportSummary` and `listOrganizations`; `useAdminAssociations` and `useAdminDashboardStats` deleted; the legacy assign and reassign dialogs on the reviewers page removed (assignment is on the organization page). `grep` for the five legacy tables in `src` returns nothing outside the generated `integrations/supabase/types.ts` (the tables still exist in the database).
+- [x] `demo_reset.sql` also fills both test organizations' HRSD fields and one delegate each (test values), so the organization card is complete.
+- Lint went from 10 to 6 problems: four of the baseline problems were in the deleted legacy code.
+- Checked through the API as evaluator1 and evaluator2: each sees exactly one assessment (its own), with the organization, progress and responses.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

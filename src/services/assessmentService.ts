@@ -14,8 +14,11 @@ export type AssessmentStatus = Database["public"]["Enums"]["assessment_status"];
 export type CycleStatus = Database["public"]["Enums"]["cycle_status"];
 export type EvidenceKind = Database["public"]["Enums"]["evidence_kind"];
 
-/** Whose assessment: the signed-in organization's, or a given organization's (supervisor and admin). */
-export type AssessmentScope = { kind: "mine" } | { kind: "org"; orgId: string };
+/**
+ * Whose assessment: the signed-in organization's, a given organization's in the open cycle (supervisor and admin),
+ * or one assessment by id, read only (the assigned evaluator).
+ */
+export type AssessmentScope = { kind: "mine" } | { kind: "org"; orgId: string } | { kind: "assessment"; id: string };
 
 export interface AssessmentCycle {
   id: string;
@@ -24,6 +27,9 @@ export interface AssessmentCycle {
   /** Dates are yyyy-mm-dd */
   submissionStart: string;
   submissionEnd: string;
+  reviewStart: string;
+  reviewEnd: string;
+  approvalEnd: string;
 }
 
 export interface Assessment {
@@ -159,7 +165,7 @@ export function daysUntil(date: string): number {
 // ---------------------------------------------------------------
 
 const assessmentColumns =
-  "id, cycle_id, organization_id, status, submitted_at, returned_at, approved_at, return_note, submission_due, assessment_cycles!inner(id, name, status, submission_start, submission_end)";
+  "id, cycle_id, organization_id, status, submitted_at, returned_at, approved_at, return_note, submission_due, assessment_cycles!inner(id, name, status, submission_start, submission_end, review_start, review_end, approval_end)";
 
 type AssessmentRow = {
   id: string;
@@ -171,7 +177,16 @@ type AssessmentRow = {
   approved_at: string | null;
   return_note: string | null;
   submission_due: string | null;
-  assessment_cycles: { id: string; name: string; status: CycleStatus; submission_start: string; submission_end: string };
+  assessment_cycles: {
+    id: string;
+    name: string;
+    status: CycleStatus;
+    submission_start: string;
+    submission_end: string;
+    review_start: string;
+    review_end: string;
+    approval_end: string;
+  };
 };
 
 const toAssessment = (r: AssessmentRow): Assessment => ({
@@ -190,6 +205,9 @@ const toAssessment = (r: AssessmentRow): Assessment => ({
     status: r.assessment_cycles.status,
     submissionStart: r.assessment_cycles.submission_start,
     submissionEnd: r.assessment_cycles.submission_end,
+    reviewStart: r.assessment_cycles.review_start,
+    reviewEnd: r.assessment_cycles.review_end,
+    approvalEnd: r.assessment_cycles.approval_end,
   },
   deadline: r.submission_due ?? r.assessment_cycles.submission_end,
 });
@@ -222,6 +240,11 @@ export async function ensureAssessmentFor(orgId: string): Promise<Assessment> {
 
 /** The assessment in the open cycle for the scope, or null when none exists yet (or no cycle is open). */
 export async function getAssessment(scope: AssessmentScope): Promise<Assessment | null> {
+  if (scope.kind === "assessment") {
+    const { data, error } = await supabase.from("assessments").select(assessmentColumns).eq("id", scope.id).maybeSingle();
+    if (error) throw mapError(error, t.err_load);
+    return data ? toAssessment(data as AssessmentRow) : null;
+  }
   const orgId = scope.kind === "org" ? scope.orgId : await currentOrgId();
   if (!orgId) return null;
   const { data, error } = await supabase
@@ -424,6 +447,23 @@ export async function setSubmissionDue(assessment: Assessment, due: string | nul
 export async function submitAssessment(assessmentId: string): Promise<void> {
   const { error } = await supabase.rpc("transition_assessment", { p_assessment: assessmentId, p_to: "submitted" });
   if (error) throw mapError(error, t.err_cannot_submit);
+}
+
+/** Review transitions by the assigned evaluator: submitted -> under_review, under_review -> returned (note) or approved. */
+export type ReviewTransition = "under_review" | "returned" | "approved";
+
+export async function transitionAssessment(assessmentId: string, to: ReviewTransition, note?: string): Promise<void> {
+  const { error } = await supabase.rpc("transition_assessment", {
+    p_assessment: assessmentId,
+    p_to: to,
+    ...(note?.trim() ? { p_note: note.trim() } : {}),
+  });
+  if (!error) return;
+  const text = `${error.message} ${error.details ?? ""}`;
+  if (text.includes("A note is required")) throw new ServiceError(t.err_return_note_required, error);
+  if (text.includes("Cycle is not open")) throw new ServiceError(t.err_cycle_not_open, error);
+  if (text.includes("not allowed for this user at this time")) throw new ServiceError(t.err_review_not_allowed, error);
+  throw mapError(error, t.err_review_failed);
 }
 
 // ---------------------------------------------------------------

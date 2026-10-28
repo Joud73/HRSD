@@ -106,6 +106,7 @@ export const copy = {
   status_not_started: "لم يبدأ",
   status_in_progress: "قيد التقييم",
   status_submitted: "مرسل للمراجعة",
+  status_under_review: "قيد المراجعة",
   status_returned: "معاد للاستكمال",
   status_approved: "معتمد",
 
