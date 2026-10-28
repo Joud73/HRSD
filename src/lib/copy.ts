@@ -105,6 +105,8 @@ export const copy = {
 
   status_not_started: "لم يبدأ",
   status_in_progress: "قيد التقييم",
+  /** Fractions read "68 من 75", never with a slash */
+  of: "من",
   status_submitted: "مرسل للمراجعة",
   status_under_review: "قيد المراجعة",
   status_returned: "معاد للاستكمال",

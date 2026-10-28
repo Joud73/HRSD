@@ -22,7 +22,7 @@ import EmptyState from "@/components/shared/EmptyState";
 import JourneyStepper from "@/components/shared/JourneyStepper";
 import { SkeletonKpis, SkeletonPanel, SkeletonProgressRows } from "@/components/shared/Skeletons";
 import SubmitAssessment from "@/components/assessment/SubmitAssessment";
-import { assessmentStatusKey, deadlineCountdown } from "@/components/assessment/indicatorUtils";
+import { assessmentStatusKey, deadlineCountdown, scoreLevel } from "@/components/assessment/indicatorUtils";
 
 const SCOPE = { kind: "mine" } as const;
 const JOURNEY = orgCopy.journey_steps.map((step, i) => ({ id: i + 1, ...step }));
@@ -172,9 +172,7 @@ const Dashboard = () => {
                   <div className="flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-border pt-3">
                     <Fact label={orgCopy.summary_score}>
                       <span className="tabular">{formatNumber(p.scorePct)}%</span>
-                    </Fact>
-                    <Fact label={orgCopy.summary_score_level}>
-                      <span className="tabular">{formatNumber(p.avgLevel)}</span>
+                      <span className="ms-2 text-caption">{scoreLevel(p.scorePct, tool.data?.levelBands ?? [], tool.data?.levelLabels ?? {}).label}</span>
                     </Fact>
                     {assessment.status !== "approved" && <p className="text-caption text-muted-foreground">{orgCopy.summary_score_note}</p>}
                   </div>

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { copy } from "@/lib/copy";
 import { ChevronLeft } from "lucide-react";
 import { motion } from "motion/react";
 import { formatNumber } from "@/lib/format";
@@ -61,7 +62,7 @@ const ProgressRow = ({ name, completed, total, status, statusLabel, to, linkLabe
           )}
         </div>
         <p className="tabular shrink-0 text-small text-muted-foreground">
-          {formatNumber(completed)} / {formatNumber(total)}
+          {formatNumber(completed)} {copy.of} {formatNumber(total)}
         </p>
       </div>
     </>

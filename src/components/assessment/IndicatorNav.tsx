@@ -53,7 +53,7 @@ const IndicatorNav = ({ track, selectedId, onSelect, progressOf }: IndicatorNavP
                 const p = progressOf(indicator.id);
                 return (
                   <SelectItem key={indicator.id} value={indicator.id} className="text-small">
-                    {t.indicator_label} {formatNumber(indicator.number)} ({formatNumber(p.counted)}/{formatNumber(p.total)})
+                    {t.indicator_label} {formatNumber(indicator.number)} ({formatNumber(p.counted)} {t.of} {formatNumber(p.total)})
                   </SelectItem>
                 );
               })}
@@ -99,7 +99,7 @@ const IndicatorNav = ({ track, selectedId, onSelect, progressOf }: IndicatorNavP
                       <span className="line-clamp-2 text-caption text-muted-foreground">{stripOrdinal(indicator.text)}</span>
                     </span>
                     <span className="tabular mt-0.5 shrink-0 text-caption text-muted-foreground" aria-label={`${formatNumber(p.counted)} ${t.of} ${formatNumber(p.total)} ${t.items_counted}`}>
-                      {formatNumber(p.counted)}/{formatNumber(p.total)}
+                      {formatNumber(p.counted)} {t.of} {formatNumber(p.total)}
                     </span>
                   </button>
                 </li>

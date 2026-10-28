@@ -223,6 +223,12 @@ Cause of the owner's finding: the evaluator pages read the legacy `evaluator_ass
 - Lint went from 10 to 6 problems: four of the baseline problems were in the deleted legacy code.
 - Checked through the API as evaluator1 and evaluator2: each sees exactly one assessment (its own), with the organization, progress and responses.
 
+### B. No average level, fractions with من
+
+- [x] `avgLevel` is gone from the types (`AssessmentHistoryRow`, `TrackScore`, `AssessmentProgress`) and from every select; `TrackScore.scorePct` carries the view's `avg_score_pct`. The dashboard's "متوسط المستوى" fact and string are deleted.
+- [x] A score is shown as score_pct plus the label of its band: `scoreLevel(pct, levelBands, levelLabels)` in `indicatorUtils`, read from the database, never hardcoded. Used by the dashboard and the evaluator tables.
+- [x] Fractions read "68 من 75": track progress facts, the indicator list, `ProgressRow`, the certificate score. New `copy.of`.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

@@ -54,7 +54,7 @@ const Certificate = () => {
       return formatPercent(finalPercentage);
     }
     if (finalScore !== null && finalScore !== undefined) {
-      return `${formatNumber(finalScore)} / ${formatNumber(100)}`;
+      return `${formatNumber(finalScore)} ${copy.of} ${formatNumber(100)}`;
     }
     return null;
   };

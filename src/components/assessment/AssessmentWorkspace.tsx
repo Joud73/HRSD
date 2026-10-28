@@ -378,13 +378,13 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
           <div className="flex gap-2">
             <dt>{t.progress_items}</dt>
             <dd className="tabular font-hrsd-medium text-ink">
-              {formatNumber(trackMet)} / {formatNumber(trackTotal)}
+              {formatNumber(trackMet)} {t.of} {formatNumber(trackTotal)}
             </dd>
           </div>
           <div className="flex gap-2">
             <dt>{t.progress_indicators}</dt>
             <dd className="tabular font-hrsd-medium text-ink">
-              {formatNumber(trackComplete)} / {formatNumber(indicators.length)}
+              {formatNumber(trackComplete)} {t.of} {formatNumber(indicators.length)}
             </dd>
           </div>
           <div className="flex gap-2">

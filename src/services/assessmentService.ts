@@ -56,7 +56,6 @@ export interface AssessmentHistoryRow {
   status: AssessmentStatus;
   approvedAt: string | null;
   scorePct: number;
-  avgLevel: number;
 }
 
 export interface ItemResponse {
@@ -102,8 +101,8 @@ export interface TrackScore {
   itemsTotal: number;
   itemsMet: number;
   itemsCounted: number;
-  avgLevel: number;
-  avgScorePct: number;
+  /** Average of the indicators' score_pct (the track's estimated result) */
+  scorePct: number;
   progressPct: number;
 }
 
@@ -117,7 +116,6 @@ export interface AssessmentProgress {
   itemsCounted: number;
   progressPct: number;
   scorePct: number;
-  avgLevel: number;
 }
 
 /** Mirrors the evidences bucket (20 MB, these MIME types). */
@@ -270,7 +268,7 @@ export async function listMyAssessmentHistory(): Promise<AssessmentHistoryRow[]>
 
   const { data: progress, error: progressError } = await supabase
     .from("v_assessment_progress")
-    .select("assessment_id, score_pct, avg_level")
+    .select("assessment_id, score_pct")
     .in("assessment_id", data.map((a) => a.id));
   if (progressError) throw mapError(progressError, t.err_load);
   const byId = new Map(progress.map((p) => [p.assessment_id, p]));
@@ -286,7 +284,6 @@ export async function listMyAssessmentHistory(): Promise<AssessmentHistoryRow[]>
       status: a.status,
       approvedAt: a.approved_at,
       scorePct: byId.get(a.id)?.score_pct ?? 0,
-      avgLevel: Number(byId.get(a.id)?.avg_level ?? 0),
     }));
 }
 
@@ -496,8 +493,7 @@ const toTrackScore = (r: Views["v_track_scores"]["Row"]): TrackScore => ({
   itemsTotal: r.items_total ?? 0,
   itemsMet: r.items_met ?? 0,
   itemsCounted: r.items_counted ?? 0,
-  avgLevel: Number(r.avg_level ?? 0),
-  avgScorePct: r.avg_score_pct ?? 0,
+  scorePct: r.avg_score_pct ?? 0,
   progressPct: r.progress_pct ?? 0,
 });
 
@@ -511,7 +507,6 @@ const toProgress = (r: Views["v_assessment_progress"]["Row"]): AssessmentProgres
   itemsCounted: r.items_counted ?? 0,
   progressPct: r.progress_pct ?? 0,
   scorePct: r.score_pct ?? 0,
-  avgLevel: Number(r.avg_level ?? 0),
 });
 
 export async function getIndicatorScores(assessmentId: string): Promise<IndicatorScore[]> {

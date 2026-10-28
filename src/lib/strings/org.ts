@@ -23,7 +23,6 @@ export const orgCopy = {
   summary_cycle: "دورة التقييم",
   summary_deadline: "الموعد النهائي",
   summary_score: "النتيجة الحالية",
-  summary_score_level: "متوسط المستوى",
   summary_score_note: "تقديرية حتى اعتماد المراجعة",
 
   kpi_items_met: "البنود المحققة",
