@@ -45,9 +45,25 @@ Exclusion of item 1 (expected (1, 6, 6, 100, 4)): (1, 6, 6, 100, 4).
 
 All values match.
 
+## Step 2: data layer
+
+- [x] `src/services/assessmentService.ts`: every function in the brief, plus `validateEvidenceFile` (exported so the upload button can reject a file before uploading) and the `EVIDENCE_MAX_BYTES` / `EVIDENCE_MIME_TYPES` constants. `getAssessment(scope)` returns `deadline = submission_due ?? submission_end`. `isEditable` compares dates in Asia/Riyadh.
+- [x] `src/hooks/useAssessment.ts`: `useAssessment(scope)`, `useAssessmentHistory`, the read hooks, and the five mutations. All mutations share `mutationKey ["assessment", id]`, so a page can show "جارٍ الحفظ" with `useIsMutating`.
+- [x] Error strings: 14 `err_*` keys in `src/lib/strings/assessment.ts`.
+- Checked on staging through PostgREST with the service key (read only): the embedded filter `assessment_cycles.status=eq.open` returns org A's row, and `v_assessment_progress` returns 378 items.
+
 ## Decisions
 
+- `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.
+- `useAssessment` treats "no open cycle in its submission period" as `null`, not an error, so the dashboard can show its empty state. It tries to open the assessment only once per scope while mounted.
+- `useExcludedItems(cycleId)` is keyed `["cycles", cycleId, "exclusions"]` and not under `["assessment", id]`: exclusions belong to the cycle, and Step 5's admin mutations invalidate `["cycles"]`.
+- The scope lookups are keyed `["assessment", "scope", ...]`, apart from `["assessment", id]`, because the id is unknown until they resolve. Submission invalidates the scope lookups and the history as well.
+- In error mapping, the text checks run before the `42501` check, because `transition_assessment` and `ensure_my_assessment` raise with `insufficient_privilege` (42501) but need their own messages.
 - The supervisor test account was created through the Auth admin API instead of the dashboard. It got a generated password because no shared test password is recorded in the repo.
+
+## Flags for later steps
+
+- Staging state before Step 7: org A's assessment in the open cycle is already `submitted` (1 item met), left over from earlier testing. Step 7.2 needs it editable. Reset it before the rehearsal: `transition_assessment` has no submitted → draft path, so either an admin override to `returned` with a note, or delete org A's assessment so `/dashboard` opens a fresh one.
 
 ## Not finished
 

@@ -147,4 +147,20 @@ export const assessmentCopy = {
   course_enrolled: "ملتحق بالبرنامج",
   course_enrolled_toast: "تم تسجيل الالتحاق بالبرنامج",
   course_period_sep: "إلى",
+
+  // ---------- Assessment service errors ----------
+  err_load: "تعذّر تحميل بيانات التقييم. حاول مرة أخرى.",
+  err_save: "تعذّر حفظ التغيير. حاول مرة أخرى.",
+  err_period_closed: "لا توجد دورة تقييم في فترة التقييم الذاتي حالياً.",
+  err_no_organization: "حسابك غير مرتبط بمنظمة. تواصل مع إدارة المنصة.",
+  err_org_not_found: "المنظمة غير موجودة.",
+  err_proxy_not_allowed: "لا تملك صلاحية فتح تقييم لهذه المنظمة.",
+  err_not_editable: "لا يمكن تعديل التقييم الآن: فترة التقييم الذاتي مغلقة أو التقييم مرسل للمراجعة.",
+  err_item_excluded: "هذا البند مستبعد من دورة التقييم الحالية.",
+  err_file_too_large: "حجم الملف يتجاوز 20 ميجابايت.",
+  err_file_type: "نوع الملف غير مدعوم. الأنواع المقبولة: PDF وPNG وJPEG وWord وExcel.",
+  err_upload: "تعذّر رفع الملف. حاول مرة أخرى.",
+  err_link_invalid: "أدخل رابطاً يبدأ بـ http:// أو https://.",
+  err_evidence_open: "تعذّر فتح الشاهد. حاول مرة أخرى.",
+  err_cannot_submit: "لا يمكن إرسال التقييم الآن: تحقق من حالته ومن موعد انتهاء فترة التقييم الذاتي.",
 } as const;
