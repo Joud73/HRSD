@@ -1,6 +1,9 @@
 -- Demo reset for STAGING ONLY. Never run on prod. Run as postgres in the SQL Editor (or `supabase db query --linked -f`).
--- Idempotent: every run puts org A (منظمة الاختبار أ) back into the same demo state in the open cycle.
+-- Idempotent: every run puts org A (منظمة الاختبار أ) back into the same demo state in the open cycle,
+-- and org B (منظمة الاختبار ب) back to a fresh, empty draft (its evaluator assignment, if any, is kept).
 -- Prerequisite: supabase/seed/test_accounts.sql has run (org A, org.a and evaluator1 users, admin.test).
+-- Uploaded files: deleting an assessment removes its evidence rows, not the files in the private bucket.
+-- Remove the files first through the Storage API (e2e/reset-demo.mjs does it, then runs this script).
 --
 -- Demo state:
 --   track 1: every item met with one link evidence, EXCEPT indicator 1 (first indicator of the track), left empty
@@ -9,6 +12,7 @@
 --   track 3: first half of each indicator's items met with evidence, plus one item met WITHOUT evidence
 --            (shows the warning in the submit dialog)
 --   tracks 4 and 5: empty
+-- Org B: draft with no responses or evidences.
 
 begin;
 
@@ -68,11 +72,33 @@ begin
   where track_number = 3 and indicator_number = first_indicator and pos = n / 2 + 1;
 end $$;
 
+-- Org B: fresh empty draft, same evaluator as before (none if it had none)
+do $$
+declare
+  v_org   uuid := 'aaaaaaaa-0000-0000-0000-000000000002';
+  v_cycle uuid;
+  v_eval  uuid;
+  v_by    uuid;
+  v_a     uuid;
+begin
+  select id into v_cycle from public.assessment_cycles where status = 'open';
+  select r.evaluator_id, r.assigned_by into v_eval, v_by
+  from public.assessment_reviews r join public.assessments a on a.id = r.assessment_id
+  where a.organization_id = v_org and a.cycle_id = v_cycle;
+
+  delete from public.assessments where organization_id = v_org and cycle_id = v_cycle;
+  insert into public.assessments (cycle_id, organization_id) values (v_cycle, v_org) returning id into v_a;
+  if v_eval is not null then
+    insert into public.assessment_reviews (assessment_id, evaluator_id, assigned_by) values (v_a, v_eval, v_by);
+  end if;
+end $$;
+
 commit;
 
-select track_number, indicators_total, indicators_started, indicators_complete,
-       items_total, items_met, items_counted, avg_level, avg_score_pct, progress_pct
-from public.v_track_scores
-where organization_id = 'aaaaaaaa-0000-0000-0000-000000000001'
-  and cycle_id = (select id from public.assessment_cycles where status = 'open')
-order by track_number;
+select o.name, a.status, p.progress_pct, p.items_met,
+       (select count(*) from public.evidences e where e.assessment_id = a.id) as evidences
+from public.assessments a
+join public.organizations o on o.id = a.organization_id
+join public.v_assessment_progress p on p.assessment_id = a.id
+where a.cycle_id = (select id from public.assessment_cycles where status = 'open')
+order by o.name;

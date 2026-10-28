@@ -182,6 +182,30 @@ Org A, track 1, indicator 2 before: 6 active items, 6 counted, 100 %, مكتمل
 - The tab uses the approved tool. If a cycle points at another tool version, the tab says so instead of showing a tree that does not match.
 - Excluding in an open cycle is allowed (the brief says draft or open). Answers already recorded on an excluded item stay in the database, and the views leave them out.
 
+## Step 7: verification and rehearsal on staging
+
+- [x] 7.1 `tsc` passes, `npm run lint` 10 problems (the baseline), `npm run build` passes (chunk size warning only, as before).
+- [x] Automated browser run: `e2e/demo-path.spec.ts` (Playwright 1.64, Chromium) against `http://localhost:8080` and staging. Config in `playwright.config.ts`. Accounts from `e2e/.env` (gitignored; template `e2e/.env.example`). Each test fails on a console error, page error, failed request or HTTP 4xx/5xx. Screenshots in `e2e/screens/` (gitignored). Result: 4 passed, none of those problems.
+  - Org A: dashboard shows the journey stepper, الموعد النهائي and 48 %; track 1 indicator 1 goes from غير مكتمل to بحاجة لتحسين كبير after two items are ticked with a link each (2 من 7, 29 %); a reload keeps both ticks and the label. (Covers 7.2 with links; the PDF upload path was checked by hand in Step 3.)
+  - Org B: one item ticked with a link, submitted, lands on `/under-review` ("التقييم قيد التدقيق"); `/assessment/1` is then read only (banner, disabled checkboxes, no evidence buttons). (7.4 on org B, so org A stays ready for the live demo.)
+  - Supervisor: lands on `/supervisor`, sees both organizations, opens org B in proxy mode: banner "أنت تُدخل التقييم نيابة عن: منظمة الاختبار ب", read only because org B is submitted. (7.6 writing on org B's behalf was verified as a draft in Step 4 checks; here it is the read-only case.)
+  - Admin: org B page shows "مسار التقييم في الدورة الحالية" and "بيانات المنظمة"; the roles page lists the four roles; the cycle tab "نطاق التقييم في الدورة" loads with "البنود الفعّالة في الدورة: 378 من 378" and enabled checkboxes. (7.7 exclusion effect on the denominator verified through RLS in Step 5: 6/6 to 4/4.)
+- [x] 7.3 and 7.5: the demo data comes from `supabase/seed/demo_reset.sql`; isolation is enforced by RLS (org B's run never shows org A's 48 %).
+- [x] Test passwords: one generated password set on admin.test, org.a, org.b, evaluator1 and evaluator2 through the Auth admin API (owner's choice), stored only in `e2e/.env`. The supervisor keeps its own.
+- [x] Reset after the run: `node e2e/reset-demo.mjs` removes the uploaded evidence files of org A and B (Storage API), then runs `demo_reset.sql`, which now also resets org B to an empty draft (keeping its evaluator). Result: org A draft, 48 %, 183 met, 182 evidences, track 1 indicator 1 at 0/7 غير مكتمل; org B draft with 0 responses; 0 exclusions.
+- Found before the run: both organizations had been submitted by their own accounts at about 17:00 Riyadh time (manual testing), each with one uploaded file. The reset above cleared them, files included.
+
+### Demo path, Thursday 13:00
+
+Before the meeting: `node e2e/reset-demo.mjs` (about 20 seconds).
+
+1. Sign in as `org.a@tamkeen.local`. Dashboard: the journey stepper at step 1, deadline 12 نوفمبر 2026 with the countdown, KPIs (48 % progress), tracks 1 and 2 nearly complete and complete, history by cycle.
+2. Open track 1 (مسار التوجه). Indicator 1 shows 0 من 7 and غير مكتمل.
+3. Tick item 1, attach a PDF; tick item 2, add a link. The result changes to بحاجة لتحسين كبير (29 %, range 1 to 60 %). Tick a third item without evidence to show the warning "محدد دون شاهد، لا يُحتسب".
+4. "إرسال التقييم للمراجعة": the dialog lists the indicators with items met without evidence; confirm. The under-review page shows the real status; the track is read only.
+5. Sign in as `supervisor.test@tamkeen.local`: follow-up dashboard, then المنظمات (both organizations, status, progress, deadline, evaluator). Open org B with "إدخال التقييم نيابة عن المنظمة", tick one item with a link: the banner names org B.
+6. Sign in as `admin.test@tamkeen.local`: on org B's page, assign evaluator2 and extend the deadline (مسار التقييم في الدورة الحالية). Then سنوات التقييم → الدورة التجريبية 2026 → "نطاق التقييم في الدورة": untick one item, give a reason; the count drops to 377 من 378. Tick it back after the demo (or rerun the reset).
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.
