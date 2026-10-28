@@ -125,6 +125,34 @@ export type Database = {
             referencedRelation: "assessments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "assessment_reviews_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: true
+            referencedRelation: "v_assessment_progress"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "assessment_reviews_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: true
+            referencedRelation: "v_indicator_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "assessment_reviews_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: true
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "assessment_reviews_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: true
+            referencedRelation: "v_track_scores"
+            referencedColumns: ["assessment_id"]
+          },
         ]
       }
       assessment_status_history: {
@@ -163,6 +191,34 @@ export type Database = {
             referencedRelation: "assessments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "assessment_status_history_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_assessment_progress"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "assessment_status_history_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_indicator_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "assessment_status_history_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "assessment_status_history_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_track_scores"
+            referencedColumns: ["assessment_id"]
+          },
         ]
       }
       assessments: {
@@ -175,6 +231,7 @@ export type Database = {
           return_note: string | null
           returned_at: string | null
           status: Database["public"]["Enums"]["assessment_status"]
+          submission_due: string | null
           submitted_at: string | null
           updated_at: string
         }
@@ -187,6 +244,7 @@ export type Database = {
           return_note?: string | null
           returned_at?: string | null
           status?: Database["public"]["Enums"]["assessment_status"]
+          submission_due?: string | null
           submitted_at?: string | null
           updated_at?: string
         }
@@ -199,6 +257,7 @@ export type Database = {
           return_note?: string | null
           returned_at?: string | null
           status?: Database["public"]["Enums"]["assessment_status"]
+          submission_due?: string | null
           submitted_at?: string | null
           updated_at?: string
         }
@@ -261,6 +320,52 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "evaluation_criteria"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      cycle_item_exclusions: {
+        Row: {
+          cycle_id: string
+          excluded_at: string
+          excluded_by: string | null
+          item_id: string
+          reason: string | null
+        }
+        Insert: {
+          cycle_id: string
+          excluded_at?: string
+          excluded_by?: string | null
+          item_id: string
+          reason?: string | null
+        }
+        Update: {
+          cycle_id?: string
+          excluded_at?: string
+          excluded_by?: string | null
+          item_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycle_item_exclusions_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_item_exclusions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_item_exclusions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["item_id"]
           },
         ]
       }
@@ -544,11 +649,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "evidences_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_assessment_progress"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "evidences_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_indicator_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "evidences_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "evidences_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_track_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
             foreignKeyName: "evidences_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidences_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["item_id"]
           },
         ]
       }
@@ -581,6 +721,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "standards"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "indicators_standard_id_fkey"
+            columns: ["standard_id"]
+            isOneToOne: false
+            referencedRelation: "v_indicator_scores"
+            referencedColumns: ["standard_id"]
+          },
+          {
+            foreignKeyName: "indicators_standard_id_fkey"
+            columns: ["standard_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["standard_id"]
           },
           {
             foreignKeyName: "indicators_tool_version_id_fkey"
@@ -634,11 +788,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "item_responses_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_assessment_progress"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "item_responses_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_indicator_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "item_responses_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "item_responses_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "v_track_scores"
+            referencedColumns: ["assessment_id"]
+          },
+          {
             foreignKeyName: "item_responses_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_responses_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["item_id"]
           },
         ]
       }
@@ -682,6 +871,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "items_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "v_indicator_scores"
+            referencedColumns: ["indicator_id"]
+          },
+          {
+            foreignKeyName: "items_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["indicator_id"]
+          },
+          {
             foreignKeyName: "items_tool_version_id_fkey"
             columns: ["tool_version_id"]
             isOneToOne: false
@@ -718,6 +921,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "level_bands_tool_version_id_fkey"
+            columns: ["tool_version_id"]
+            isOneToOne: false
+            referencedRelation: "tool_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      level_labels: {
+        Row: {
+          label: string
+          level: number
+          tool_version_id: string
+        }
+        Insert: {
+          label: string
+          level: number
+          tool_version_id: string
+        }
+        Update: {
+          label?: string
+          level?: number
+          tool_version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_labels_tool_version_id_fkey"
             columns: ["tool_version_id"]
             isOneToOne: false
             referencedRelation: "tool_versions"
@@ -998,6 +1227,27 @@ export type Database = {
             referencedRelation: "tracks"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "standards_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "v_indicator_scores"
+            referencedColumns: ["track_id"]
+          },
+          {
+            foreignKeyName: "standards_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_scores"
+            referencedColumns: ["track_id"]
+          },
+          {
+            foreignKeyName: "standards_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "v_track_scores"
+            referencedColumns: ["track_id"]
+          },
         ]
       }
       sub_classifications: {
@@ -1106,7 +1356,144 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_assessment_progress: {
+        Row: {
+          assessment_id: string | null
+          avg_level: number | null
+          cycle_id: string | null
+          indicators_complete: number | null
+          indicators_started: number | null
+          indicators_total: number | null
+          items_counted: number | null
+          items_met: number | null
+          items_total: number | null
+          items_with_evidence: number | null
+          organization_id: string | null
+          progress_pct: number | null
+          score_pct: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_indicator_scores: {
+        Row: {
+          assessment_id: string | null
+          cycle_id: string | null
+          indicator_id: string | null
+          indicator_number: number | null
+          is_complete: boolean | null
+          is_started: boolean | null
+          items_counted: number | null
+          items_met: number | null
+          items_total: number | null
+          items_with_evidence: number | null
+          level: number | null
+          level_label: string | null
+          organization_id: string | null
+          progress_pct: number | null
+          score_pct: number | null
+          standard_id: string | null
+          track_id: string | null
+          track_number: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_item_scores: {
+        Row: {
+          assessment_id: string | null
+          counted: boolean | null
+          cycle_id: string | null
+          evidence_count: number | null
+          indicator_id: string | null
+          indicator_number: number | null
+          is_met: boolean | null
+          item_id: string | null
+          item_number: number | null
+          organization_id: string | null
+          standard_id: string | null
+          track_id: string | null
+          track_number: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_track_scores: {
+        Row: {
+          assessment_id: string | null
+          avg_level: number | null
+          avg_score_pct: number | null
+          cycle_id: string | null
+          indicators_complete: number | null
+          indicators_started: number | null
+          indicators_total: number | null
+          items_counted: number | null
+          items_met: number | null
+          items_total: number | null
+          organization_id: string | null
+          progress_pct: number | null
+          track_id: string | null
+          track_number: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assessment_editable_by_org: {
@@ -1117,9 +1504,9 @@ export type Database = {
         Args: { p_assessment: string }
         Returns: boolean
       }
-      current_org_id: { Args: Record<PropertyKey, never>; Returns: string }
-      ensure_my_assessment: {
-        Args: Record<PropertyKey, never>
+      current_org_id: { Args: never; Returns: string }
+      ensure_assessment_for: {
+        Args: { p_org: string }
         Returns: {
           approved_at: string | null
           created_at: string
@@ -1129,6 +1516,29 @@ export type Database = {
           return_note: string | null
           returned_at: string | null
           status: Database["public"]["Enums"]["assessment_status"]
+          submission_due: string | null
+          submitted_at: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "assessments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ensure_my_assessment: {
+        Args: never
+        Returns: {
+          approved_at: string | null
+          created_at: string
+          cycle_id: string
+          id: string
+          organization_id: string
+          return_note: string | null
+          returned_at: string | null
+          status: Database["public"]["Enums"]["assessment_status"]
+          submission_due: string | null
           submitted_at: string | null
           updated_at: string
         }
@@ -1146,12 +1556,13 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
       is_assigned_evaluator: {
         Args: { p_assessment: string }
         Returns: boolean
       }
-      is_evaluator: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_evaluator: { Args: never; Returns: boolean }
+      is_supervisor: { Args: never; Returns: boolean }
       transition_assessment: {
         Args: {
           p_assessment: string
@@ -1167,6 +1578,7 @@ export type Database = {
           return_note: string | null
           returned_at: string | null
           status: Database["public"]["Enums"]["assessment_status"]
+          submission_due: string | null
           submitted_at: string | null
           updated_at: string
         }
@@ -1179,9 +1591,19 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "evaluator" | "user" | "organization" | "individual"
+      app_role:
+        | "admin"
+        | "evaluator"
+        | "user"
+        | "organization"
+        | "individual"
+        | "supervisor"
       assessment_status:
-        "draft" | "submitted" | "under_review" | "returned" | "approved"
+        | "draft"
+        | "submitted"
+        | "under_review"
+        | "returned"
+        | "approved"
       cycle_status: "draft" | "open" | "closed" | "archived"
       entity_type: "association" | "foundation"
       evidence_kind: "file" | "link"
@@ -1318,7 +1740,14 @@ export const Constants = {
   },
   public: {
     Enums: {
-      app_role: ["admin", "evaluator", "user", "organization", "individual"],
+      app_role: [
+        "admin",
+        "evaluator",
+        "user",
+        "organization",
+        "individual",
+        "supervisor",
+      ],
       assessment_status: [
         "draft",
         "submitted",
