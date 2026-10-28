@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Info, Loader2, RotateCcw } from "lucide-react";
@@ -240,7 +240,16 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
  * Indicator result from v_indicator_scores: level_label (the only result label on screen), score, and the
  * percentage range of the level's band. No client formula.
  */
-const ResultBlock = ({ score, bands }: { score: IndicatorScore | undefined; bands: LevelBand[] }) => {
+const ResultBlock = ({ score, bands, onHeight }: { score: IndicatorScore | undefined; bands: LevelBand[]; onHeight: (px: number) => void }) => {
+  // Reports its height (it wraps on narrow cards) so the item list can reserve the same space
+  const ref = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const bar = ref.current;
+    if (!bar) return;
+    const observer = new ResizeObserver(() => onHeight(bar.offsetHeight));
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, [onHeight]);
   const level = score?.level ?? 0;
   const tone = levelTone(level);
   const band = bands.find((b) => b.level === level);
@@ -250,7 +259,11 @@ const ResultBlock = ({ score, bands }: { score: IndicatorScore | undefined; band
       : t.result_range_span(formatNumber(band.minPct), formatNumber(band.maxPct))
     : null;
   return (
-    <footer className="flex flex-col gap-3 rounded-b-lg border-t border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between md:px-6 lg:sticky lg:bottom-0 lg:z-10" aria-live="polite">
+    <footer
+      ref={ref}
+      className="flex flex-col gap-3 rounded-b-lg border-t border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between md:px-6 lg:sticky lg:bottom-0 lg:z-10"
+      aria-live="polite"
+    >
       <p className="flex items-center gap-2 text-small">
         <span className="text-muted-foreground">{t.result_label}:</span>
         <motion.span
@@ -311,6 +324,8 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
   // ?indicator={id} (dashboard indicator squares, warnings) opens that indicator first
   const [searchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState(() => searchParams.get("indicator") ?? "");
+  // Height of the sticky result bar: the item list keeps that much space at its end, so the last item is never under it
+  const [barHeight, setBarHeight] = useState(0);
   const formTopRef = useRef<HTMLDivElement | null>(null);
 
   const rawTrack = tool.data?.tracks.find((tr) => tr.number === trackNumber);
@@ -534,7 +549,7 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
                   </p>
                 </div>
 
-                <ul className="mt-2 divide-y divide-border">
+                <ul className="mt-2 divide-y divide-border lg:pb-[var(--result-bar-h)]" style={{ "--result-bar-h": `${barHeight}px` } as CSSProperties}>
                   {indicator.items.map((item, index) => {
                     const response = responses.data?.get(item.id);
                     return (
@@ -553,7 +568,7 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
                   })}
                 </ul>
 
-                <ResultBlock score={score} bands={tool.data?.levelBands ?? []} />
+                <ResultBlock score={score} bands={tool.data?.levelBands ?? []} onHeight={setBarHeight} />
               </article>
 
               <nav className="flex items-center justify-between gap-3">

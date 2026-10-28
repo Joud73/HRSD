@@ -318,6 +318,7 @@ Advisor warnings (no ERROR): 22 are "security definer function executable by ano
 
 - [x] 1. Overall results are a percentage only, without a level label: the dashboard's النتيجة التقديرية, the results-by-cycle table, and the evaluator's tables (the supervisor and admin tables show progress only, no score). Level labels stay at indicator level (workspace result bar, indicator squares and tooltips, legend, the band table in "كيف تُحتسب النتيجة؟"). `scoreLevel` and the `chip` tone are deleted.
 - [x] 2. Demo data by official code in `demo_reset.sql`: org A SDC-07 (الرياض), region الرياض, city الرياض, district العليا, SC-04 (خدمات الأسرة); org B SDC-28 (الدمام), region الشرقية, city الدمام, district الفيصلية, SC-05 (خدمات التنمية الاجتماعية). The script stops if any of the four codes is missing; SC-01 is no longer used.
+- [x] 3. Sticky result bar: solid `bg-card` and a top border; `ResultBlock` reports its height through a ResizeObserver and the item list reserves the same space at its end (`lg:pb-[var(--result-bar-h)]`), so the last item is never under the bar. Checked in a real 1440x900 viewport (not full page) scrolled to the bottom of track 1 indicator 1: bar 63 px, list padding 63 px, last item bottom 749 px, bar top 812 px. Before the fix the bar covered item 7's evidence button.
 
 ## Decisions
 
