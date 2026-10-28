@@ -29,10 +29,10 @@ import { FieldShell, TextField } from "@/components/shared/FormField";
 import { RowActionsTrigger, SearchField, Toolbar } from "@/components/admin/AdminParts";
 import { dialogUi } from "@/components/admin/adminUi";
 
-type DbRole = "admin" | "evaluator" | "organization";
+type DbRole = "admin" | "supervisor" | "evaluator" | "organization";
 type StatusFilter = "all" | "active" | "disabled";
 
-const roleOptions: DbRole[] = ["evaluator", "organization", "admin"];
+const roleOptions: DbRole[] = ["admin", "supervisor", "evaluator", "organization"];
 
 const emptyForm = { email: "", role: "evaluator" as DbRole, organization_name: "", registration_number: "" };
 

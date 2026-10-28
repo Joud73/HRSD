@@ -16,15 +16,8 @@ type RoleKey = keyof typeof adminCopy.roles_ref;
 
 const ROLE_ORDER: RoleKey[] = ["admin", "supervisor", "evaluator", "organization"];
 
-/** Pages per role. The supervisor has no database role yet, so no pages. */
-const PAGES: Record<RoleKey, SidebarItem[]> = {
-  admin: ROLE_PAGES.admin,
-  supervisor: [],
-  evaluator: ROLE_PAGES.evaluator,
-  organization: ROLE_PAGES.organization,
-};
-
-const PLANNED: RoleKey[] = ["supervisor"];
+/** Pages per role, from the sidebars and account menus in navigation.ts. */
+const PAGES: Record<RoleKey, SidebarItem[]> = ROLE_PAGES;
 
 const AdminRoles = () => {
   const [selectedKey, setSelectedKey] = useState<RoleKey>("admin");
@@ -82,7 +75,6 @@ const AdminRoles = () => {
           <div className="flex flex-col gap-1">
             <h2 className="text-h2 text-ink">{role.name}</h2>
             <p className="text-body text-muted-foreground">{role.description}</p>
-            {PLANNED.includes(selectedKey) && <p className="mt-2 text-small text-warning-ink">{adminCopy.roles_planned}</p>}
           </div>
 
           <Panel title={adminCopy.roles_can_title}>

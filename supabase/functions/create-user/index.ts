@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       return json({ error: "email and role are required" }, 400);
     }
 
-    const validRoles = ["admin", "evaluator", "organization"];
+    const validRoles = ["admin", "supervisor", "evaluator", "organization"];
     if (!validRoles.includes(role)) {
       return json({ error: `Invalid role. Must be one of: ${validRoles.join(", ")}` }, 400);
     }

@@ -3,8 +3,8 @@ import { useAuth } from "@/context/AuthContext";
 import { copy } from "@/lib/copy";
 import PageHeader from "@/components/shared/PageHeader";
 
-/** Profile page body shared by admin and evaluator. */
-const AccountProfile = ({ role, home }: { role: "admin" | "evaluator"; home: string }) => {
+/** Profile page body shared by admin, supervisor and evaluator. */
+const AccountProfile = ({ role, home }: { role: "admin" | "supervisor" | "evaluator"; home: string }) => {
   const { user } = useAuth();
   const rows = [
     { icon: Mail, label: copy.profile_email, value: user?.email },

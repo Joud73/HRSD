@@ -134,10 +134,12 @@ export const copy = {
     admin: "لوحة الإدارة",
     evaluator: "بوابة المدقق",
     organization: "بوابة المنظمة",
+    supervisor: "بوابة المشرف الفني",
   },
   shell_user: {
     admin: "مدير النظام",
     evaluator: "المدقق",
+    supervisor: "المشرف الفني",
   },
   nav_admin: {
     dashboard: "لوحة التحكم",
@@ -151,6 +153,10 @@ export const copy = {
     setup: "تهيئة التقييم",
     years: "سنوات التقييم",
     reports: "التقارير",
+  },
+  nav_supervisor: {
+    dashboard: "لوحة المتابعة",
+    organizations: "المنظمات",
   },
   nav_evaluator: {
     dashboard: "لوحة التحكم",
@@ -228,3 +234,4 @@ export { adminCopy } from "@/lib/strings/admin";
 export { adminSetupCopy } from "@/lib/strings/adminSetup";
 export { assessmentCopy } from "@/lib/strings/assessment";
 export { pagesCopy } from "@/lib/strings/pages";
+export { supervisorCopy } from "@/lib/strings/supervisor";

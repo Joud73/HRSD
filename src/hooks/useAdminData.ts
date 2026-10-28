@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { adminCopy } from "@/lib/copy";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ── Association (from organizations table) + assignment data ── */
@@ -145,12 +146,8 @@ export interface AdminUserRow {
   created_at: string;
 }
 
-const roleArMap: Record<string, string> = {
-  admin: "مدير النظام",
-  evaluator: "مدقق",
-  organization: "جمعية",
-  individual: "أفراد",
-};
+/** Role labels come from the shared admin strings (one list for every page). */
+const roleArMap = adminCopy.roles_map;
 
 export function useAdminUsers() {
   return useQuery({
@@ -186,7 +183,7 @@ export function useAdminUsers() {
         email: p.email,
         organization_name: p.organizations?.name ?? p.organization_name,
         role: roleMap[p.id] || "—",
-        roleAr: roleArMap[roleMap[p.id]] || "غير محدد",
+        roleAr: roleArMap[roleMap[p.id]] || adminCopy.role_unknown,
         status: p.status,
         statusAr: statusArMap[p.status] || p.status,
         created_at: p.created_at,

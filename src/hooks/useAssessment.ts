@@ -6,7 +6,7 @@ import { ServiceError } from "@/services/errors";
 import {
   addFileEvidence, addLinkEvidence, ensureAssessmentFor, ensureMyAssessment, getAssessment, getIndicatorScores,
   getProgress, getTrackScores, isEditable, listEvidences, listExcludedItemIds, listMyAssessmentHistory, listResponses,
-  removeEvidence, setItemMet, submitAssessment,
+  removeEvidence, setItemMet, setSubmissionDue, submitAssessment,
   type Assessment, type AssessmentScope, type Evidence, type ItemResponse,
 } from "@/services/assessmentService";
 
@@ -24,13 +24,15 @@ const isPeriodClosed = (err: unknown) => err instanceof ServiceError && err.mess
 /**
  * The assessment in the open cycle for the scope. When none exists it is opened once: by the organization
  * itself (`mine`), or on its behalf by a supervisor or admin (`org`). Null when no cycle accepts submissions.
+ * With `ensure: false` it only reads (admin pages that must not open an assessment by being viewed).
  */
-export function useAssessment(scope: AssessmentScope) {
+export function useAssessment(scope: AssessmentScope, { ensure = true }: { ensure?: boolean } = {}) {
   const { userRole } = useAuth();
   const ensured = useRef<string | null>(null);
-  const key = scopeKey(scope);
+  // Read-only lookups get their own key: one key, one query function
+  const key = ensure ? scopeKey(scope) : [...scopeKey(scope), "read"];
   const keyId = key.join(":");
-  const canEnsure = scope.kind === "org" || userRole === "organization";
+  const canEnsure = ensure && (scope.kind === "org" || userRole === "organization");
 
   const query = useQuery({
     queryKey: key,
@@ -206,4 +208,21 @@ export function useSaveStatus(assessmentId: string | undefined) {
   );
 
   return { saving, savedAt };
+}
+
+/**
+ * Admin: the deadline extension of one organization (null restores the cycle deadline), opening its assessment
+ * first when it has none. Refreshes the assessment lookups and the organization lists.
+ */
+export function useSetSubmissionDue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, assessment, due }: { orgId: string; assessment: Assessment | null; due: string | null }) =>
+      setSubmissionDue(assessment ?? (await ensureAssessmentFor(orgId)), due),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: SCOPE_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["organizations"] }),
+      ]),
+  });
 }

@@ -152,6 +152,7 @@ export const assessmentCopy = {
   // ---------- Assessment service errors ----------
   err_load: "تعذّر تحميل بيانات التقييم. حاول مرة أخرى.",
   err_save: "تعذّر حفظ التغيير. حاول مرة أخرى.",
+  err_due_before_start: "يجب أن تكون المهلة في تاريخ بدء فترة التقييم الذاتي أو بعده.",
   err_period_closed: "لا توجد دورة تقييم في فترة التقييم الذاتي حالياً.",
   err_no_organization: "حسابك غير مرتبط بمنظمة. تواصل مع إدارة المنصة.",
   err_org_not_found: "المنظمة غير موجودة.",

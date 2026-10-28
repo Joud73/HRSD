@@ -13,17 +13,18 @@ import { ORGANIZATION_NAV, SIDEBAR_NAV, type ShellRole } from "@/components/layo
 import hrsdColoredLogo from "@/assets/logos/hrsd-colored.png";
 import hrsdWhiteLogo from "@/assets/logos/hrsd-white.png";
 
-const HOME: Record<ShellRole, string> = { admin: "/admin", evaluator: "/evaluator", organization: "/dashboard" };
+const HOME: Record<ShellRole, string> = { admin: "/admin", supervisor: "/supervisor", evaluator: "/evaluator", organization: "/dashboard" };
 
 const MENU: Record<ShellRole, UserMenuItem[]> = {
   admin: [{ label: copy.account_profile, to: "/admin/profile", icon: User }],
+  supervisor: [{ label: copy.account_profile, to: "/supervisor/profile", icon: User }],
   evaluator: [{ label: copy.account_profile, to: "/evaluator/profile", icon: User }],
   organization: ORGANIZATION_NAV.map(({ label, to, icon }) => ({ label, to, icon })),
 };
 
 /**
- * Internal app frame for admin, evaluator and organization pages: compact top bar,
- * green sidebar (admin, evaluator), content on the section grey. Pages render their
+ * Internal app frame for admin, supervisor, evaluator and organization pages: compact top bar,
+ * green sidebar (admin, supervisor, evaluator), content on the section grey. Pages render their
  * own PageHeader inside.
  */
 const AppShell = ({ role }: { role: ShellRole }) => {

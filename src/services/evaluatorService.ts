@@ -161,3 +161,18 @@ export async function upsertEvaluatorProfile(userId: string, input: EvaluatorPro
   );
   if (error) throw mapError(error);
 }
+
+/** Assigns (or reassigns) the evaluator of an assessment. Admin only (MoM point 12); the database enforces it. */
+export async function assignEvaluator(assessmentId: string, evaluatorId: string): Promise<void> {
+  const { data: session } = await supabase.auth.getSession();
+  const { error } = await supabase.from("assessment_reviews").upsert(
+    {
+      assessment_id: assessmentId,
+      evaluator_id: evaluatorId,
+      assigned_by: session.session?.user.id ?? null,
+      assigned_at: new Date().toISOString(),
+    },
+    { onConflict: "assessment_id" }
+  );
+  if (error) throw mapError(error);
+}

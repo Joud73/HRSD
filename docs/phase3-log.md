@@ -113,6 +113,34 @@ Org A: status `draft`; 183 responses, all with `updated_by` = org.a; 182 link ev
 
 Total 378 items: 183 met = 68 + 87 + 28; 182 counted. Track 1 reaches 13 of 13 complete and level 4 once indicator 1 is filled live. Step 7.3's "tracks 1 and 2 complete, level 4" therefore holds for track 1 only after the live demo step.
 
+## Step 4: the four roles active
+
+- [x] Role and shell:
+  - `roles.ts`: `supervisor` added to `AppRole`, its default route is `/supervisor`, and `fetchUserRole` accepts it.
+  - `navigation.ts`: supervisor sidebar with لوحة المتابعة (`/supervisor`) and المنظمات (`/supervisor/organizations`). `AppShell` gets the supervisor home and a profile menu (`/supervisor/profile`, the shared `AccountProfile`).
+  - `copy.shell_context.supervisor` = بوابة المشرف الفني, `shell_user.supervisor` = المشرف الفني.
+- [x] `SupervisorDashboard`: KPIs from `getReportSummary()` (organizations, evaluators, assessments in the open cycle) and assessments by status (`StatusChart`, with not started).
+- [x] `SupervisorOrganizations`: read-only table from `listOrganizations()`, with status, `progress_pct` bar, effective deadline and assigned evaluator, plus search and status filters. Each row has the action "إدخال التقييم نيابة عن المنظمة".
+  - `listOrganizations()` now also returns `progressPct` (from `v_assessment_progress`), `submissionDue` and `deadline`.
+- [x] Proxy entry: `/supervisor/organizations/:orgId/assessment/:trackNumber` mounts `AssessmentWorkspace` with `{ kind: "org", orgId }`. It shows a persistent banner "أنت تُدخل التقييم نيابة عن: {اسم المنظمة}" with links to the 5 tracks. Submitting returns to the organizations list.
+- [x] Admin, in `AdminAssociationDetail` (overview tab), the panel "مسار التقييم في الدورة الحالية" (`AssessmentJourneyPanel`):
+  - Select of active evaluators → `useAssignEvaluator`. It calls `ensureAssessmentFor` when the organization has no assessment, then `assignEvaluator()` (upsert on `assessment_reviews`, conflict `assessment_id`) in `evaluatorService.ts`.
+  - Date field "تمديد مهلة التقييم الذاتي" → `setSubmissionDue()` in `assessmentService.ts`. It refuses a date before the cycle's `submission_start`, and opens the assessment when missing. The panel shows the effective deadline and "ممدد لهذه المنظمة"; "اعتماد موعد الدورة" clears the extension.
+  - Viewing the page never opens an assessment: `useAssessment(scope, { ensure: false })`.
+- [x] `AdminUsers`: role options مدير النظام / المشرف الفني / مدقق / منظمة (`roles_map`; organization now reads منظمة). `create-user` accepts `supervisor`, and is deployed to staging (`--use-api`, with `_shared/cors.ts`). Preflight from `http://localhost:8080` and the Vercel URL returns 204; any other origin gets 403.
+- [x] `AdminRoles`: four roles, each with its pages from `navigation.ts`, and the "planned" note removed. Responsibilities follow "Roles in Release 1": admin (assignment, deadlines, cycle scope), المشرف الفني (follows all organizations, proxy entry, edits evidences, submits; cannot assign or record verdicts), organization (the delegate).
+- `useAdminData` users list: role labels now come from `adminCopy.roles_map` instead of its own hardcoded map, which lacked the supervisor.
+
+### Step 4 checks on staging
+
+Signed in as `supervisor.test@tamkeen.local` through the Auth API, read only: `user_roles` gives `supervisor`; both organizations are readable; org A's assessment with its evaluator is readable; `v_assessment_progress` gives org A at 48 %; `evaluator_profiles` is readable; the evaluator count is 3. Writes (proxy entry for org B) are left to Step 7.6.
+
+### Step 4 decisions
+
+- The proxy page links the five tracks in its banner, because the supervisor has no organization dashboard to move between tracks.
+- A supervisor row shows "لم يبدأ" for a draft at 0 % progress, matching the organization dashboard's rule for a draft with nothing marked.
+- Not done: `approve-organization` is still the old deployed version (see flags).
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

@@ -56,6 +56,12 @@ export interface OrganizationListRow {
   assessmentStatus: AssessmentStatus | null;
   evaluatorId: string | null;
   evaluatorName: string | null;
+  /** Effective self-assessment deadline (yyyy-mm-dd): the extension, else the cycle submission end; null without a cycle */
+  deadline: string | null;
+  /** Admin extension of the deadline for this organization */
+  submissionDue: string | null;
+  /** progress_pct from v_assessment_progress; null without an assessment */
+  progressPct: number | null;
 }
 
 /** Constraint and trigger errors -> Arabic messages. */
@@ -172,19 +178,23 @@ export async function listOrganizations(): Promise<OrganizationListRow[]> {
   ]);
   if (orgRes.error) throw orgRes.error;
 
-  let assessments: { id: string; organization_id: string; status: AssessmentStatus; evaluator_id: string | null }[] = [];
+  let assessments: { id: string; organization_id: string; status: AssessmentStatus; evaluator_id: string | null; submission_due: string | null }[] = [];
+  const progress = new Map<string, number>();
   if (cycle) {
-    const { data, error } = await supabase
-      .from("assessments")
-      .select("id, organization_id, status, assessment_reviews(evaluator_id)")
-      .eq("cycle_id", cycle.id);
-    if (error) throw error;
-    assessments = data.map((a) => ({
+    const [assessRes, progressRes] = await Promise.all([
+      supabase.from("assessments").select("id, organization_id, status, submission_due, assessment_reviews(evaluator_id)").eq("cycle_id", cycle.id),
+      supabase.from("v_assessment_progress").select("assessment_id, progress_pct").eq("cycle_id", cycle.id),
+    ]);
+    if (assessRes.error) throw assessRes.error;
+    if (progressRes.error) throw progressRes.error;
+    assessments = assessRes.data.map((a) => ({
       id: a.id,
       organization_id: a.organization_id,
       status: a.status,
       evaluator_id: a.assessment_reviews?.evaluator_id ?? null,
+      submission_due: a.submission_due,
     }));
+    for (const p of progressRes.data) if (p.assessment_id) progress.set(p.assessment_id, p.progress_pct ?? 0);
   }
 
   const evaluatorIds = [...new Set(assessments.map((a) => a.evaluator_id).filter((v): v is string => !!v))];
@@ -207,6 +217,9 @@ export async function listOrganizations(): Promise<OrganizationListRow[]> {
       assessmentStatus: a?.status ?? null,
       evaluatorId: a?.evaluator_id ?? null,
       evaluatorName: a?.evaluator_id ? names.get(a.evaluator_id) ?? null : null,
+      submissionDue: a?.submission_due ?? null,
+      deadline: cycle ? a?.submission_due ?? cycle.submissionEnd : null,
+      progressPct: a ? progress.get(a.id) ?? 0 : null,
     };
   });
 }

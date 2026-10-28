@@ -20,6 +20,7 @@ import { FieldShell, FormError, TextField } from "@/components/shared/FormField"
 import { Fact, KeyFacts, Panel } from "@/components/admin/AdminParts";
 import { FormDialog } from "@/components/admin/setup/SetupDialogs";
 import { tabsUi } from "@/components/admin/adminUi";
+import AssessmentJourneyPanel from "@/components/admin/AssessmentJourneyPanel";
 
 const ENTITY_TYPES: EntityType[] = ["association", "foundation"];
 
@@ -305,6 +306,8 @@ const AdminAssociationDetail = () => {
 
         {/* ── Overview ── */}
         <TabsContent value="overview" className={tabsUi.content}>
+          <AssessmentJourneyPanel orgId={org.id} cycle={openCycle} evaluatorId={row?.evaluatorId ?? null} />
+
           <Panel title={adminCopy.assoc_section_info} aside={<EditButton label={adminCopy.edit} onClick={() => setOrgOpen(true)} />}>
             <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
               <Fact label={adminCopy.assoc_name}>{org.name}</Fact>

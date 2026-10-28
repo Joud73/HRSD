@@ -407,6 +407,17 @@ export async function getEvidenceUrl(evidence: Evidence): Promise<string> {
 }
 
 // ---------------------------------------------------------------
+// Deadline extension (admin, MoM point 7)
+// ---------------------------------------------------------------
+
+/** Sets this organization's own deadline (yyyy-mm-dd), on or after the cycle's submission start; null restores the cycle's. */
+export async function setSubmissionDue(assessment: Assessment, due: string | null): Promise<void> {
+  if (due && due < assessment.cycle.submissionStart) throw new ServiceError(t.err_due_before_start);
+  const { error } = await supabase.from("assessments").update({ submission_due: due }).eq("id", assessment.id);
+  if (error) throw mapError(error, t.err_save);
+}
+
+// ---------------------------------------------------------------
 // Submission
 // ---------------------------------------------------------------
 

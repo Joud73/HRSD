@@ -16,6 +16,10 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import AssessmentTrack, { LegacyTrackRedirect } from "./pages/AssessmentTrack";
+import SupervisorDashboard from "./pages/SupervisorDashboard";
+import SupervisorOrganizations from "./pages/SupervisorOrganizations";
+import SupervisorProxyAssessment from "./pages/SupervisorProxyAssessment";
+import AccountProfile from "@/components/shared/AccountProfile";
 import TrainingStage from "./pages/TrainingStage";
 import CourseDetail from "./pages/CourseDetail";
 import IndividualCourseDetail from "./pages/IndividualCourseDetail";
@@ -110,6 +114,13 @@ const App = () => (
               </Route>
 
               {/* Evaluator */}
+              <Route element={guard(["supervisor"], <AppShell role="supervisor" />)}>
+                <Route path="/supervisor" element={<SupervisorDashboard />} />
+                <Route path="/supervisor/organizations" element={<SupervisorOrganizations />} />
+                <Route path="/supervisor/organizations/:orgId/assessment/:trackNumber" element={<SupervisorProxyAssessment />} />
+                <Route path="/supervisor/profile" element={<AccountProfile role="supervisor" home="/supervisor" />} />
+              </Route>
+
               <Route element={guard(["evaluator"], <AppShell role="evaluator" />)}>
                 <Route path="/evaluator" element={<EvaluatorDashboard />} />
                 <Route path="/evaluator/assignments" element={<EvaluatorAssignments />} />
