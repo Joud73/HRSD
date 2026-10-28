@@ -218,11 +218,19 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
   );
 };
 
-/** Indicator result from v_indicator_scores: level label, score and band. No client formula. */
+/**
+ * Indicator result from v_indicator_scores: level_label (the only result label on screen), score, and the
+ * percentage range of the level's band. No client formula.
+ */
 const ResultBlock = ({ score, bands }: { score: IndicatorScore | undefined; bands: LevelBand[] }) => {
   const level = score?.level ?? 0;
   const tone = levelTone(level);
-  const band = bands.find((b) => b.level === level)?.label;
+  const band = bands.find((b) => b.level === level);
+  const range = band
+    ? band.minPct === band.maxPct
+      ? `${formatNumber(band.minPct)}%`
+      : t.result_range_span(formatNumber(band.minPct), formatNumber(band.maxPct))
+    : null;
   return (
     <footer className="flex flex-col gap-3 border-t border-border p-5 sm:flex-row sm:items-center sm:justify-between md:px-6" aria-live="polite">
       <p className="flex items-center gap-2 text-small">
@@ -243,13 +251,8 @@ const ResultBlock = ({ score, bands }: { score: IndicatorScore | undefined; band
           <dt className="text-muted-foreground">{t.result_score}</dt>
           <dd className="tabular font-hrsd-medium text-ink">{formatNumber(score?.scorePct ?? 0)}%</dd>
         </div>
-        {band && (
-          <div className="flex gap-2">
-            <dt className="text-muted-foreground">{t.result_band}</dt>
-            <dd className="font-hrsd-medium text-ink">{band}</dd>
-          </div>
-        )}
       </dl>
+      {range && <p className="tabular text-small text-muted-foreground">{t.result_range(range)}</p>}
     </footer>
   );
 };

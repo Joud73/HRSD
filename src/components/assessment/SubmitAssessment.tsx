@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Loader2, Send } from "lucide-react";
+import { AlertCircle, AlertTriangle, Loader2, Send } from "lucide-react";
 import { assessmentCopy as t } from "@/lib/copy";
 import { formatNumber } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +48,8 @@ const SubmitDialog = ({ assessmentId, onOpenChange, onSubmitted }: { assessmentI
 
   // Started indicators with items marked met that have no evidence (met but not counted)
   const withoutEvidence = (scores ?? []).filter((s) => s.isStarted && s.itemsMet > s.itemsCounted);
+  // Partial submissions are allowed; an assessment with nothing marked is not
+  const empty = progress?.itemsMet === 0;
 
   const confirm = async () => {
     setError("");
@@ -79,6 +81,13 @@ const SubmitDialog = ({ assessmentId, onOpenChange, onSubmitted }: { assessmentI
           </dl>
         )}
 
+        {empty && (
+          <p role="alert" className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-small text-danger">
+            <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+            {t.submit_empty}
+          </p>
+        )}
+
         {withoutEvidence.length > 0 && (
           <section className="rounded-lg border border-warning/40 bg-warning/5 p-4">
             <h3 className="flex items-center gap-2 text-small font-hrsd-bold text-warning-ink">
@@ -108,7 +117,7 @@ const SubmitDialog = ({ assessmentId, onOpenChange, onSubmitted }: { assessmentI
       </div>
 
       <DialogFooter className={dialogUi.footer}>
-        <Button onClick={confirm} disabled={submit.isPending || !progress}>
+        <Button onClick={confirm} disabled={submit.isPending || !progress || empty}>
           {submit.isPending ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : <Send aria-hidden />}
           {submit.isPending ? t.submit_sending : t.submit_confirm}
         </Button>

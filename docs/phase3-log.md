@@ -92,6 +92,27 @@ All values match.
 
 - No organization test password is available to me, so the pages were checked by typecheck, lint, dev-server compilation, and staging grants and policies only: `current_org_id`, `ensure_*` and `transition_assessment` are executable by `authenticated`, and `assessment_cycles` and `level_labels` are readable. Step 7 covers the click-through.
 
+## Fixes after Step 3
+
+- [x] Result block: the band label is gone. It now shows the band's range, "النطاق: 1 إلى 60%" (a one-value band reads "النطاق: 0%" or "النطاق: 100%"). The only result label on screen is `level_label` from the view.
+- [x] Deleting an evidence asks for confirmation in an AlertDialog: "حذف الشاهد؟", "لا يمكن التراجع عن الحذف.", "حذف" (danger), "إلغاء".
+- [x] The submit dialog blocks an empty assessment: when `itemsMet = 0`, confirm is disabled and the dialog says "لا يمكن إرسال تقييم دون تحديد أي بند.". This is a UI guard only; `transition_assessment` still accepts an empty submission. Partial submissions keep the warning.
+- [x] `supabase/seed/demo_reset.sql` (staging only, as postgres, one transaction, idempotent). It recreates org A's draft, reassigns evaluator1, and fills tracks 1 to 3. Items are selected by track and indicator number (no hardcoded ids), and excluded items are skipped.
+
+### Demo reset on staging (2026-10-28)
+
+Org A: status `draft`; 183 responses, all with `updated_by` = org.a; 182 link evidences; evaluator1 assigned. Indicator 1: 0 of 7, 0 %, غير مكتمل.
+
+| track | indicators | started | complete | items_total | items_met | items_counted | avg_level | avg_score_pct | progress_pct |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 13 | 12 | 12 | 75 | 68 | 68 | 3.69 | 92 | 91 |
+| 2 | 14 | 14 | 14 | 87 | 87 | 87 | 4.00 | 100 | 100 |
+| 3 | 10 | 10 | 0 | 56 | 28 | 27 | 1.00 | 48 | 50 |
+| 4 | 14 | 0 | 0 | 94 | 0 | 0 | 0.00 | 0 | 0 |
+| 5 | 10 | 0 | 0 | 66 | 0 | 0 | 0.00 | 0 | 0 |
+
+Total 378 items: 183 met = 68 + 87 + 28; 182 counted. Track 1 reaches 13 of 13 complete and level 4 once indicator 1 is filled live. Step 7.3's "tracks 1 and 2 complete, level 4" therefore holds for track 1 only after the live demo step.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

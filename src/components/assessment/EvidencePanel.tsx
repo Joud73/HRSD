@@ -4,6 +4,10 @@ import { assessmentCopy as t } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { FormError, TextField } from "@/components/shared/FormField";
@@ -89,6 +93,7 @@ const LinkDialog = ({ open, onOpenChange, onSubmit }: { open: boolean; onOpenCha
 const EvidencePanel = ({ evidences, editable, uploading, onAttachFile, onAddLink, onOpen, onDelete }: EvidencePanelProps) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Evidence | null>(null);
 
   const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -114,7 +119,7 @@ const EvidencePanel = ({ evidences, editable, uploading, onAttachFile, onAddLink
                   <ExternalLink aria-hidden className="text-primary" />
                 </Button>
                 {editable && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDelete(evidence)} aria-label={`${t.evidence_delete}: ${name}`} title={t.evidence_delete}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPendingDelete(evidence)} aria-label={`${t.evidence_delete}: ${name}`} title={t.evidence_delete}>
                     <Trash2 aria-hidden className="text-danger" />
                   </Button>
                 )}
@@ -138,6 +143,34 @@ const EvidencePanel = ({ evidences, editable, uploading, onAttachFile, onAddLink
           <input ref={inputRef} type="file" accept={ACCEPT} onChange={handleFile} className="hidden" tabIndex={-1} aria-hidden />
         </div>
       )}
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader className={dialogUi.header}>
+            <AlertDialogTitle className={dialogUi.title}>{t.evidence_delete_title}</AlertDialogTitle>
+            <AlertDialogDescription className={dialogUi.description}>
+              {t.evidence_delete_desc}
+              {pendingDelete && (
+                <span className="mt-2 block truncate font-hrsd-medium text-ink" dir="auto">
+                  {evidenceName(pendingDelete)}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className={dialogUi.footer}>
+            <AlertDialogAction
+              className={dialogUi.danger}
+              onClick={() => {
+                if (pendingDelete) onDelete(pendingDelete);
+                setPendingDelete(null);
+              }}
+            >
+              {t.evidence_delete_confirm}
+            </AlertDialogAction>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Mounted only while open, so each opening starts empty */}
       {linkOpen && <LinkDialog open={linkOpen} onOpenChange={setLinkOpen} onSubmit={onAddLink} />}

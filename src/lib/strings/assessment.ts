@@ -67,6 +67,9 @@ export const assessmentCopy = {
   evidence_removed: "تم حذف الشاهد",
   evidence_open: "فتح الشاهد",
   evidence_delete: "حذف الشاهد",
+  evidence_delete_title: "حذف الشاهد؟",
+  evidence_delete_desc: "لا يمكن التراجع عن الحذف.",
+  evidence_delete_confirm: "حذف",
   link_dialog_title: "إضافة رابط شاهد",
   link_dialog_desc: "أدخل رابط الشاهد كاملاً، مثل https://example.org/report.",
   link_field: "الرابط",
@@ -77,7 +80,9 @@ export const assessmentCopy = {
   // Indicator result (values come from the scoring views)
   result_label: "نتيجة المؤشر",
   result_score: "نسبة التحقق",
-  result_band: "مستوى التحقق",
+  /** "النطاق: 1 إلى 60%"; a single-value band reads "النطاق: 0%" */
+  result_range: (range: string) => `النطاق: ${range}`,
+  result_range_span: (min: string, max: string) => `${min} إلى ${max}%`,
 
   prev_indicator: "المؤشر السابق",
   next_indicator: "المؤشر التالي",
@@ -94,6 +99,7 @@ export const assessmentCopy = {
   submit_warning_title: "مؤشرات فيها بنود محددة دون شواهد",
   submit_warning_desc: "هذه البنود لا تُحتسب في النتيجة. يمكنك الإرسال الآن، أو إرفاق الشواهد أولاً.",
   submit_warning_count: (count: string) => `${count} دون شاهد`,
+  submit_empty: "لا يمكن إرسال تقييم دون تحديد أي بند.",
   submit_freeze: "بعد الإرسال تُجمَّد الإجابات والشواهد، ولا تُعدَّل إلا إذا أُعيد التقييم للاستكمال.",
   submit_confirm: "تأكيد الإرسال",
   submit_sending: "جارٍ الإرسال",
