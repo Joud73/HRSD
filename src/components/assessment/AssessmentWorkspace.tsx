@@ -135,6 +135,7 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
   const addLink = useAddLinkEvidence(assessmentId);
   const removeEvidence = useRemoveEvidence(assessmentId);
   const [note, setNote] = useState(orgNote ?? "");
+  const [noteOpen, setNoteOpen] = useState(!!orgNote);
   const [uploading, setUploading] = useState(false);
 
   const fail = (err: unknown) => toast({ title: err instanceof Error ? err.message : t.err_save, variant: "destructive" });
@@ -174,15 +175,21 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
           </span>
           <span className="block text-body text-ink">{stripOrdinal(text)}</span>
         </label>
+        {isMet &&
+          (evidences.length > 0 ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-caption font-hrsd-medium text-success">
+              <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+              {t.item_counted}
+            </span>
+          ) : (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/15 px-2.5 py-0.5 text-caption font-hrsd-medium text-warning-ink">
+              <AlertTriangle aria-hidden className="h-3.5 w-3.5" />
+              {t.item_met_without_evidence}
+            </span>
+          ))}
       </div>
 
       <div className="flex flex-col gap-3 ps-8">
-        {isMet && evidences.length === 0 && (
-          <p className="flex items-center gap-1.5 text-caption text-warning-ink">
-            <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0" />
-            {t.item_met_without_evidence}
-          </p>
-        )}
 
         <EvidencePanel
           evidences={evidences}
@@ -197,7 +204,16 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
           onDelete={(e) => removeEvidence.mutate(e, { onSuccess: () => toast({ title: t.evidence_removed }), onError: fail })}
         />
 
-        {(editable || orgNote) && (
+        {editable && !noteOpen && (
+          <button
+            type="button"
+            onClick={() => setNoteOpen(true)}
+            className="self-start rounded-md text-small font-hrsd-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t.note_add}
+          </button>
+        )}
+        {noteOpen && (editable || orgNote) && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor={noteId} className="text-caption text-muted-foreground">
               {t.item_note_label}
@@ -210,6 +226,7 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
               placeholder={t.item_note_placeholder}
               onChange={(e) => setNote(e.target.value)}
               onBlur={saveNote}
+              autoFocus={!orgNote}
               className="min-h-[64px] text-small"
             />
           </div>
@@ -233,7 +250,7 @@ const ResultBlock = ({ score, bands }: { score: IndicatorScore | undefined; band
       : t.result_range_span(formatNumber(band.minPct), formatNumber(band.maxPct))
     : null;
   return (
-    <footer className="flex flex-col gap-3 border-t border-border p-5 sm:flex-row sm:items-center sm:justify-between md:px-6" aria-live="polite">
+    <footer className="flex flex-col gap-3 rounded-b-lg border-t border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between md:px-6 lg:sticky lg:bottom-0 lg:z-10" aria-live="polite">
       <p className="flex items-center gap-2 text-small">
         <span className="text-muted-foreground">{t.result_label}:</span>
         <motion.span

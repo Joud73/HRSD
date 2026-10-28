@@ -54,13 +54,16 @@ export const assessmentCopy = {
   items_heading: "بنود التحقق",
   item_rule: "يُحتسب البند عند تحديده وإرفاق شاهد له",
   item_met_without_evidence: "محدد دون شاهد، لا يُحتسب",
+  item_counted: "محتسب",
+  note_add: "إضافة ملاحظة",
   item_note_label: "ملاحظة المنظمة (اختياري)",
   item_note_placeholder: "أضف توضيحاً للبند",
 
   // Evidence
   evidence_list_label: "شواهد البند",
-  evidence_attach_file: "إرفاق ملف",
-  evidence_add_link: "إضافة رابط",
+  evidence_add: "إضافة شاهد",
+  evidence_add_file: "ملف",
+  evidence_add_link: "رابط",
   evidence_file_hint: "PDF أو صورة أو Word أو Excel، حتى 20 ميجابايت",
   evidence_uploading: "جارٍ رفع الملف",
   evidence_attached: "تم إرفاق الشاهد",

@@ -258,6 +258,13 @@ Built (`components/dashboard/`):
 - [x] `ResultsSections`: "كيف تُحتسب النتيجة؟" (closed; three lines; band table from `level_bands` and `level_labels`) and the results-by-cycle table (الدورة، الحالة، النتيجة with band label; unapproved tagged "تقديرية").
 - Critique after build (screenshots at 1440 and 390): `cn()` (tailwind-merge) dropped the custom `text-h1` size when a text colour followed, so the days number rendered small; those class lists are now plain strings. Removed one element: the "1." prefix before each track name. 390 px: band stacks, stepper vertical, summary columns stack, track rows wrap.
 
+### D. Track page compaction
+
+- [x] Each item: checkbox and text, and one state chip at the end: "محتسب" (success) when ticked with evidence, "محدد دون شاهد، لا يُحتسب" (warning) when ticked without. The separate warning line is gone.
+- [x] One "إضافة شاهد" menu (ملف / رابط, with the file-type hint inside the menu) replaces the two buttons. The menu is not modal so the link dialog opens cleanly after it closes.
+- [x] The note sits behind the text button "إضافة ملاحظة"; it is open from the start only when a note exists (and focuses the field when opened).
+- [x] The indicator result is a sticky footer inside the indicator card from lg up.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

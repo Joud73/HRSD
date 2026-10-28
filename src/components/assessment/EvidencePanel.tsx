@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { ExternalLink, FileText, Link2, Loader2, Paperclip, Trash2 } from "lucide-react";
+import { ChevronDown, ExternalLink, FileText, Link2, Loader2, Paperclip, Plus, Trash2 } from "lucide-react";
 import { assessmentCopy as t } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
 import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FormError, TextField } from "@/components/shared/FormField";
 import { dialogUi } from "@/components/admin/adminUi";
 import { EVIDENCE_MIME_TYPES, type Evidence } from "@/services/assessmentService";
@@ -130,16 +131,26 @@ const EvidencePanel = ({ evidences, editable, uploading, onAttachFile, onAddLink
       )}
 
       {editable && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading} className="text-small">
-            {uploading ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : <Paperclip aria-hidden />}
-            {uploading ? t.evidence_uploading : t.evidence_attach_file}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)} className="text-small">
-            <Link2 aria-hidden />
-            {t.evidence_add_link}
-          </Button>
-          <span className="text-caption text-muted-foreground">{t.evidence_file_hint}</span>
+        <div className="flex items-center gap-2">
+          {/* Not modal: the link dialog opens right after the menu closes */}
+          <DropdownMenu dir="rtl" modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={uploading} className="text-small">
+                {uploading ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : <Plus aria-hidden />}
+                {uploading ? t.evidence_uploading : t.evidence_add}
+                {!uploading && <ChevronDown aria-hidden className="opacity-60" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[220px]">
+              <DropdownMenuItem className="gap-2 text-small" onSelect={() => inputRef.current?.click()}>
+                <Paperclip aria-hidden className="h-4 w-4" /> {t.evidence_add_file}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 text-small" onSelect={() => setLinkOpen(true)}>
+                <Link2 aria-hidden className="h-4 w-4" /> {t.evidence_add_link}
+              </DropdownMenuItem>
+              <DropdownMenuLabel className="text-caption font-hrsd-regular text-muted-foreground">{t.evidence_file_hint}</DropdownMenuLabel>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <input ref={inputRef} type="file" accept={ACCEPT} onChange={handleFile} className="hidden" tabIndex={-1} aria-hidden />
         </div>
       )}
