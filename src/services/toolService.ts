@@ -51,6 +51,8 @@ export interface ApprovedTool {
   approvedAt: string | null;
   tracks: Track[];
   levelBands: LevelBand[];
+  /** Result labels of the reference tool per level, from level_labels */
+  levelLabels: Record<number, string>;
   counts: ToolCounts;
 }
 
@@ -91,7 +93,7 @@ export async function getApprovedTool(): Promise<ApprovedTool | null> {
   if (!version) return null;
   const vid = version.id;
 
-  const [tracksRes, standardsRes, indicatorsRes, itemsRes, bandsRes] = await Promise.all([
+  const [tracksRes, standardsRes, indicatorsRes, itemsRes, bandsRes, labelsRes] = await Promise.all([
     supabase.from("tracks").select("id, number, name").eq("tool_version_id", vid).order("number"),
     supabase.from("standards").select("id, track_id, number, name").eq("tool_version_id", vid).order("number"),
     supabase.from("indicators").select("id, standard_id, number, text").eq("tool_version_id", vid).order("number"),
@@ -101,8 +103,9 @@ export async function getApprovedTool(): Promise<ApprovedTool | null> {
       .eq("tool_version_id", vid)
       .order("number"),
     supabase.from("level_bands").select("level, min_pct, max_pct, label").eq("tool_version_id", vid).order("level"),
+    supabase.from("level_labels").select("level, label").eq("tool_version_id", vid),
   ]);
-  for (const res of [tracksRes, standardsRes, indicatorsRes, itemsRes, bandsRes]) {
+  for (const res of [tracksRes, standardsRes, indicatorsRes, itemsRes, bandsRes, labelsRes]) {
     if (res.error) throw res.error;
   }
 
@@ -141,6 +144,7 @@ export async function getApprovedTool(): Promise<ApprovedTool | null> {
     approvedAt: version.approved_at,
     tracks,
     levelBands: (bandsRes.data ?? []).map((b) => ({ level: b.level, minPct: b.min_pct, maxPct: b.max_pct, label: b.label })),
+    levelLabels: Object.fromEntries((labelsRes.data ?? []).map((l) => [l.level, l.label])),
     counts: {
       tracks: tracks.length,
       standards: standardsRes.data?.length ?? 0,

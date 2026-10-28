@@ -12,6 +12,8 @@ interface ProgressRowProps {
   completed: number;
   total: number;
   status?: StatusKey | string;
+  /** Overrides the status label, keeping its colour */
+  statusLabel?: string;
   /** Link to continue; the whole row becomes the link */
   to?: string;
   linkLabel?: string;
@@ -19,7 +21,7 @@ interface ProgressRowProps {
 }
 
 /** Name, completed over total, animated bar (fills once when visible), status and a continue link. */
-const ProgressRow = ({ name, completed, total, status, to, linkLabel, className }: ProgressRowProps) => {
+const ProgressRow = ({ name, completed, total, status, statusLabel, to, linkLabel, className }: ProgressRowProps) => {
   const reduced = useReducedMotion();
   const pct = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
 
@@ -28,7 +30,7 @@ const ProgressRow = ({ name, completed, total, status, to, linkLabel, className 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-body font-hrsd-bold text-ink">{name}</p>
         <div className="flex items-center gap-3">
-          {status !== undefined && <StatusBadge status={status} />}
+          {status !== undefined && <StatusBadge status={status} label={statusLabel} />}
           {to && (
             <span className="inline-flex items-center gap-1 text-small font-hrsd-medium text-primary">
               {linkLabel}

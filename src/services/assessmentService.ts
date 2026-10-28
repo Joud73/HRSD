@@ -146,7 +146,13 @@ function mapError(error: { message?: string; code?: string; details?: string | n
 }
 
 /** Today in Riyadh as yyyy-mm-dd; the database compares with current_date. */
-const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+export const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+
+/** Whole days from today (Riyadh) to a yyyy-mm-dd date; negative once it has passed. */
+export function daysUntil(date: string): number {
+  const toDay = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
+  return Math.round((toDay(date) - toDay(today())) / 86_400_000);
+}
 
 // ---------------------------------------------------------------
 // Assessment row

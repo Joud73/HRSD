@@ -25,6 +25,9 @@ export function formatDate(value: string | number | Date | null | undefined): st
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+/** 24h time, Western digits: "10:30" */
+export const formatTime = (value: Date) => `${pad(value.getHours())}:${pad(value.getMinutes())}`;
+
 /** Date plus 24h time, Western digits: "22 يناير 2026، 10:30" */
 export const formatDateTime = (value: string | Date | null | undefined) => {
   if (!value) return "—";

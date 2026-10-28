@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { assessmentCopy } from "@/lib/copy";
 import { ServiceError } from "@/services/errors";
@@ -183,4 +183,27 @@ export function useSubmitAssessment(assessmentId: string | undefined) {
         queryClient.invalidateQueries({ queryKey: HISTORY_KEY }),
       ]),
   });
+}
+
+/**
+ * Saving state for the page header: `saving` while any mutation of the assessment runs, `savedAt` = time of
+ * the last successful one. Read from the mutation cache, so it outlives finished mutations being cleared.
+ */
+export function useSaveStatus(assessmentId: string | undefined) {
+  const queryClient = useQueryClient();
+  const saving = useIsMutating({ mutationKey: assessmentKey(assessmentId) }) > 0;
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  useEffect(
+    () =>
+      queryClient.getMutationCache().subscribe((event) => {
+        const key = event.mutation?.options.mutationKey;
+        if (event.type === "updated" && event.action.type === "success" && key?.[0] === "assessment" && key[1] === assessmentId) {
+          setSavedAt(new Date());
+        }
+      }),
+    [queryClient, assessmentId]
+  );
+
+  return { saving, savedAt };
 }

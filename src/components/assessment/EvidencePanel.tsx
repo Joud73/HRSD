@@ -1,75 +1,147 @@
-import { useRef, type ChangeEvent } from "react";
-import { Eye, EyeOff, FileText, FolderOpen, Paperclip, Trash2 } from "lucide-react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { ExternalLink, FileText, Link2, Loader2, Paperclip, Trash2 } from "lucide-react";
 import { assessmentCopy as t } from "@/lib/copy";
-import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import EmptyState from "@/components/shared/EmptyState";
-import type { EvidenceRecord } from "@/components/assessment/indicatorsData";
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { FormError, TextField } from "@/components/shared/FormField";
+import { dialogUi } from "@/components/admin/adminUi";
+import { EVIDENCE_MIME_TYPES, type Evidence } from "@/services/assessmentService";
 
 interface EvidencePanelProps {
-  records: EvidenceRecord[];
-  onToggle: (evidenceId: string) => void;
-  onDelete: (evidenceId: string) => void;
-  onUploadGeneral: (event: ChangeEvent<HTMLInputElement>) => void;
+  /** Evidences of one item */
+  evidences: Evidence[];
+  editable: boolean;
+  uploading: boolean;
+  onAttachFile: (file: File) => void;
+  /** Resolves when saved; rejects with a ServiceError whose message is shown in the dialog */
+  onAddLink: (url: string, label: string) => Promise<void>;
+  onOpen: (evidence: Evidence) => void;
+  onDelete: (evidence: Evidence) => void;
 }
 
-/** Every file attached to one indicator, per item or general. */
-const EvidencePanel = ({ records, onToggle, onDelete, onUploadGeneral }: EvidencePanelProps) => {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const openPicker = () => inputRef.current?.click();
+const ACCEPT = Object.keys(EVIDENCE_MIME_TYPES).join(",");
+
+/** File name, or the link's label or host. */
+const evidenceName = (e: Evidence) => {
+  if (e.kind === "file") return e.fileName ?? "";
+  if (e.fileName) return e.fileName;
+  try {
+    return new URL(e.url ?? "").host;
+  } catch {
+    return e.url ?? "";
+  }
+};
+
+/** Add a link: URL (required) and an optional label. */
+const LinkDialog = ({ open, onOpenChange, onSubmit }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: EvidencePanelProps["onAddLink"] }) => {
+  const [url, setUrl] = useState("");
+  const [label, setLabel] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      await onSubmit(url, label);
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "");
+      setSaving(false);
+    }
+  };
 
   return (
-    <>
-      <input ref={inputRef} type="file" onChange={onUploadGeneral} className="hidden" tabIndex={-1} aria-hidden />
-      {records.length === 0 ? (
-        <EmptyState icon={FolderOpen} message={t.evidence_empty} action={{ label: t.evidence_add_general, onClick: openPicker }} className="py-10" />
-      ) : (
-        <div className="flex flex-col gap-4">
-          <ul className="divide-y divide-border">
-            {records.map((evidence) => (
-              <li
-                key={evidence.id}
-                className={cn("flex items-center gap-3 py-3 first:pt-0 transition-opacity duration-ui", evidence.hidden && "opacity-50")}
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/5 text-primary">
-                  <FileText aria-hidden className="h-5 w-5" />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className={dialogUi.content}>
+        <form onSubmit={submit} noValidate>
+          <DialogHeader className={dialogUi.header}>
+            <DialogTitle className={dialogUi.title}>{t.link_dialog_title}</DialogTitle>
+            <DialogDescription className={dialogUi.description}>{t.link_dialog_desc}</DialogDescription>
+          </DialogHeader>
+          <div className={dialogUi.body}>
+            <FormError message={error} />
+            <TextField label={t.link_field} type="url" dir="ltr" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} required autoFocus />
+            <TextField label={t.link_label_field} value={label} onChange={(e) => setLabel(e.target.value)} />
+          </div>
+          <DialogFooter className={dialogUi.footer}>
+            <Button type="submit" disabled={saving || !url.trim()}>
+              {saving && <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" />}
+              {t.link_submit}
+            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                {t.cancel}
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/** Evidences of one item, with attach and add-link actions while the assessment is editable. */
+const EvidencePanel = ({ evidences, editable, uploading, onAttachFile, onAddLink, onOpen, onDelete }: EvidencePanelProps) => {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+
+  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) onAttachFile(file);
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {evidences.length > 0 && (
+        <ul aria-label={t.evidence_list_label} className="flex flex-col gap-2">
+          {evidences.map((evidence) => {
+            const Icon = evidence.kind === "file" ? FileText : Link2;
+            const name = evidenceName(evidence);
+            return (
+              <li key={evidence.id} className="flex items-center gap-3 rounded-md border border-border bg-section-alt/60 py-1.5 pe-1 ps-3">
+                <Icon aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-small text-ink" dir="auto">
+                  {name}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-small font-hrsd-medium text-ink" dir="auto">
-                    {evidence.fileName}
-                  </p>
-                  <p className="flex flex-wrap gap-x-3 text-caption text-muted-foreground">
-                    <span>{evidence.itemLabel}</span>
-                    <span className="tabular">{evidence.uploadedAt}</span>
-                    <span>{evidence.hidden ? t.evidence_hidden : t.evidence_pending_review}</span>
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onToggle(evidence.id)}
-                    aria-label={evidence.hidden ? t.evidence_show : t.evidence_hide}
-                    title={evidence.hidden ? t.evidence_show : t.evidence_hide}
-                  >
-                    {evidence.hidden ? <EyeOff aria-hidden className="text-primary" /> : <Eye aria-hidden className="text-primary" />}
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(evidence.id)} aria-label={t.evidence_delete} title={t.evidence_delete}>
+                <span className="tabular hidden shrink-0 text-caption text-muted-foreground sm:inline">{formatDate(evidence.uploadedAt)}</span>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpen(evidence)} aria-label={`${t.evidence_open}: ${name}`} title={t.evidence_open}>
+                  <ExternalLink aria-hidden className="text-primary" />
+                </Button>
+                {editable && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDelete(evidence)} aria-label={`${t.evidence_delete}: ${name}`} title={t.evidence_delete}>
                     <Trash2 aria-hidden className="text-danger" />
                   </Button>
-                </div>
+                )}
               </li>
-            ))}
-          </ul>
-          <div>
-            <Button variant="outline" onClick={openPicker}>
-              <Paperclip aria-hidden />
-              {t.evidence_add_general}
-            </Button>
-          </div>
+            );
+          })}
+        </ul>
+      )}
+
+      {editable && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading} className="text-small">
+            {uploading ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : <Paperclip aria-hidden />}
+            {uploading ? t.evidence_uploading : t.evidence_attach_file}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)} className="text-small">
+            <Link2 aria-hidden />
+            {t.evidence_add_link}
+          </Button>
+          <span className="text-caption text-muted-foreground">{t.evidence_file_hint}</span>
+          <input ref={inputRef} type="file" accept={ACCEPT} onChange={handleFile} className="hidden" tabIndex={-1} aria-hidden />
         </div>
       )}
-    </>
+
+      {/* Mounted only while open, so each opening starts empty */}
+      {linkOpen && <LinkDialog open={linkOpen} onOpenChange={setLinkOpen} onSubmit={onAddLink} />}
+    </div>
   );
 };
 

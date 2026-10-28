@@ -52,6 +52,46 @@ All values match.
 - [x] Error strings: 14 `err_*` keys in `src/lib/strings/assessment.ts`.
 - Checked on staging through PostgREST with the service key (read only): the embedded filter `assessment_cycles.status=eq.open` returns org A's row, and `v_assessment_progress` returns 378 items.
 
+## Step 3: organization pages on the database
+
+- [x] 3.1 Route `/assessment/:trackNumber` (1 to 5, anything else redirects to `/dashboard`). `/technical-indicators/:courseSlug` redirects (altawajuh→1, alfariq→2, alsharakat→3, albaramij→4, altaathir→5). The page is `AssessmentWorkspace` with a `scope` prop, ready for Step 4.
+  - Deleted: `indicatorsData.ts`, `TaskDialog`, `ImprovementPlanPanel`, `NotesPanel`, and `TechnicalEvaluationIndicators.tsx` (all its localStorage code).
+  - `TRACK_SLUG` and `readEvidence` are removed from `Dashboard.tsx`.
+  - Kept and adapted: `IndicatorNav` (tool tree and view counts), `EvidencePanel` (per-item files and links), the two-pane layout, and the motion rules.
+- [x] 3.2 Self-assessment page:
+  - Header: track name, standard and indicator counts, cycle, effective deadline with days left (warning under 7 days), status badge, and the "جارٍ الحفظ" / "تم الحفظ hh:mm" stamp.
+  - Indicator list shows `items_counted / items_total`, with its state from `is_started` / `is_complete`.
+  - Each item has a checkbox saved immediately (optimistic), a note saved on blur, its evidences (open through a signed URL, delete), "إرفاق ملف" and "إضافة رابط". The rule line appears once per indicator.
+  - The result block shows `level_label`, `score_pct` and the band label from `levelBands`. `calculateIndicatorResult` and `RESULT` are gone.
+  - Banners: returned (with `return_note`, inputs enabled), submitted, approved, period closed, period not yet open.
+  - "إرسال التقييم للمراجعة" is in the header, disabled with a tooltip when not editable.
+- [x] 3.3 Submit dialog:
+  - Shows items met, items with evidence and indicators complete from `v_assessment_progress`.
+  - Warns, without blocking, about started indicators where `items_met > items_counted`, naming each indicator and its count of items without evidence.
+  - Ends with the freeze sentence. Confirming submits, then toasts and navigates to `/under-review`.
+  - `/under-review` reads the real assessment (status, cycle, `submitted_at`) and handles returned (note, "استكمال التقييم"), approved, draft, and no assessment.
+- [x] 3.4 Dashboard:
+  - Journey stepper at the top.
+  - Status row: status, cycle, deadline with days left, and the estimated score (`score_pct`, `avg_level`, "تقديرية حتى اعتماد المراجعة").
+  - The 4 KPIs from `v_assessment_progress` plus the evidence count.
+  - Track rows from `v_track_scores`.
+  - Submit and continue buttons; the no-cycle empty state hides both.
+  - "النتائج حسب الدورة" from `useAssessmentHistory()`.
+
+### Step 3 decisions
+
+- Indicator and standard numbers are the tool numbers (global, e.g. المؤشر 14). An item's label is its position inside the indicator (البند 1..n), because item numbers in the tool are global (indicator 2 holds items 8 to 13).
+- Journey step from status: draft and returned → 1 (التقييم الذاتي), submitted and under_review → 3 (المراجعة والتدقيق), approved → 5 (خطة التحسين). Step 2 (إرسال للمراجعة) is the transition itself, so it is never the current step.
+- Results by cycle need a label for the overall score, and the views only label indicators. The panel finds the `level_bands` band that contains `score_pct`, then that level's `level_labels` label. This is a lookup of database rows, the same one `v_indicator_scores` does, not a client formula. To support it, `toolService.getApprovedTool()` now also returns `levelLabels`.
+- A complete track shows a green "مكتمل" badge. `StatusBadge` and `ProgressRow` take an optional label override for this; there is still no sixth status.
+- Each track row's bar is `items_met / items_total`, rounded exactly as the view's `progress_pct`.
+- Deleting an evidence happens right away with a toast, without a confirmation dialog.
+- The workspace drops indicators and standards left with no active items once exclusions are applied, matching the views, which have no rows for them.
+
+### Step 3 not verified in a browser
+
+- No organization test password is available to me, so the pages were checked by typecheck, lint, dev-server compilation, and staging grants and policies only: `current_org_id`, `ensure_*` and `transition_assessment` are executable by `authenticated`, and `assessment_cycles` and `level_labels` are readable. Step 7 covers the click-through.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.

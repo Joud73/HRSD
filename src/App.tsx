@@ -15,7 +15,7 @@ import SetPassword from "./pages/SetPassword";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
-import TechnicalEvaluationIndicators from "./pages/TechnicalEvaluationIndicators";
+import AssessmentTrack, { LegacyTrackRedirect } from "./pages/AssessmentTrack";
 import TrainingStage from "./pages/TrainingStage";
 import CourseDetail from "./pages/CourseDetail";
 import IndividualCourseDetail from "./pages/IndividualCourseDetail";
@@ -83,7 +83,8 @@ const App = () => (
               <Route element={guard(["organization"], <AppShell role="organization" />)}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/technical-indicators/:courseSlug" element={<TechnicalEvaluationIndicators />} />
+                <Route path="/assessment/:trackNumber" element={<AssessmentTrack />} />
+                <Route path="/technical-indicators/:courseSlug" element={<LegacyTrackRedirect />} />
                 <Route path="/training-stage" element={<TrainingStage />} />
                 <Route path="/course/:courseId" element={<CourseDetail />} />
                 <Route path="/certificate/:organizationId" element={<Certificate />} />
