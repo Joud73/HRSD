@@ -375,13 +375,16 @@ export async function addLinkEvidence(assessmentId: string, itemId: string, url:
   if (error) throw mapError(error, t.err_save);
 }
 
-/** Deletes the row, then the stored file. */
+/**
+ * Deletes the row, then the stored file. Once the row is gone the evidence no longer counts, so a failed
+ * file removal only leaves an orphan object: it is logged, not reported to the user.
+ */
 export async function removeEvidence(evidence: Evidence): Promise<void> {
   const { error } = await supabase.from("evidences").delete().eq("id", evidence.id);
   if (error) throw mapError(error, t.err_save);
   if (evidence.kind === "file" && evidence.storagePath) {
     const { error: storageError } = await supabase.storage.from(BUCKET).remove([evidence.storagePath]);
-    if (storageError) throw mapError(storageError, t.err_save);
+    if (storageError) console.warn("Evidence row deleted but its file was not removed", evidence.storagePath, storageError);
   }
 }
 

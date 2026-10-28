@@ -13,7 +13,7 @@ Baseline for every step: `npx tsc --noEmit -p tsconfig.app.json` passes; `npm ru
   - The scoring checks ran inside a transaction and were rolled back. Afterwards staging has 0 evidences and 0 exclusions; 1 `item_responses` row existed before the run.
   - Because `db query` returns only the last result set, a copy of the checks saved each result set to a temp table and returned them together. The scenario and the queries are unchanged.
 - [x] 1.5 Types regenerated with `gen types --linked`. Views appear under `Views` (`v_item_scores`, `v_indicator_scores`, `v_track_scores`, `v_assessment_progress`), `app_role` includes `supervisor`, and the new objects are present: `level_labels`, `cycle_item_exclusions`, `assessments.submission_due`, `ensure_assessment_for`. Only formatting lines were removed.
-- [ ] 1.6 Secrets: `SITE_URL` and `ALLOWED_ORIGINS` are not set on staging. The staging frontend URL is not recorded anywhere in the repo, so it needs the owner. Until they are set, `create-user` and `approve-organization` reject every browser call.
+- [x] 1.6 Secrets (set after Step 2): `SITE_URL` = `https://tamkeen-git-staging-jouds-projects-5d6dfce8.vercel.app`, `ALLOWED_ORIGINS` = that URL plus `http://localhost:8080`. The owner adds `<SITE_URL>/set-password` to Auth Redirect URLs.
 
 ### Scoring check results (staging, 2026-10-28)
 
@@ -61,10 +61,17 @@ All values match.
 - In error mapping, the text checks run before the `42501` check, because `transition_assessment` and `ensure_my_assessment` raise with `insufficient_privilege` (42501) but need their own messages.
 - The supervisor test account was created through the Auth admin API instead of the dashboard. It got a generated password because no shared test password is recorded in the repo.
 
+## Fixes before Step 3
+
+- [x] Migration 9 `20261028150000_response_actor.sql` (pushed to staging; dry run listed only this file). `stamp_response_actor()` stamps `updated_by` on insert. Before, it was stamped on update only, so a first answer recorded no actor.
+- [x] `removeEvidence`: once the row is deleted, a failed file removal is logged with `console.warn` and does not throw.
+- [x] `useAssessment`: the scope query uses `retry: false`. Also, when ensure fails, the once-guard resets, so a manual refetch (retry button) calls ensure again instead of falling back to the no-cycle state.
+- [x] Org A reset on staging. The old submitted assessment was deleted (1 response, 1 history row, 1 review, no evidences or files), then the seed ran again. Org A now has a draft assessment, 0 responses, 0 evidences, evaluator1 assigned, no deadline extension.
+
 ## Flags for later steps
 
-- Staging state before Step 7: org A's assessment in the open cycle is already `submitted` (1 item met), left over from earlier testing. Step 7.2 needs it editable. Reset it before the rehearsal: `transition_assessment` has no submitted → draft path, so either an admin override to `returned` with a note, or delete org A's assessment so `/dashboard` opens a fresh one.
+- The deployed edge functions predate the shared CORS module and the invites. `create-user` is deployed in Step 4. `approve-organization` also needs `npx supabase functions deploy approve-organization` before approving a request on staging.
 
 ## Not finished
 
-- 1.6 `SITE_URL` / `ALLOWED_ORIGINS` secrets: waiting for the staging frontend URL.
+- Auth Redirect URLs: the owner adds `https://tamkeen-git-staging-jouds-projects-5d6dfce8.vercel.app/set-password` in the dashboard.

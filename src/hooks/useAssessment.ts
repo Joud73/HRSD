@@ -35,6 +35,8 @@ export function useAssessment(scope: AssessmentScope) {
   const query = useQuery({
     queryKey: key,
     enabled: scope.kind === "org" || userRole !== null,
+    // A retry would skip ensure (it runs once) and resolve to null, hiding the real error behind the no-cycle state
+    retry: false,
     queryFn: async (): Promise<Assessment | null> => {
       const existing = await getAssessment(scope);
       if (existing || !canEnsure || ensured.current === keyId) return existing;
@@ -43,6 +45,7 @@ export function useAssessment(scope: AssessmentScope) {
         return scope.kind === "org" ? await ensureAssessmentFor(scope.orgId) : await ensureMyAssessment();
       } catch (err) {
         if (isPeriodClosed(err)) return null;
+        ensured.current = null; // a manual refetch tries again
         throw err;
       }
     },
