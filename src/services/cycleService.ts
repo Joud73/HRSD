@@ -1,4 +1,4 @@
-/** Assessment cycles: list, read, create, update, delete (drafts only, enforced in the UI). */
+/** Assessment cycles: list, read, create, update, delete (drafts only, enforced in the UI), and per-cycle item exclusions. */
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Tables, TablesInsert } from "@/integrations/supabase/types";
@@ -78,6 +78,8 @@ function mapError(error: PostgrestError): CycleServiceError {
   if (text.includes("uq_one_open_cycle")) return new CycleServiceError(t.cycle_err_one_open, error);
   if (text.includes("cannot reopen")) return new CycleServiceError(t.cycle_err_reopen, error);
   if (text.includes("assessment_cycles_name_key")) return new CycleServiceError(t.cycle_err_name_taken, error);
+  if (text.includes("Item exclusions can only change")) return new CycleServiceError(t.scope_err_locked, error);
+  if (text.includes("does not belong to the tool version")) return new CycleServiceError(t.scope_err_tool, error);
   return new CycleServiceError(t.cycle_err_generic, error);
 }
 
@@ -125,5 +127,42 @@ export async function updateCycle(id: string, input: CycleInput): Promise<Cycle>
 
 export async function deleteCycle(id: string): Promise<void> {
   const { error } = await supabase.from("assessment_cycles").delete().eq("id", id).eq("status", "draft");
+  if (error) throw mapError(error);
+}
+
+/* ── Item exclusions (MoM point 8): checked = included; an excluded item is out of the form and every denominator ── */
+
+export interface CycleExclusion {
+  itemId: string;
+  reason: string | null;
+  excludedAt: string;
+}
+
+export async function listExclusions(cycleId: string): Promise<CycleExclusion[]> {
+  const { data, error } = await supabase
+    .from("cycle_item_exclusions")
+    .select("item_id, reason, excluded_at")
+    .eq("cycle_id", cycleId)
+    .order("excluded_at");
+  if (error) throw mapError(error);
+  return data.map((r) => ({ itemId: r.item_id, reason: r.reason, excludedAt: r.excluded_at }));
+}
+
+const asList = (ids: string | string[]) => (Array.isArray(ids) ? ids : [ids]);
+
+/** Excludes one item, or several in one insert (a track, standard or indicator). Draft or open cycles only (trigger). */
+export async function excludeItem(cycleId: string, itemId: string | string[], reason: string | null): Promise<void> {
+  const ids = asList(itemId);
+  if (ids.length === 0) return;
+  const note = reason?.trim() || null;
+  const { error } = await supabase.from("cycle_item_exclusions").insert(ids.map((id) => ({ cycle_id: cycleId, item_id: id, reason: note })));
+  if (error) throw mapError(error);
+}
+
+/** Includes one item again, or several in one delete. */
+export async function includeItem(cycleId: string, itemId: string | string[]): Promise<void> {
+  const ids = asList(itemId);
+  if (ids.length === 0) return;
+  const { error } = await supabase.from("cycle_item_exclusions").delete().eq("cycle_id", cycleId).in("item_id", ids);
   if (error) throw mapError(error);
 }

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useCycle, useCycleMutations } from "@/hooks/useCycles";
 import PageHeader from "@/components/shared/PageHeader";
@@ -16,6 +17,8 @@ import EmptyState from "@/components/shared/EmptyState";
 import { SkeletonPanel } from "@/components/shared/Skeletons";
 import { FieldShell, FormError, TextField } from "@/components/shared/FormField";
 import CycleStatusLabel from "@/components/admin/setup/CycleStatusLabel";
+import CycleScope from "@/components/admin/setup/CycleScope";
+import { tabsUi } from "@/components/admin/adminUi";
 import { ConfirmDelete } from "@/components/admin/setup/SetupDialogs";
 import { crumbs, CYCLES_PATH } from "@/components/admin/setup/crumbs";
 import type { Cycle, CycleInput, CycleStatus } from "@/services/cycleService";
@@ -190,6 +193,55 @@ const CycleForm = ({ existing }: { existing: Cycle | null }) => {
     </dl>
   ) : undefined;
 
+  const form = (
+    <div className="flex flex-col gap-6">
+      <FormError message={serverError ?? (hasErrors ? t.cycle_form_error : null)} />
+
+      <Panel title={t.cycle_info}>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <TextField
+            label={t.name}
+            required
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+            }}
+            error={errors.name}
+          />
+          <FieldShell id="cycle-status" label={t.status} required>
+            <Select value={status} onValueChange={(v) => setStatus(v as CycleStatus)} dir="rtl">
+              <SelectTrigger id="cycle-status" className="h-12 text-body">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((s) => (
+                  <SelectItem key={s} value={s} disabled={s === "archived"}>
+                    {t.cycle_status[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldShell>
+        </div>
+      </Panel>
+
+      <Panel title={t.cycle_periods}>
+        <div className="flex flex-col gap-6">
+          {PERIODS.map((p, i) => (
+            <fieldset key={p.id} className={cn(i > 0 && "border-t border-border pt-6")}>
+              <legend className="mb-4 text-small font-hrsd-bold text-ink">{p.legend}</legend>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <DateField id={`${p.id}-start`} label={p.startLabel} value={dates[p.start]} onChange={setDate(p.start)} error={errors[p.start]} />
+                <DateField id={`${p.id}-end`} label={p.endLabel} value={dates[p.end]} onChange={setDate(p.end)} error={errors[p.end]} />
+              </div>
+            </fieldset>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+
   return (
     <>
       <PageHeader
@@ -216,52 +268,22 @@ const CycleForm = ({ existing }: { existing: Cycle | null }) => {
         }
       />
 
-      <div className="flex flex-col gap-6">
-        <FormError message={serverError ?? (hasErrors ? t.cycle_form_error : null)} />
-
-        <Panel title={t.cycle_info}>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <TextField
-              label={t.name}
-              required
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
-              }}
-              error={errors.name}
-            />
-            <FieldShell id="cycle-status" label={t.status} required>
-              <Select value={status} onValueChange={(v) => setStatus(v as CycleStatus)} dir="rtl">
-                <SelectTrigger id="cycle-status" className="h-12 text-body">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((s) => (
-                    <SelectItem key={s} value={s} disabled={s === "archived"}>
-                      {t.cycle_status[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldShell>
-          </div>
-        </Panel>
-
-        <Panel title={t.cycle_periods}>
-          <div className="flex flex-col gap-6">
-            {PERIODS.map((p, i) => (
-              <fieldset key={p.id} className={cn(i > 0 && "border-t border-border pt-6")}>
-                <legend className="mb-4 text-small font-hrsd-bold text-ink">{p.legend}</legend>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <DateField id={`${p.id}-start`} label={p.startLabel} value={dates[p.start]} onChange={setDate(p.start)} error={errors[p.start]} />
-                  <DateField id={`${p.id}-end`} label={p.endLabel} value={dates[p.end]} onChange={setDate(p.end)} error={errors[p.end]} />
-                </div>
-              </fieldset>
-            ))}
-          </div>
-        </Panel>
-      </div>
+      {existing ? (
+        <Tabs defaultValue="info" dir="rtl">
+          <TabsList className={tabsUi.list}>
+            <TabsTrigger value="info" className={tabsUi.trigger}>{t.cycle_tab_info}</TabsTrigger>
+            <TabsTrigger value="scope" className={tabsUi.trigger}>{t.cycle_tab_scope}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="info" className={tabsUi.content}>
+            {form}
+          </TabsContent>
+          <TabsContent value="scope" className={tabsUi.content}>
+            <CycleScope cycle={existing} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        form
+      )}
 
       <ConfirmDelete
         open={deleteOpen}

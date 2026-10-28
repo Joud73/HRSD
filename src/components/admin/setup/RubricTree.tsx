@@ -3,15 +3,31 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { adminSetupCopy as t } from "@/lib/copy";
 import { counted } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Indicator, RubricItem, Standard, Track } from "@/services/toolService";
+
+/** Optional per-node selection (cycle scope). Without it the tree is read only, as in AdminRubric. */
+export interface RubricSelection {
+  /** Control at the start of a track, standard, indicator or item row, for the items under it */
+  control: (itemIds: string[], label: string) => ReactNode;
+  /** Shown after an item's text */
+  itemNote?: (itemId: string) => ReactNode;
+  /** Item text shown muted (e.g. excluded) */
+  isMuted?: (itemId: string) => boolean;
+}
 
 interface RubricTreeProps {
   tracks: Track[];
   search: string;
   openIds: string[];
   onOpenChange: (ids: string[]) => void;
+  selection?: RubricSelection;
 }
+
+const indicatorItemIds = (i: Indicator) => i.items.map((b) => b.id);
+const standardItemIds = (s: Standard) => s.indicators.flatMap(indicatorItemIds);
+const trackItemIds = (tr: Track) => tr.standards.flatMap(standardItemIds);
 
 const c = t.rubric_count;
 
@@ -58,12 +74,19 @@ const Detail = ({ label, children }: { label: string; children: ReactNode }) => 
 );
 
 /** Item text, with improvement action, strength and opportunity collapsed under it */
-const ItemRow = ({ item }: { item: RubricItem }) => (
+const ItemRow = ({ item, selection }: { item: RubricItem; selection?: RubricSelection }) => (
   <li className="border-t border-border py-2 pe-4 ps-6">
     <Collapsible>
       <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral" />
-        <span className="min-w-0 flex-1 text-small text-ink">{item.text}</span>
+        {selection ? (
+          <span className="mt-0.5 flex shrink-0">{selection.control([item.id], item.text)}</span>
+        ) : (
+          <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral" />
+        )}
+        <span className={cn("min-w-0 flex-1 text-small", selection?.isMuted?.(item.id) ? "text-muted-foreground line-through" : "text-ink")}>
+          {item.text}
+          {selection?.itemNote && <span className="ms-2 inline-block no-underline">{selection.itemNote(item.id)}</span>}
+        </span>
         <CollapsibleTrigger className="group inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-caption text-primary transition-colors duration-micro hover:bg-section-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {t.rubric_item_details}
           <ChevronDown
@@ -85,7 +108,7 @@ const ItemRow = ({ item }: { item: RubricItem }) => (
 
 /* ── Tree ── */
 
-const RubricTree = ({ tracks, search, openIds, onOpenChange }: RubricTreeProps) => {
+const RubricTree = ({ tracks, search, openIds, onOpenChange, selection }: RubricTreeProps) => {
   const matches = (text: string) => !search || text.includes(search);
   const itemMatches = (b: RubricItem) => matches(b.text);
   const indicatorMatches = (i: Indicator) => matches(i.text) || i.items.some(itemMatches);
@@ -102,6 +125,7 @@ const RubricTree = ({ tracks, search, openIds, onOpenChange }: RubricTreeProps) 
           <AccordionPrimitive.Item key={track.id} value={track.id}>
             {/* Track header: section grey */}
             <div className="flex items-center gap-2 bg-section-alt px-4 py-3">
+              {selection?.control(trackItemIds(track), track.name)}
               <AccordionPrimitive.Header className="min-w-0 flex-1">
                 <AccordionPrimitive.Trigger className={triggerClass}>
                   <Chevron />
@@ -125,6 +149,7 @@ const RubricTree = ({ tracks, search, openIds, onOpenChange }: RubricTreeProps) 
                     return (
                       <AccordionPrimitive.Item key={std.id} value={std.id} className="border-t border-border">
                         <div className="flex items-center gap-2 px-4 py-2.5">
+                          {selection?.control(standardItemIds(std), std.name)}
                           <AccordionPrimitive.Header className="min-w-0 flex-1">
                             <AccordionPrimitive.Trigger className={triggerClass}>
                               <Chevron />
@@ -147,6 +172,7 @@ const RubricTree = ({ tracks, search, openIds, onOpenChange }: RubricTreeProps) 
                                 return (
                                   <AccordionPrimitive.Item key={ind.id} value={ind.id} className="border-t border-border">
                                     <div className="flex items-center gap-2 px-4 py-2">
+                                      {selection?.control(indicatorItemIds(ind), ind.text)}
                                       <AccordionPrimitive.Header className="min-w-0 flex-1">
                                         <AccordionPrimitive.Trigger className={triggerClass}>
                                           <Chevron />
@@ -163,7 +189,7 @@ const RubricTree = ({ tracks, search, openIds, onOpenChange }: RubricTreeProps) 
                                         {items.length === 0 && <EmptyRow text={t.rubric_no_items} />}
                                         <ul>
                                           {items.map((item) => (
-                                            <ItemRow key={item.id} item={item} />
+                                            <ItemRow key={item.id} item={item} selection={selection} />
                                           ))}
                                         </ul>
                                       </Branch>

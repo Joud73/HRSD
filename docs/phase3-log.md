@@ -164,6 +164,24 @@ Signed in as `supervisor.test@tamkeen.local` through the Auth API, read only: `u
 - An evaluator added from `AdminUsers` still gets no profile row; the reviewers page is the place to add evaluators with their HRSD data. The evaluator's profile page says so when the row is missing.
 - If `create-user` succeeds and the profile save fails, the account exists without data; the administrator completes it from the evaluator's page.
 
+## Step 5: per-cycle item selection
+
+- [x] `cycleService.ts`: `listExclusions(cycleId)`, `excludeItem(cycleId, itemId | itemId[], reason)` (one insert for a whole node), `includeItem(cycleId, itemId | itemId[])` (one delete). Trigger errors map to Arabic: cycle not draft or open, item from another tool version.
+- [x] `useCycles.ts`: `useCycleExclusions` (with reasons) and `useCycleScopeMutations` (exclude, include). Success refreshes `["cycles"]` (so the assessment form's `useExcludedItems` too), `["assessment"]` (scores and progress) and `["organizations"]`.
+- [x] `AdminEvaluationYearDetail`: an existing cycle now has two tabs, "بيانات الدورة" (the form as before) and "نطاق التقييم في الدورة" (`components/admin/setup/CycleScope.tsx`). A new cycle shows the form only.
+- [x] `CycleScope`: the approved tool in `RubricTree` with a tri-state checkbox on every track, standard, indicator and item. Checked = included. Unchecking opens "استبعاد من الدورة" with the item count, an optional reason and, when the cycle is open, a note that recorded answers stay but no longer count. Checking (or clicking a partly checked node) includes everything under it at once. Excluded items are struck through with "مستبعد" or "مستبعد: {السبب}". Live count "البنود الفعّالة في الدورة: N من 378". Closed or archived cycle: checkboxes disabled and the note "لا يُعدَّل نطاق التقييم إلا والدورة مسودة أو مفتوحة.".
+- [x] `RubricTree` takes an optional `selection` prop (control per node, item note, muted items). `AdminRubric` does not pass it and stays read only.
+- [x] `ui/checkbox`: the indeterminate state shows a dash (it showed a tick before).
+
+### Step 5 check on staging (as the admin through RLS, rolled back)
+
+Org A, track 1, indicator 2 before: 6 active items, 6 counted, 100 %, مكتمل. Excluding its first two items in one insert stamped `excluded_by` on both; the indicator then showed 4/4. One delete brought the exclusions back to 0. An insert as org A was refused (42501).
+
+### Step 5 decisions
+
+- The tab uses the approved tool. If a cycle points at another tool version, the tab says so instead of showing a tree that does not match.
+- Excluding in an open cycle is allowed (the brief says draft or open). Answers already recorded on an excluded item stay in the database, and the views leave them out.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.
