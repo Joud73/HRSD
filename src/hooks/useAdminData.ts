@@ -1,64 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-/* ── Evaluator with profile + assignment stats ── */
-export interface EvaluatorRow {
-  id: string;
-  email: string;
-  organization_name: string | null;
-  assignedCount: number;
-  completedCount: number;
-  inProgressCount: number;
-}
-
-export function useAdminEvaluators() {
-  return useQuery({
-    queryKey: ["admin-evaluators"],
-    queryFn: async () => {
-      const { data: roles, error: rolesErr } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "evaluator");
-      if (rolesErr) throw rolesErr;
-      if (!roles || roles.length === 0) return [];
-
-      const evaluatorIds = roles.map((r) => r.user_id);
-
-      const { data: profiles, error: profErr } = await supabase
-        .from("profiles")
-        .select("id, email, organization_name")
-        .in("id", evaluatorIds);
-      if (profErr) throw profErr;
-
-      const { data: assignments, error: assignErr } = await supabase
-        .from("evaluator_assignments")
-        .select("evaluator_id, status")
-        .in("evaluator_id", evaluatorIds);
-      if (assignErr) throw assignErr;
-
-      const countMap: Record<string, { total: number; completed: number; inProgress: number }> = {};
-      for (const a of assignments || []) {
-        if (!countMap[a.evaluator_id]) countMap[a.evaluator_id] = { total: 0, completed: 0, inProgress: 0 };
-        countMap[a.evaluator_id].total++;
-        if (a.status === "completed") countMap[a.evaluator_id].completed++;
-        if (a.status === "in_progress") countMap[a.evaluator_id].inProgress++;
-      }
-
-      return (profiles || []).map((p): EvaluatorRow => ({
-        id: p.id,
-        email: p.email,
-        organization_name: p.organization_name,
-        assignedCount: countMap[p.id]?.total ?? 0,
-        completedCount: countMap[p.id]?.completed ?? 0,
-        inProgressCount: countMap[p.id]?.inProgress ?? 0,
-      }));
-    },
-  });
-}
-
 /* ── Association (from organizations table) + assignment data ── */
 export interface AssociationRow {
   id: string;
+  organization_id: string | null;
   name: string;
   email: string;
   status: string;
@@ -149,6 +95,7 @@ export function useAdminAssociations() {
 
         rows.push({
           id: a.association_id,
+          organization_id: org?.id ?? null,
           name: org?.name || "—",
           email: profile?.email || "—",
           status: statusMap[a.status] || a.status,
@@ -167,6 +114,7 @@ export function useAdminAssociations() {
         if (profile && !assignedUserIds.has(profile.userId)) {
           rows.push({
             id: profile.userId,
+            organization_id: org.id,
             name: org.name,
             email: profile.email,
             status: "غير مُسندة",
@@ -210,7 +158,7 @@ export function useAdminUsers() {
     queryFn: async () => {
       const { data: profiles, error: profErr } = await supabase
         .from("profiles")
-        .select("id, email, organization_name, status, created_at");
+        .select("id, email, organization_name, status, created_at, organizations(name)");
       if (profErr) throw profErr;
       if (!profiles || profiles.length === 0) return [];
 
@@ -236,7 +184,7 @@ export function useAdminUsers() {
       return profiles.map((p): AdminUserRow => ({
         id: p.id,
         email: p.email,
-        organization_name: p.organization_name,
+        organization_name: p.organizations?.name ?? p.organization_name,
         role: roleMap[p.id] || "—",
         roleAr: roleArMap[roleMap[p.id]] || "غير محدد",
         status: p.status,

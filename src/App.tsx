@@ -11,6 +11,7 @@ import AppShell from "@/components/layout/AppShell";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
+import SetPassword from "./pages/SetPassword";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
@@ -65,6 +66,7 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/login-local" element={<Navigate to="/login" replace />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/nafath-auth" element={<Navigate to="/login" replace />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/pending-approval" element={<PendingApproval />} />

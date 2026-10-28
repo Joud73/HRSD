@@ -32,7 +32,7 @@ const ForgotPassword = () => {
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/set-password`,
       });
 
       // Always show success for security (don't reveal if the email exists)

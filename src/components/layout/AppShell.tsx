@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutGrid, Menu, Settings, User } from "lucide-react";
+import { Menu, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import UserDropdown, { type UserMenuItem } from "@/components/UserDropdown";
 import Container from "@/components/layout/Container";
 import RouteFade from "@/components/layout/RouteFade";
 import AppSidebar, { AppSidebarNav } from "@/components/layout/AppSidebar";
-import { SIDEBAR_NAV, type ShellRole } from "@/components/layout/navigation";
+import { ORGANIZATION_NAV, SIDEBAR_NAV, type ShellRole } from "@/components/layout/navigation";
 import hrsdColoredLogo from "@/assets/logos/hrsd-colored.png";
 import hrsdWhiteLogo from "@/assets/logos/hrsd-white.png";
 
@@ -18,10 +18,7 @@ const HOME: Record<ShellRole, string> = { admin: "/admin", evaluator: "/evaluato
 const MENU: Record<ShellRole, UserMenuItem[]> = {
   admin: [{ label: copy.account_profile, to: "/admin/profile", icon: User }],
   evaluator: [{ label: copy.account_profile, to: "/evaluator/profile", icon: User }],
-  organization: [
-    { label: copy.account_dashboard, to: "/dashboard", icon: LayoutGrid },
-    { label: copy.account_settings, to: "/settings", icon: Settings },
-  ],
+  organization: ORGANIZATION_NAV.map(({ label, to, icon }) => ({ label, to, icon })),
 };
 
 /**

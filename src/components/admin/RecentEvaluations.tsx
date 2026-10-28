@@ -56,7 +56,7 @@ const RecentEvaluations = ({ rows, loading, limit = 6 }: RecentEvaluationsProps)
       rows={recent}
       loading={loading}
       getRowKey={(r) => r.assignment_id ?? r.id}
-      onRowClick={(r) => navigate(`/admin/associations/${r.id}`)}
+      onRowClick={(r) => r.organization_id && navigate(`/admin/associations/${r.organization_id}`)}
       rowLabel={(r) => `${adminCopy.associations_view}: ${r.name}`}
       caption={adminCopy.recent_title}
       className="border-0"

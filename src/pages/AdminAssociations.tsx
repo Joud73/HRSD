@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, ChevronLeft } from "lucide-react";
 import { copy, adminCopy } from "@/lib/copy";
-import { STATUS, type StatusKey } from "@/lib/status";
-import { useAdminAssociations, type AssociationRow } from "@/hooks/useAdminData";
+import { STATUS, toStatusKey, type StatusKey } from "@/lib/status";
+import { useOrganizations } from "@/hooks/useOrganizations";
+import type { OrganizationListRow } from "@/services/organizationService";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -11,61 +12,48 @@ import PageHeader from "@/components/shared/PageHeader";
 import DataTable, { type Column } from "@/components/shared/DataTable";
 import EmptyState from "@/components/shared/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
-import { ProgressCell, SearchField, Toolbar } from "@/components/admin/AdminParts";
+import { SearchField, Toolbar } from "@/components/admin/AdminParts";
 import ExportMenu from "@/components/admin/ExportMenu";
-import { assessmentStatus } from "@/components/admin/adminUi";
 
 const STATUS_ORDER: StatusKey[] = ["not_started", "in_progress", "submitted", "returned", "approved"];
 type StatusFilter = "all" | "unassigned" | StatusKey;
 
 const AdminAssociations = () => {
   const navigate = useNavigate();
-  const { data: associations, isLoading } = useAdminAssociations();
+  const { data: associations, isLoading } = useOrganizations();
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
-  const [yearFilter, setYearFilter] = useState("all");
 
   const filtered = useMemo(() => {
     return (associations || []).filter((r) => {
-      if (statusFilter === "unassigned" && r.assignment_id) return false;
-      if (statusFilter !== "all" && statusFilter !== "unassigned" && (!r.assignment_id || assessmentStatus(r.status) !== statusFilter)) return false;
-      if (yearFilter !== "all" && String(r.year) !== yearFilter) return false;
-      if (search && !r.name.includes(search)) return false;
+      if (statusFilter === "unassigned" && r.evaluatorId) return false;
+      if (statusFilter !== "all" && statusFilter !== "unassigned" && toStatusKey(r.assessmentStatus) !== statusFilter) return false;
+      if (search && !r.name.includes(search) && !r.registrationNumber.includes(search)) return false;
       return true;
     });
-  }, [associations, statusFilter, yearFilter, search]);
+  }, [associations, statusFilter, search]);
 
-  const years = useMemo(() => {
-    const ySet = new Set((associations || []).map((a) => a.year));
-    return [...ySet].sort((a, b) => b - a);
-  }, [associations]);
+  const filtersOn = search !== "" || statusFilter !== "all";
+  const clearFilters = () => { setSearch(""); setStatusFilter("all"); };
 
-  const filtersOn = search !== "" || statusFilter !== "all" || yearFilter !== "all";
-  const clearFilters = () => { setSearch(""); setStatusFilter("all"); setYearFilter("all"); };
-
-  const columns: Column<AssociationRow>[] = [
+  const columns: Column<OrganizationListRow>[] = [
     { key: "name", header: adminCopy.col_association, cell: (r) => <span className="font-hrsd-medium">{r.name}</span> },
-    { key: "year", header: adminCopy.col_year, cell: (r) => <span className="tabular">{r.year}</span> },
+    { key: "registration", header: adminCopy.col_registration, cell: (r) => <span className="tabular">{r.registrationNumber}</span> },
     {
-      key: "progress",
-      header: adminCopy.col_progress,
-      cell: (r) => (r.assignment_id ? <ProgressCell value={r.progress} /> : <span className="text-muted-foreground">—</span>),
+      key: "type",
+      header: adminCopy.assoc_type,
+      cell: (r) => <span className="text-muted-foreground">{r.entityType ? adminCopy.entity_types[r.entityType] : "—"}</span>,
     },
     {
       key: "status",
       header: adminCopy.col_status,
-      cell: (r) => <StatusBadge status={assessmentStatus(r.status)} />,
+      cell: (r) => <StatusBadge status={r.assessmentStatus ?? "not_started"} />,
     },
     {
       key: "evaluator",
       header: adminCopy.col_evaluator,
-      cell: (r) =>
-        r.evaluator_name ? (
-          <span dir="ltr" className="text-muted-foreground">{r.evaluator_name}</span>
-        ) : (
-          <span className="text-muted-foreground">{adminCopy.not_assigned}</span>
-        ),
+      cell: (r) => <span className="text-muted-foreground">{r.evaluatorName ?? adminCopy.not_assigned}</span>,
     },
     {
       key: "open",
@@ -104,26 +92,13 @@ const AdminAssociations = () => {
             <SelectItem value="unassigned">{adminCopy.unassigned}</SelectItem>
           </SelectContent>
         </Select>
-        {years.length > 0 && (
-          <Select value={yearFilter} onValueChange={setYearFilter} dir="rtl">
-            <SelectTrigger className="h-10 w-full text-small sm:w-40" aria-label={adminCopy.year_label}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{adminCopy.year_all}</SelectItem>
-              {years.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </Toolbar>
 
       <DataTable
         columns={columns}
         rows={filtered}
         loading={isLoading}
-        getRowKey={(r, idx) => `${r.id}-${r.assignment_id}-${idx}`}
+        getRowKey={(r) => r.id}
         onRowClick={(r) => navigate(`/admin/associations/${r.id}`)}
         rowLabel={(r) => `${adminCopy.associations_view}: ${r.name}`}
         caption={copy.nav_admin.associations}

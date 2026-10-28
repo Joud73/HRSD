@@ -31,7 +31,8 @@ const alignClass = { start: "text-start", center: "text-center", end: "text-end"
 
 /**
  * Table wrapper: 56px rows, sticky header (desktop), no zebra, row hover,
- * skeleton rows while loading, EmptyState when empty. Scrolls horizontally on small screens.
+ * skeleton rows while loading, EmptyState when empty. Scrolls horizontally whenever its
+ * container is narrower than the table (small screens, or a narrow card on desktop).
  */
 function DataTable<T>({ columns, rows, getRowKey, loading, onRowClick, rowLabel, empty, caption, className }: DataTableProps<T>) {
   const handleKey = (e: KeyboardEvent<HTMLTableRowElement>, row: T) => {
@@ -44,8 +45,9 @@ function DataTable<T>({ columns, rows, getRowKey, loading, onRowClick, rowLabel,
   const showEmpty = !loading && rows.length === 0;
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card", className)}>
-      <div className="overflow-x-auto scrollbar-thin lg:overflow-visible">
+    <div className={cn("data-table rounded-lg border border-border bg-card", className)}>
+      {/* Scrolls inside its card while narrower than the table; see .data-table-scroll in index.css */}
+      <div className="data-table-scroll overflow-x-auto scrollbar-thin">
         <table className="w-full min-w-[640px] border-separate border-spacing-0 text-small">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>

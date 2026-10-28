@@ -23,6 +23,21 @@ npm run dev   # http://localhost:8080
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `VITE_SUPABASE_PROJECT_ID`
 
+### أسرار Supabase للدوال (Edge Functions)
+
+تحتاج الدالتان `create-user` و`approve-organization` إلى سرّين:
+
+| السر | الاستخدام | مثال |
+|---|---|---|
+| `SITE_URL` | عنوان الواجهة؛ تُوجَّه إليه روابط الدعوة إلى صفحة `/set-password` | `https://tamkeen.example.sa` |
+| `ALLOWED_ORIGINS` | النطاقات المسموح لها باستدعاء الدوال من المتصفح، مفصولة بفواصل. إن لم يُضبط تُرفض جميع طلبات المتصفح | `https://tamkeen.example.sa,http://localhost:8080` |
+
+```sh
+npx supabase secrets set SITE_URL=https://tamkeen.example.sa ALLOWED_ORIGINS=https://tamkeen.example.sa,http://localhost:8080
+```
+
+أضف أيضاً `${SITE_URL}/set-password` إلى قائمة Redirect URLs في إعدادات Authentication ← URL Configuration، وإلا لن تفتح روابط الدعوة واستعادة كلمة المرور الصفحة. للتشغيل المحلي (`supabase functions serve`) ضع القيمتين في `supabase/functions/.env`.
+
 ### سياسة الفروع
 
 - لا يُدفع أي تعديل مباشرة إلى الفرع `main`.
@@ -52,6 +67,21 @@ Checks: `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint`, `npm run build`
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `VITE_SUPABASE_PROJECT_ID`
+
+### Supabase secrets (Edge Functions)
+
+`create-user` and `approve-organization` need two secrets:
+
+| Secret | Purpose | Example |
+|---|---|---|
+| `SITE_URL` | Frontend URL; invitation links land on `/set-password` here | `https://tamkeen.example.sa` |
+| `ALLOWED_ORIGINS` | Comma-separated origins allowed to call the functions from a browser. When unset, every browser request is rejected | `https://tamkeen.example.sa,http://localhost:8080` |
+
+```sh
+npx supabase secrets set SITE_URL=https://tamkeen.example.sa ALLOWED_ORIGINS=https://tamkeen.example.sa,http://localhost:8080
+```
+
+Also add `${SITE_URL}/set-password` to Authentication → URL Configuration → Redirect URLs, otherwise invitation and password-recovery links will not open the page. For local `supabase functions serve`, put both values in `supabase/functions/.env`.
 
 ### Branch policy
 

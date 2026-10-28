@@ -49,7 +49,7 @@ const AdminUsers = () => {
 
   const [formOpen, setFormOpen] = useState(false);
   const [formFields, setFormFields] = useState(emptyForm);
-  const [formErrors, setFormErrors] = useState<{ email?: string; org?: string }>({});
+  const [formErrors, setFormErrors] = useState<{ email?: string; org?: string; registration?: string }>({});
   const [saving, setSaving] = useState(false);
 
   const [toggleTarget, setToggleTarget] = useState<AdminUserRow | null>(null);
@@ -79,6 +79,10 @@ const AdminUsers = () => {
       setFormErrors({ org: adminCopy.users_error_org });
       return;
     }
+    if (formFields.role === "organization" && !formFields.registration_number.trim()) {
+      setFormErrors({ registration: adminCopy.users_error_registration });
+      return;
+    }
     setFormErrors({});
     setSaving(true);
     try {
@@ -92,7 +96,7 @@ const AdminUsers = () => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: adminCopy.users_created, description: adminCopy.default_password_note });
+      toast({ title: adminCopy.users_created, description: adminCopy.invite_sent_note });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setFormOpen(false);
     } catch (err: unknown) {
@@ -118,7 +122,7 @@ const AdminUsers = () => {
   const confirmReset = async () => {
     if (!resetTarget) return;
     const { error } = await supabase.auth.resetPasswordForEmail(resetTarget.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/set-password`,
     });
     if (error) {
       toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
@@ -279,7 +283,8 @@ const AdminUsers = () => {
                 />
                 <TextField
                   label={adminCopy.users_form_registration}
-                  hint={adminCopy.users_form_registration_hint}
+                  required
+                  error={formErrors.registration}
                   inputMode="numeric"
                   value={formFields.registration_number}
                   onChange={(e) => setFormFields((p) => ({ ...p, registration_number: e.target.value }))}

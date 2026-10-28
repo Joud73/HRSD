@@ -273,8 +273,9 @@ export type Database = {
           id_number: string | null
           login_name: string | null
           mobile: string | null
+          organization_id: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -284,8 +285,9 @@ export type Database = {
           id_number?: string | null
           login_name?: string | null
           mobile?: string | null
+          organization_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -295,10 +297,19 @@ export type Database = {
           id_number?: string | null
           login_name?: string | null
           mobile?: string | null
+          organization_id?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "delegates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       evaluation_criteria: {
         Row: {
@@ -447,6 +458,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      evaluator_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          employer: string | null
+          full_name: string
+          id_number: string | null
+          is_active: boolean
+          mobile: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          employer?: string | null
+          full_name: string
+          id_number?: string | null
+          is_active?: boolean
+          mobile?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          employer?: string | null
+          full_name?: string
+          id_number?: string | null
+          is_active?: boolean
+          mobile?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       evidences: {
         Row: {
@@ -680,81 +727,177 @@ export type Database = {
       }
       organization_requests: {
         Row: {
+          address: string | null
+          city: string | null
           delegate_email: string | null
           delegate_id_number: string | null
           delegate_mobile: string | null
           delegate_name: string | null
+          district: string | null
           email: string
+          employees_count: number | null
+          entity_type: Database["public"]["Enums"]["entity_type"] | null
           id: string
           notes: string | null
+          organization_email: string | null
           organization_name: string
+          region: string | null
+          registration_date: string | null
           registration_number: string
           request_status: Database["public"]["Enums"]["request_status"]
           reviewed_at: string | null
           reviewed_by: string | null
+          social_dev_center_id: string | null
+          sub_classification_id: string | null
           submitted_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           delegate_email?: string | null
           delegate_id_number?: string | null
           delegate_mobile?: string | null
           delegate_name?: string | null
+          district?: string | null
           email: string
+          employees_count?: number | null
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
           id?: string
           notes?: string | null
+          organization_email?: string | null
           organization_name: string
+          region?: string | null
+          registration_date?: string | null
           registration_number: string
           request_status?: Database["public"]["Enums"]["request_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          social_dev_center_id?: string | null
+          sub_classification_id?: string | null
           submitted_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
           delegate_email?: string | null
           delegate_id_number?: string | null
           delegate_mobile?: string | null
           delegate_name?: string | null
+          district?: string | null
           email?: string
+          employees_count?: number | null
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
           id?: string
           notes?: string | null
+          organization_email?: string | null
           organization_name?: string
+          region?: string | null
+          registration_date?: string | null
           registration_number?: string
           request_status?: Database["public"]["Enums"]["request_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          social_dev_center_id?: string | null
+          sub_classification_id?: string | null
           submitted_at?: string
+          website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organization_requests_social_dev_center_id_fkey"
+            columns: ["social_dev_center_id"]
+            isOneToOne: false
+            referencedRelation: "social_dev_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_requests_sub_classification_id_fkey"
+            columns: ["sub_classification_id"]
+            isOneToOne: false
+            referencedRelation: "sub_classifications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {
+          address: string | null
+          city: string | null
           created_at: string
+          district: string | null
+          email: string | null
+          employees_count: number | null
+          entity_type: Database["public"]["Enums"]["entity_type"] | null
           id: string
           name: string
-          registration_number: string | null
+          region: string | null
+          registration_date: string | null
+          registration_number: string
+          social_dev_center_id: string | null
           status: string
+          sub_classification_id: string | null
           type: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           created_at?: string
+          district?: string | null
+          email?: string | null
+          employees_count?: number | null
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
           id?: string
           name: string
-          registration_number?: string | null
+          region?: string | null
+          registration_date?: string | null
+          registration_number: string
+          social_dev_center_id?: string | null
           status?: string
+          sub_classification_id?: string | null
           type?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
           created_at?: string
+          district?: string | null
+          email?: string | null
+          employees_count?: number | null
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
           id?: string
           name?: string
-          registration_number?: string | null
+          region?: string | null
+          registration_date?: string | null
+          registration_number?: string
+          social_dev_center_id?: string | null
           status?: string
+          sub_classification_id?: string | null
           type?: string | null
           updated_at?: string
+          website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_social_dev_center_id_fkey"
+            columns: ["social_dev_center_id"]
+            isOneToOne: false
+            referencedRelation: "social_dev_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_sub_classification_id_fkey"
+            columns: ["sub_classification_id"]
+            isOneToOne: false
+            referencedRelation: "sub_classifications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -797,6 +940,27 @@ export type Database = {
           },
         ]
       }
+      social_dev_centers: {
+        Row: {
+          code: string
+          id: string
+          name: string
+          region: string | null
+        }
+        Insert: {
+          code: string
+          id?: string
+          name: string
+          region?: string | null
+        }
+        Update: {
+          code?: string
+          id?: string
+          name?: string
+          region?: string | null
+        }
+        Relationships: []
+      }
       standards: {
         Row: {
           id: string
@@ -835,6 +999,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sub_classifications: {
+        Row: {
+          code: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       tool_versions: {
         Row: {
@@ -932,9 +1117,9 @@ export type Database = {
         Args: { p_assessment: string }
         Returns: boolean
       }
-      current_org_id: { Args: never; Returns: string }
+      current_org_id: { Args: Record<PropertyKey, never>; Returns: string }
       ensure_my_assessment: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           approved_at: string | null
           created_at: string
@@ -961,12 +1146,12 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: { Args: never; Returns: boolean }
+      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_assigned_evaluator: {
         Args: { p_assessment: string }
         Returns: boolean
       }
-      is_evaluator: { Args: never; Returns: boolean }
+      is_evaluator: { Args: Record<PropertyKey, never>; Returns: boolean }
       transition_assessment: {
         Args: {
           p_assessment: string
@@ -996,12 +1181,9 @@ export type Database = {
     Enums: {
       app_role: "admin" | "evaluator" | "user" | "organization" | "individual"
       assessment_status:
-        | "draft"
-        | "submitted"
-        | "under_review"
-        | "returned"
-        | "approved"
+        "draft" | "submitted" | "under_review" | "returned" | "approved"
       cycle_status: "draft" | "open" | "closed" | "archived"
+      entity_type: "association" | "foundation"
       evidence_kind: "file" | "link"
       profile_status: "pending_verification" | "profile_incomplete" | "active"
       request_status: "pending" | "approved" | "rejected"
@@ -1145,6 +1327,7 @@ export const Constants = {
         "approved",
       ],
       cycle_status: ["draft", "open", "closed", "archived"],
+      entity_type: ["association", "foundation"],
       evidence_kind: ["file", "link"],
       profile_status: ["pending_verification", "profile_incomplete", "active"],
       request_status: ["pending", "approved", "rejected"],

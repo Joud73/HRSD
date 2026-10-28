@@ -6,6 +6,8 @@ import {
   FileBarChart,
   Inbox,
   LayoutDashboard,
+  LayoutGrid,
+  Settings,
   ShieldCheck,
   UserCheck,
   Users,
@@ -15,7 +17,7 @@ import { copy } from "@/lib/copy";
 
 export type ShellRole = "admin" | "evaluator" | "organization";
 
-interface SidebarItem {
+export interface SidebarItem {
   label: string;
   icon: LucideIcon;
   to: string;
@@ -61,4 +63,17 @@ export const SIDEBAR_NAV: Partial<Record<ShellRole, SidebarGroup[]>> = {
       ],
     },
   ],
+};
+
+/** Organization pages: no sidebar, opened from the account menu (see AppShell). */
+export const ORGANIZATION_NAV: SidebarItem[] = [
+  { label: copy.account_dashboard, icon: LayoutGrid, to: "/dashboard" },
+  { label: copy.account_settings, icon: Settings, to: "/settings" },
+];
+
+/** Every page a role can open from the interface, flattened (used by the roles reference page). */
+export const ROLE_PAGES: Record<ShellRole, SidebarItem[]> = {
+  admin: (SIDEBAR_NAV.admin ?? []).flatMap((g) => g.items),
+  evaluator: (SIDEBAR_NAV.evaluator ?? []).flatMap((g) => g.items),
+  organization: ORGANIZATION_NAV,
 };

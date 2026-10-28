@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, Inbox, XCircle } from "lucide-react";
 import { copy, adminCopy } from "@/lib/copy";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ import { RowActionsTrigger, SearchField, Toolbar } from "@/components/admin/Admi
 import { dialogUi } from "@/components/admin/adminUi";
 
 type RequestStatus = Database["public"]["Enums"]["request_status"];
+type EntityType = Database["public"]["Enums"]["entity_type"];
 
 interface OrgRequest {
   id: string;
@@ -41,6 +42,17 @@ interface OrgRequest {
   request_status: RequestStatus;
   submitted_at: string;
   notes: string | null;
+  entity_type: EntityType | null;
+  registration_date: string | null;
+  region: string | null;
+  city: string | null;
+  district: string | null;
+  address: string | null;
+  employees_count: number | null;
+  organization_email: string | null;
+  website: string | null;
+  sub_classifications: { name: string } | null;
+  social_dev_centers: { name: string } | null;
 }
 
 type Filter = "all" | RequestStatus;
@@ -51,7 +63,7 @@ function useOrgRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("organization_requests")
-        .select("*")
+        .select("*, sub_classifications(name), social_dev_centers(name)")
         .order("submitted_at", { ascending: false });
       if (error) throw error;
       return data as OrgRequest[];
@@ -112,7 +124,7 @@ const AdminOrganizationRequests = () => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: adminCopy.requests_approved_toast, description: `${approveTarget.organization_name}. ${adminCopy.default_password_note}` });
+      toast({ title: adminCopy.requests_approved_toast, description: `${approveTarget.organization_name}. ${adminCopy.invite_sent_note}` });
       queryClient.invalidateQueries({ queryKey: ["admin-org-requests"] });
     } catch (err: unknown) {
       toast({ title: adminCopy.error_title, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
@@ -245,6 +257,29 @@ const AdminOrganizationRequests = () => {
               <DetailRow label={adminCopy.col_request_status}><RequestStatusLabel status={detailTarget.request_status} /></DetailRow>
               <DetailRow label={adminCopy.col_registration}><span className="tabular">{detailTarget.registration_number || "—"}</span></DetailRow>
               <DetailRow label={adminCopy.col_email}><bdi dir="ltr">{detailTarget.email}</bdi></DetailRow>
+              {detailTarget.entity_type && <DetailRow label={adminCopy.assoc_type}>{adminCopy.entity_types[detailTarget.entity_type]}</DetailRow>}
+              {detailTarget.registration_date && (
+                <DetailRow label={adminCopy.assoc_registration_date}><span className="tabular">{formatDate(detailTarget.registration_date)}</span></DetailRow>
+              )}
+              {detailTarget.sub_classifications && (
+                <DetailRow label={adminCopy.assoc_sub_classification}>{detailTarget.sub_classifications.name}</DetailRow>
+              )}
+              {detailTarget.social_dev_centers && (
+                <DetailRow label={adminCopy.assoc_social_dev_center}>{detailTarget.social_dev_centers.name}</DetailRow>
+              )}
+              {(detailTarget.region || detailTarget.city || detailTarget.district) && (
+                <DetailRow label={`${adminCopy.assoc_region} / ${adminCopy.assoc_city} / ${adminCopy.assoc_district}`}>
+                  {[detailTarget.region, detailTarget.city, detailTarget.district].filter(Boolean).join(" / ")}
+                </DetailRow>
+              )}
+              {detailTarget.address && <DetailRow label={adminCopy.assoc_address}>{detailTarget.address}</DetailRow>}
+              {detailTarget.employees_count !== null && (
+                <DetailRow label={adminCopy.assoc_employees}><span className="tabular">{formatNumber(detailTarget.employees_count)}</span></DetailRow>
+              )}
+              {detailTarget.organization_email && (
+                <DetailRow label={adminCopy.requests_org_email}><bdi dir="ltr">{detailTarget.organization_email}</bdi></DetailRow>
+              )}
+              {detailTarget.website && <DetailRow label={adminCopy.assoc_website}><bdi dir="ltr">{detailTarget.website}</bdi></DetailRow>}
               <DetailRow label={adminCopy.col_submitted_at}><span className="tabular">{formatDate(detailTarget.submitted_at)}</span></DetailRow>
               {detailTarget.delegate_name && <DetailRow label={adminCopy.requests_delegate_name}>{detailTarget.delegate_name}</DetailRow>}
               {detailTarget.delegate_id_number && (

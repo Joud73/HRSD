@@ -6,8 +6,9 @@ import { copy, authCopy } from "@/lib/copy";
 import { formatNumber } from "@/lib/format";
 import { transition } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useSocialDevCenters, useSubClassifications } from "@/hooks/useLookups";
+import { SAUDI_ID_RE } from "@/services/errors";
+import { submitOrganizationRequest, type EntityType } from "@/services/organizationService";
 import {
   AuthHeading,
   AuthHelpLinks,
@@ -18,24 +19,36 @@ import {
 } from "@/components/auth/AuthParts";
 import AuthShell from "@/components/auth/AuthShell";
 import { useFieldValidation } from "@/components/auth/useFieldValidation";
-import { FieldShell, FormError, PasswordField, TextField } from "@/components/shared/FormField";
+import { FieldShell, FormError, TextField } from "@/components/shared/FormField";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** 0 organization, 1 sign-in data (creates the account), 2 representative, 3 done */
+/** 0 organization, 1 sign-in email, 2 representative (sends the request), 3 done */
 type Step = 0 | 1 | 2 | 3;
 
 type Field =
+  | "entityType"
+  | "registrationNumber"
+  | "registrationDate"
   | "organizationName"
+  | "subClassificationId"
+  | "socialDevCenterId"
+  | "region"
+  | "city"
+  | "employeesCount"
+  | "organizationEmail"
   | "email"
-  | "signupPassword"
   | "fullName"
   | "idNumber"
   | "mobile"
-  | "delegateEmail"
-  | "confirmPassword";
+  | "delegateEmail";
+
+const ENTITY_TYPES: EntityType[] = ["association", "foundation"];
+
+const emailError = (value: string) =>
+  !value.trim() ? copy.login_error_email_required : !EMAIL_RE.test(value.trim()) ? copy.login_error_email_invalid : undefined;
 
 const StepIndicator = ({ current }: { current: number }) => {
   const steps = authCopy.register_steps;
@@ -73,56 +86,99 @@ const StepIndicator = ({ current }: { current: number }) => {
   );
 };
 
+interface SelectFieldProps {
+  id: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  error?: string;
+}
+
+/** Required select with the same error wiring as TextField */
+const SelectField = ({ id, label, placeholder, value, onChange, options, error }: SelectFieldProps) => (
+  <FieldShell id={id} label={label} error={error} required>
+    <Select dir="rtl" value={value} onValueChange={onChange}>
+      <SelectTrigger
+        id={id}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className="h-12 text-body aria-[invalid=true]:border-danger"
+      >
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value} className="text-body">
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </FieldShell>
+);
+
 const Register = () => {
   const navigate = useNavigate();
-  const { signUp, updateProfileStatus, user } = useAuth();
+  const subClassifications = useSubClassifications();
+  const socialDevCenters = useSocialDevCenters();
   const [step, setStep] = useState<Step>(0);
-  const [organizationName, setOrganizationName] = useState("");
-  const [registrationNumber, setRegistrationNumber] = useState("1000");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sign-in data (step 2), used for signUp
+  // Organization (step 1)
+  const [entityType, setEntityType] = useState<EntityType | "">("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [registrationDate, setRegistrationDate] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
+  const [subClassificationId, setSubClassificationId] = useState("");
+  const [socialDevCenterId, setSocialDevCenterId] = useState("");
+  const [region, setRegion] = useState("");
+  const [city, setCity] = useState("");
+  const [district, setDistrict] = useState("");
+  const [address, setAddress] = useState("");
+  const [employeesCount, setEmployeesCount] = useState("");
+  const [organizationEmail, setOrganizationEmail] = useState("");
+  const [website, setWebsite] = useState("");
+
+  // Sign-in email (step 2): the account is created with it when the request is approved
   const [email, setEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
 
   // Representative (step 3)
   const [fullName, setFullName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [mobile, setMobile] = useState("");
   const [delegateEmail, setDelegateEmail] = useState("");
-  const [loginName, setLoginName] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { errors, check, blur, reset } = useFieldValidation<Field>(() => {
     if (step === 0) {
-      return { organizationName: organizationName ? undefined : authCopy.error_org_required };
-    }
-    if (step === 1) {
+      const employees = employeesCount.trim();
       return {
-        email: !email.trim()
-          ? copy.login_error_email_required
-          : !EMAIL_RE.test(email.trim())
-            ? copy.login_error_email_invalid
-            : undefined,
-        signupPassword: !signupPassword
-          ? copy.login_error_password_required
-          : signupPassword.length < 6
-            ? authCopy.error_password_short
-            : undefined,
+        entityType: entityType ? undefined : authCopy.error_entity_type_required,
+        registrationNumber: registrationNumber.trim() ? undefined : authCopy.error_reg_number_required,
+        registrationDate: registrationDate ? undefined : authCopy.error_reg_date_required,
+        organizationName: organizationName.trim() ? undefined : authCopy.error_org_name_required,
+        subClassificationId: subClassificationId ? undefined : authCopy.error_sub_classification_required,
+        socialDevCenterId: socialDevCenterId ? undefined : authCopy.error_social_dev_center_required,
+        region: region.trim() ? undefined : authCopy.error_region_required,
+        city: city.trim() ? undefined : authCopy.error_city_required,
+        employeesCount: employees && !/^\d+$/.test(employees) ? authCopy.error_employees_invalid : undefined,
+        organizationEmail: emailError(organizationEmail),
       };
     }
+    if (step === 1) {
+      return { email: emailError(email) };
+    }
     return {
-      fullName: fullName ? undefined : authCopy.error_full_name_required,
-      idNumber: idNumber ? undefined : authCopy.error_id_required,
-      mobile: mobile ? undefined : authCopy.error_mobile_required,
-      delegateEmail: !delegateEmail
-        ? copy.login_error_email_required
-        : !EMAIL_RE.test(delegateEmail.trim())
-          ? copy.login_error_email_invalid
+      fullName: fullName.trim() ? undefined : authCopy.error_full_name_required,
+      idNumber: !idNumber.trim()
+        ? authCopy.error_id_required
+        : !SAUDI_ID_RE.test(idNumber.trim())
+          ? authCopy.error_id_invalid
           : undefined,
-      confirmPassword: password !== confirmPassword ? authCopy.error_password_mismatch : undefined,
+      mobile: mobile.trim() ? undefined : authCopy.error_mobile_required,
+      delegateEmail: emailError(delegateEmail),
     };
   });
 
@@ -140,8 +196,8 @@ const Register = () => {
     if (el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
   }, [step]);
 
-  // A selection clears the error immediately
-  const orgError = organizationName ? undefined : errors.organizationName;
+  // A selection clears its error immediately
+  const selectError = (value: string, field: Field) => (value ? undefined : errors[field]);
 
   const goTo = (next: Step) => {
     setError("");
@@ -149,94 +205,74 @@ const Register = () => {
     setStep(next);
   };
 
-  const handleOrganizationNext = (e: React.FormEvent) => {
+  const handleNext = (next: Step) => (e: React.FormEvent) => {
     e.preventDefault();
     if (!check()) return;
-    goTo(1);
+    goTo(next);
   };
 
-  // Account creation: same calls as before (signUp, then profile_incomplete)
-  const handleCreateAccount = async (e: React.FormEvent) => {
+  // Sends the complete request; the account is created when an administrator approves it
+  const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!check()) return;
+    if (!check() || !entityType) return;
     setIsLoading(true);
-
-    const { error: signUpError } = await signUp(email, signupPassword, organizationName, registrationNumber);
-
-    if (signUpError) {
-      setError(signUpError);
-      setIsLoading(false);
-      return;
-    }
-
-    // Auto-confirm is enabled: go straight to the representative step
-    const { error: updateError } = await updateProfileStatus("profile_incomplete");
-
-    if (updateError) {
-      setError(updateError);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(false);
-    goTo(2);
-  };
-
-  // Representative data: same insert and status update as before
-  const handleSaveRepresentative = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    if (!check()) return;
-    setIsLoading(true);
-
-    if (user) {
-      const { error: delegateError } = await supabase.from("delegates").insert({
-        user_id: user.id,
-        full_name: fullName,
-        id_number: idNumber,
-        mobile: mobile,
-        email: delegateEmail,
-        login_name: loginName,
+    try {
+      await submitOrganizationRequest({
+        entityType,
+        registrationNumber,
+        registrationDate,
+        organizationName,
+        subClassificationId,
+        socialDevCenterId,
+        region,
+        city,
+        district,
+        address,
+        employeesCount: employeesCount.trim() ? Number(employeesCount) : null,
+        organizationEmail,
+        website,
+        email,
+        delegateName: fullName,
+        delegateIdNumber: idNumber,
+        delegateMobile: mobile,
+        delegateEmail,
       });
-
-      if (delegateError) {
-        console.error("Delegate save failed");
-        setError(authCopy.error_save_failed);
-        setIsLoading(false);
-        return;
-      }
-
-      const { error: updateError } = await updateProfileStatus("active");
-
-      if (updateError) {
-        setError(updateError);
-        setIsLoading(false);
-        return;
-      }
+      goTo(3);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : authCopy.error_save_failed);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-    goTo(3);
   };
 
   if (step === 3) {
     return (
       <AuthShell crumb={authCopy.register_title} width="lg" below={<AuthHelpLinks />}>
-        <AuthStatus
-          icon={CheckCircle2}
-          tone="success"
-          title={authCopy.register_success_title}
-          description={authCopy.register_success_desc}
-        >
-          <Button type="button" onClick={() => navigate("/dashboard")} className={authButtonClass}>
-            {authCopy.register_success_action}
+        <AuthStatus icon={CheckCircle2} tone="success" title={authCopy.pending_title} description={authCopy.pending_desc}>
+          <Button type="button" onClick={() => navigate("/login")} className={authButtonClass}>
+            {authCopy.back_to_login}
             <ArrowLeft aria-hidden />
           </Button>
         </AuthStatus>
       </AuthShell>
     );
   }
+
+  const lookupsFailed = subClassifications.isError || socialDevCenters.isError;
+
+  const backButton = (to: Step) => (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={() => goTo(to)}
+      disabled={isLoading}
+      className={cn(authButtonClass, "sm:w-auto sm:px-6")}
+    >
+      <ArrowRight aria-hidden />
+      {authCopy.register_back}
+    </Button>
+  );
 
   return (
     <AuthShell
@@ -256,33 +292,28 @@ const Register = () => {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={step} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={transition.ui}>
             {step === 0 && (
-              <form onSubmit={handleOrganizationNext} noValidate className="flex flex-col gap-6">
-                <FormError message={error} />
+              <form onSubmit={handleNext(1)} noValidate className="flex flex-col gap-6">
+                <FormError message={error || (lookupsFailed ? authCopy.error_lookups_failed : null)} />
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <FieldShell id="reg-org" label={authCopy.org_name} error={orgError} required>
-                    <Select
-                      dir="rtl"
-                      value={organizationName}
-                      onValueChange={(v) => setOrganizationName(v)}
-                    >
-                      <SelectTrigger
-                        id="reg-org"
-                        aria-invalid={orgError ? true : undefined}
-                        aria-describedby={orgError ? "reg-org-error" : undefined}
-                        className="h-12 text-body aria-[invalid=true]:border-danger"
-                      >
-                        <SelectValue placeholder={authCopy.org_name_placeholder} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {authCopy.org_options.map((name) => (
-                          <SelectItem key={name} value={name} className="text-body">
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldShell>
+                  <SelectField
+                    id="reg-entity-type"
+                    label={authCopy.entity_type}
+                    placeholder={authCopy.entity_type_placeholder}
+                    value={entityType}
+                    onChange={(v) => setEntityType(v as EntityType)}
+                    options={ENTITY_TYPES.map((v) => ({ value: v, label: authCopy.entity_types[v] }))}
+                    error={selectError(entityType, "entityType")}
+                  />
+
+                  <TextField
+                    label={authCopy.org_name}
+                    value={organizationName}
+                    onChange={(e) => setOrganizationName(e.target.value)}
+                    onBlur={blur("organizationName")}
+                    error={errors.organizationName}
+                    required
+                  />
 
                   <TextField
                     label={authCopy.reg_number}
@@ -290,6 +321,106 @@ const Register = () => {
                     dir="ltr"
                     value={registrationNumber}
                     onChange={(e) => setRegistrationNumber(e.target.value)}
+                    onBlur={blur("registrationNumber")}
+                    error={errors.registrationNumber}
+                    required
+                  />
+
+                  <TextField
+                    label={authCopy.reg_date}
+                    type="date"
+                    dir="ltr"
+                    value={registrationDate}
+                    onChange={(e) => setRegistrationDate(e.target.value)}
+                    onBlur={blur("registrationDate")}
+                    error={errors.registrationDate}
+                    required
+                  />
+
+                  <SelectField
+                    id="reg-sub-classification"
+                    label={authCopy.sub_classification}
+                    placeholder={authCopy.sub_classification_placeholder}
+                    value={subClassificationId}
+                    onChange={setSubClassificationId}
+                    options={(subClassifications.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                    error={selectError(subClassificationId, "subClassificationId")}
+                  />
+
+                  <SelectField
+                    id="reg-social-dev-center"
+                    label={authCopy.social_dev_center}
+                    placeholder={authCopy.social_dev_center_placeholder}
+                    value={socialDevCenterId}
+                    onChange={setSocialDevCenterId}
+                    options={(socialDevCenters.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                    error={selectError(socialDevCenterId, "socialDevCenterId")}
+                  />
+
+                  <TextField
+                    label={authCopy.region}
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    onBlur={blur("region")}
+                    error={errors.region}
+                    required
+                  />
+
+                  <TextField
+                    label={authCopy.city}
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    onBlur={blur("city")}
+                    error={errors.city}
+                    required
+                  />
+
+                  <TextField
+                    label={authCopy.district}
+                    hint={authCopy.optional_hint}
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                  />
+
+                  <TextField
+                    label={authCopy.address}
+                    hint={authCopy.optional_hint}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+
+                  <TextField
+                    label={authCopy.employees_count}
+                    hint={authCopy.optional_hint}
+                    inputMode="numeric"
+                    dir="ltr"
+                    value={employeesCount}
+                    onChange={(e) => setEmployeesCount(e.target.value)}
+                    onBlur={blur("employeesCount")}
+                    error={errors.employeesCount}
+                  />
+
+                  <TextField
+                    label={authCopy.org_email}
+                    type="email"
+                    inputMode="email"
+                    dir="ltr"
+                    placeholder={authCopy.email_placeholder}
+                    value={organizationEmail}
+                    onChange={(e) => setOrganizationEmail(e.target.value)}
+                    onBlur={blur("organizationEmail")}
+                    error={errors.organizationEmail}
+                    required
+                  />
+
+                  <TextField
+                    label={authCopy.website}
+                    hint={authCopy.optional_hint}
+                    type="url"
+                    inputMode="url"
+                    dir="ltr"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
                   />
                 </div>
 
@@ -301,64 +432,41 @@ const Register = () => {
             )}
 
             {step === 1 && (
-              <form onSubmit={handleCreateAccount} noValidate className="flex flex-col gap-6">
+              <form onSubmit={handleNext(2)} noValidate className="flex flex-col gap-6">
                 <FormError message={error} />
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <TextField
-                    label={copy.login_email}
+                    label={authCopy.login_email}
                     type="email"
                     autoComplete="email"
                     inputMode="email"
                     dir="ltr"
                     placeholder={authCopy.email_placeholder}
+                    hint={authCopy.login_email_note}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onBlur={blur("email")}
                     error={errors.email}
                     required
                   />
-
-                  <PasswordField
-                    label={copy.login_password}
-                    autoComplete="new-password"
-                    hint={authCopy.password_hint}
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    onBlur={blur("signupPassword")}
-                    error={errors.signupPassword}
-                    required
-                  />
                 </div>
 
                 <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => goTo(0)}
-                    disabled={isLoading}
-                    className={cn(authButtonClass, "sm:w-auto sm:px-6")}
-                  >
-                    <ArrowRight aria-hidden />
-                    {authCopy.register_back}
+                  {backButton(0)}
+                  <Button type="submit" className={cn(authButtonClass, "sm:flex-1")}>
+                    {authCopy.register_next}
+                    <ArrowLeft aria-hidden />
                   </Button>
-                  <SubmitButton
-                    loading={isLoading}
-                    label={authCopy.register_create}
-                    loadingLabel={authCopy.register_creating}
-                    className="sm:flex-1"
-                  />
                 </div>
               </form>
             )}
 
             {step === 2 && (
-              <form onSubmit={handleSaveRepresentative} noValidate className="flex flex-col gap-6">
+              <form onSubmit={handleSubmitRequest} noValidate className="flex flex-col gap-6">
                 <FormError message={error} />
-                {!error && <p className="text-small text-muted-foreground">{authCopy.account_created_note}</p>}
 
                 <div className="grid gap-4 md:grid-cols-2">
-
                   <TextField
                     label={authCopy.rep_full_name}
                     autoComplete="name"
@@ -374,6 +482,8 @@ const Register = () => {
                     label={authCopy.rep_id_number}
                     inputMode="numeric"
                     dir="ltr"
+                    maxLength={10}
+                    hint={authCopy.rep_id_hint}
                     value={idNumber}
                     onChange={(e) => setIdNumber(e.target.value)}
                     onBlur={blur("idNumber")}
@@ -407,44 +517,22 @@ const Register = () => {
                     error={errors.delegateEmail}
                     required
                   />
-
-                  <TextField
-                    label={authCopy.rep_login_name}
-                    autoComplete="username"
-                    dir="ltr"
-                    value={loginName}
-                    onChange={(e) => setLoginName(e.target.value)}
-                  />
-
-                  <PasswordField
-                    label={copy.login_password}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-
-                  <PasswordField
-                    label={authCopy.confirm_password}
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    onBlur={blur("confirmPassword")}
-                    error={errors.confirmPassword}
-                  />
                 </div>
 
-                <SubmitButton
-                  loading={isLoading}
-                  label={authCopy.register_save}
-                  loadingLabel={authCopy.register_saving}
-                  className="md:w-auto md:self-start md:px-8"
-                />
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  {backButton(1)}
+                  <SubmitButton
+                    loading={isLoading}
+                    label={authCopy.register_submit}
+                    loadingLabel={authCopy.register_submitting}
+                    className="sm:flex-1"
+                  />
+                </div>
               </form>
             )}
           </motion.div>
         </AnimatePresence>
       </div>
-
     </AuthShell>
   );
 };

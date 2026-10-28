@@ -6,7 +6,9 @@ import { copy, adminCopy } from "@/lib/copy";
 import { formatNumber } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAdminAssociations, useAdminEvaluators, type EvaluatorRow } from "@/hooks/useAdminData";
+import { useAdminAssociations } from "@/hooks/useAdminData";
+import { useEvaluators } from "@/hooks/useEvaluators";
+import type { EvaluatorListRow } from "@/services/evaluatorService";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -33,7 +35,7 @@ const AdminReviewers = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: evaluators, isLoading } = useAdminEvaluators();
+  const { data: evaluators, isLoading } = useEvaluators();
   const { data: associations } = useAdminAssociations();
 
   const [search, setSearch] = useState("");
@@ -57,14 +59,14 @@ const AdminReviewers = () => {
 
   const searched = useMemo(() => {
     return (evaluators || []).filter((r) => {
-      if (search && !r.email.includes(search) && !(r.organization_name || "").includes(search)) return false;
+      if (search && !r.fullName.includes(search) && !(r.accountEmail || "").includes(search) && !(r.email || "").includes(search)) return false;
       return true;
     });
   }, [evaluators, search]);
 
-  const withCount = searched.filter((r) => r.assignedCount > 0).length;
+  const withCount = searched.filter((r) => r.counts.total > 0).length;
   const filtered = searched.filter((r) =>
-    loadFilter === "all" ? true : loadFilter === "with" ? r.assignedCount > 0 : r.assignedCount === 0
+    loadFilter === "all" ? true : loadFilter === "with" ? r.counts.total > 0 : r.counts.total === 0
   );
   const filtersOn = search !== "" || loadFilter !== "all";
 
@@ -97,7 +99,7 @@ const AdminReviewers = () => {
       toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
       return;
     }
-    queryClient.invalidateQueries({ queryKey: ["admin-evaluators"] });
+    queryClient.invalidateQueries({ queryKey: ["evaluators"] });
     queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
     queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
     setDistOpen(false);
@@ -122,7 +124,7 @@ const AdminReviewers = () => {
       toast({ title: adminCopy.error_title, description: error.message, variant: "destructive" });
       return;
     }
-    queryClient.invalidateQueries({ queryKey: ["admin-evaluators"] });
+    queryClient.invalidateQueries({ queryKey: ["evaluators"] });
     queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
     setReassignOpen(false);
     setReassignAssignment("");
@@ -140,20 +142,27 @@ const AdminReviewers = () => {
     return (associations || []).filter((a) => a.assignment_id);
   }, [associations]);
 
-  const columns: Column<EvaluatorRow>[] = [
+  const columns: Column<EvaluatorListRow>[] = [
     {
-      key: "email",
+      key: "name",
       header: adminCopy.col_evaluator,
       cell: (r) => (
         <div className="flex flex-col items-start">
-          <span dir="ltr" className="font-hrsd-medium">{r.email}</span>
-          {r.organization_name && <span className="text-caption text-muted-foreground">{r.organization_name}</span>}
+          <span className="font-hrsd-medium">{r.fullName}</span>
+          {r.accountEmail && r.accountEmail !== r.fullName && (
+            <span dir="ltr" className="text-caption text-muted-foreground">{r.accountEmail}</span>
+          )}
         </div>
       ),
     },
-    { key: "assigned", header: adminCopy.col_assigned_count, cell: (r) => <span className="tabular">{formatNumber(r.assignedCount)}</span> },
-    { key: "completed", header: adminCopy.col_completed_count, cell: (r) => <span className="tabular">{formatNumber(r.completedCount)}</span> },
-    { key: "progress", header: adminCopy.col_in_progress_count, cell: (r) => <span className="tabular">{formatNumber(r.inProgressCount)}</span> },
+    { key: "status", header: adminCopy.reviewer_status, cell: (r) => (r.isActive ? adminCopy.reviewer_active : adminCopy.reviewer_inactive) },
+    { key: "assigned", header: adminCopy.col_assigned_count, cell: (r) => <span className="tabular">{formatNumber(r.counts.total)}</span> },
+    { key: "completed", header: adminCopy.col_completed_count, cell: (r) => <span className="tabular">{formatNumber(r.counts.approved)}</span> },
+    {
+      key: "progress",
+      header: adminCopy.col_in_progress_count,
+      cell: (r) => <span className="tabular">{formatNumber(r.counts.submitted + r.counts.under_review)}</span>,
+    },
     {
       key: "actions",
       header: <span className="sr-only">{adminCopy.actions_label}</span>,
@@ -165,7 +174,7 @@ const AdminReviewers = () => {
             <RowActionsTrigger />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[200px]">
-            <DropdownMenuItem className="gap-2 text-small" onSelect={() => navigate(`/admin/reviewers/${r.id}`)}>
+            <DropdownMenuItem className="gap-2 text-small" onSelect={() => navigate(`/admin/reviewers/${r.userId}`)}>
               <Eye aria-hidden className="h-4 w-4" /> {adminCopy.reviewers_view}
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2 text-small" onSelect={openReassign}>
@@ -178,7 +187,7 @@ const AdminReviewers = () => {
   ];
 
   const evaluatorOptions = (evaluators || []).map((r) => (
-    <SelectItem key={r.id} value={r.id}><bdi dir="ltr">{r.email}</bdi></SelectItem>
+    <SelectItem key={r.userId} value={r.userId}>{r.fullName}</SelectItem>
   ));
 
   return (
@@ -215,9 +224,9 @@ const AdminReviewers = () => {
         columns={columns}
         rows={filtered}
         loading={isLoading}
-        getRowKey={(r) => r.id}
-        onRowClick={(r) => navigate(`/admin/reviewers/${r.id}`)}
-        rowLabel={(r) => `${adminCopy.reviewers_view}: ${r.email}`}
+        getRowKey={(r) => r.userId}
+        onRowClick={(r) => navigate(`/admin/reviewers/${r.userId}`)}
+        rowLabel={(r) => `${adminCopy.reviewers_view}: ${r.fullName}`}
         caption={copy.nav_admin.reviewers}
         empty={
           filtersOn ? (
