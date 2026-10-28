@@ -1,11 +1,11 @@
 /**
- * Phase 3 demo path on staging (Step 7), against the dev server on http://localhost:8080.
+ * Phase 3 demo path on staging, against the dev server on http://localhost:8080.
  * Accounts and passwords come from e2e/.env (gitignored); see e2e/.env.example.
  * Every test fails on a console error, an uncaught page error, a failed request or an HTTP error response.
  * Screenshots of each screen go to e2e/screens/.
  *
- * Starting state: supabase/seed/demo_reset.sql applied (org A draft at 48 %, track 1 indicator 1 empty)
- * and org B with a fresh draft. Org B is submitted by this run; reset both afterwards.
+ * Starting state: `node e2e/reset-demo.mjs` (org A draft at 48 %, track 1 indicator 1 empty; org B empty draft).
+ * The run submits org B and adds answers to org A; run the reset again afterwards.
  */
 import { expect, test, type Page } from "@playwright/test";
 
@@ -19,6 +19,7 @@ const ORG_B_ID = "aaaaaaaa-0000-0000-0000-000000000002";
 const ORG_A_NAME = "منظمة الاختبار أ";
 const ORG_B_NAME = "منظمة الاختبار ب";
 const CYCLE_NAME = "الدورة التجريبية 2026";
+const PDF = "e2e/fixtures/evidence.pdf";
 
 /* ── Helpers ── */
 
@@ -38,6 +39,8 @@ function watch(page: Page) {
 
 let shot = 0;
 async function screen(page: Page, name: string) {
+  // Let in-flight requests finish, so leaving the page does not abort them
+  await page.waitForLoadState("networkidle");
   shot += 1;
   await page.screenshot({ path: `e2e/screens/${String(shot).padStart(2, "0")}-${name}.png`, fullPage: true });
 }
@@ -64,31 +67,50 @@ async function openIndicator(page: Page, n: number) {
 const itemRows = (page: Page) => page.locator("article > ul > li");
 const resultLabel = (page: Page) => page.locator("article footer p").first();
 
-/** Ticks item row `index` and attaches a link evidence to it. */
-async function tickWithLink(page: Page, index: number, url: string) {
+/** Ticks item row `index`, then attaches one evidence through the "إضافة شاهد" menu (a link, or the PDF fixture). */
+async function tickWithEvidence(page: Page, index: number, evidence: { url: string } | { file: string }) {
   const row = itemRows(page).nth(index);
   await row.getByRole("checkbox").click();
   await expect(row.getByRole("checkbox")).toBeChecked();
-  await row.getByRole("button", { name: "إضافة رابط" }).click();
-  const dialog = page.getByRole("dialog").filter({ hasText: "إضافة رابط شاهد" });
-  // The URL field is the dialog's first textbox (the label carries a required asterisk)
-  await dialog.getByRole("textbox").first().fill(url);
-  await dialog.getByRole("button", { name: "إضافة الرابط" }).click();
-  await expect(dialog).toBeHidden();
+  await expect(row.getByText("محدد دون شاهد، لا يُحتسب")).toBeVisible();
+  await row.getByRole("button", { name: "إضافة شاهد" }).click();
+  if ("file" in evidence) {
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("menuitem", { name: "ملف" }).click();
+    await (await chooser).setFiles(evidence.file);
+  } else {
+    await page.getByRole("menuitem", { name: "رابط" }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "إضافة رابط شاهد" });
+    // The URL field is the dialog's first textbox (the label carries a required asterisk)
+    await dialog.getByRole("textbox").first().fill(evidence.url);
+    await dialog.getByRole("button", { name: "إضافة الرابط" }).click();
+    await expect(dialog).toBeHidden();
+  }
   await expect(row.getByRole("list", { name: "شواهد البند" }).getByRole("listitem")).toHaveCount(1);
+  await expect(row.getByText("محتسب", { exact: true })).toBeVisible();
+}
+
+/** The dashboard never shows an average level or a slash fraction. */
+async function expectCleanFigures(page: Page) {
+  const text = await page.locator("main").innerText();
+  expect(text).not.toContain("متوسط المستوى");
+  expect(text).not.toMatch(/\d\s*\/\s*\d/);
 }
 
 /* ── Demo path ── */
 
 test.describe.serial("phase 3 demo path", () => {
-  test("org A: dashboard, track 1 indicator 1, tick and evidence, refresh keeps state", async ({ page }) => {
+  test("org A: dashboard, track 1 indicator 1, PDF and link evidence, refresh keeps state", async ({ page }) => {
     const problems = watch(page);
     await login(page, env("E2E_ORG_A_EMAIL"), env("E2E_PASSWORD"));
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole("region", { name: "مراحل رحلة التقييم" })).toBeVisible();
-    await expect(page.getByText("الموعد النهائي")).toBeVisible();
-    await expect(page.getByText("نسبة الإنجاز").locator("xpath=ancestor::*[contains(., '%')][1]")).toContainText(/48\s*%/);
+    await expect(page.getByRole("heading", { level: 1, name: ORG_A_NAME })).toBeVisible();
+    await expect(page.getByRole("list", { name: "مراحل رحلة التقييم" })).toBeVisible();
+    await expect(page.getByText(/الموعد النهائي \d+/)).toBeVisible();
+    await expect(page.getByRole("region", { name: "ملخص التقييم" })).toContainText("48%");
+    await expect(page.getByRole("region", { name: "الخطوة التالية" })).toContainText("أكملت 183 من 378");
+    await expectCleanFigures(page);
     await screen(page, "org-a-dashboard");
 
     await page.goto("/assessment/1");
@@ -96,9 +118,8 @@ test.describe.serial("phase 3 demo path", () => {
     await expect(resultLabel(page)).toContainText("غير مكتمل");
     await screen(page, "org-a-indicator-1-empty");
 
-    await tickWithLink(page, 0, "https://example.org/e2e/org-a-1");
-    await tickWithLink(page, 1, "https://example.org/e2e/org-a-2");
-    await expect(resultLabel(page)).not.toContainText("غير مكتمل");
+    await tickWithEvidence(page, 0, { file: PDF });
+    await tickWithEvidence(page, 1, { url: "https://example.org/e2e/org-a-2" });
     await expect(resultLabel(page)).toContainText("بحاجة لتحسين كبير");
     await expect(page.locator("article header")).toContainText("2 من 7");
     await screen(page, "org-a-indicator-1-ticked");
@@ -106,6 +127,8 @@ test.describe.serial("phase 3 demo path", () => {
     await page.reload();
     await openIndicator(page, 1);
     await expect(itemRows(page).nth(0).getByRole("checkbox")).toBeChecked();
+    await expect(itemRows(page).nth(0).getByText("محتسب", { exact: true })).toBeVisible();
+    await expect(itemRows(page).nth(0).getByRole("listitem")).toContainText("evidence.pdf");
     await expect(itemRows(page).nth(1).getByRole("checkbox")).toBeChecked();
     await expect(itemRows(page).nth(2).getByRole("checkbox")).not.toBeChecked();
     await expect(resultLabel(page)).toContainText("بحاجة لتحسين كبير");
@@ -114,37 +137,39 @@ test.describe.serial("phase 3 demo path", () => {
     expect(problems).toEqual([]);
   });
 
-  test("org B: tick one item with a link, submit, under review, read only", async ({ page }) => {
+  test("admin: assign evaluator2 to org B, four roles, cycle scope tab", async ({ page }) => {
     const problems = watch(page);
-    await login(page, env("E2E_ORG_B_EMAIL"), env("E2E_PASSWORD"));
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await screen(page, "org-b-dashboard");
+    await login(page, env("E2E_ADMIN_EMAIL"), env("E2E_PASSWORD"));
+    await expect(page).toHaveURL(/\/admin$/);
 
-    await page.goto("/assessment/1");
-    await openIndicator(page, 1);
-    await tickWithLink(page, 0, "https://example.org/e2e/org-b-1");
-    await screen(page, "org-b-indicator-1-ticked");
+    await page.goto(`/admin/associations/${ORG_B_ID}`);
+    await expect(page.getByRole("heading", { name: "مسار التقييم في الدورة الحالية" })).toBeVisible();
+    const assign = page.getByRole("combobox", { name: "المدقق المسند" });
+    for (const evaluator of ["evaluator1@tamkeen.local", "evaluator2@tamkeen.local"]) {
+      await assign.click();
+      await page.getByRole("option", { name: evaluator }).click();
+      await expect(assign).toContainText(evaluator);
+      await expect(page.getByText("تم إسناد المدقق").first()).toBeVisible();
+    }
+    await screen(page, "admin-org-b-assigned");
 
-    await page.getByRole("button", { name: "إرسال التقييم للمراجعة" }).click();
-    const dialog = page.getByRole("dialog").filter({ hasText: "تأكيد الإرسال" });
-    await expect(dialog).toBeVisible();
-    await screen(page, "org-b-submit-dialog");
-    await dialog.getByRole("button", { name: "تأكيد الإرسال" }).click();
+    await page.goto("/admin/roles");
+    for (const role of ["مدير النظام", "المشرف الفني", "مدقق", "منظمة"]) {
+      await expect(page.getByRole("button", { name: role, exact: true }).first()).toBeVisible();
+    }
+    await screen(page, "admin-roles");
 
-    await page.waitForURL(/\/under-review$/);
-    await expect(page.getByRole("heading", { name: "التقييم قيد التدقيق" })).toBeVisible();
-    await screen(page, "org-b-under-review");
-
-    await page.goto("/assessment/1");
-    await expect(page.getByText("أُرسل التقييم للمراجعة. الإجابات للعرض فقط.")).toBeVisible();
-    await expect(itemRows(page).first().getByRole("checkbox")).toBeDisabled();
-    await expect(page.getByRole("button", { name: "إضافة رابط" })).toHaveCount(0);
-    await screen(page, "org-b-read-only");
+    await page.goto("/admin/performance/evaluation-years");
+    await page.getByText(CYCLE_NAME, { exact: true }).first().click();
+    await page.getByRole("tab", { name: "نطاق التقييم في الدورة" }).click();
+    await expect(page.getByText(/البنود الفعّالة في الدورة: \d+ من 378/)).toBeVisible();
+    await expect(page.getByRole("checkbox").first()).toBeEnabled();
+    await screen(page, "admin-cycle-scope");
 
     expect(problems).toEqual([]);
   });
 
-  test("supervisor: dashboard, both organizations, org B proxy is read only with the banner", async ({ page }) => {
+  test("supervisor: both organizations, proxy entry writes on org B's draft", async ({ page }) => {
     const problems = watch(page);
     await login(page, env("E2E_SUPERVISOR_EMAIL"), env("E2E_SUPERVISOR_PASSWORD"));
 
@@ -161,35 +186,67 @@ test.describe.serial("phase 3 demo path", () => {
     await page.getByRole("link", { name: `إدخال التقييم نيابة عن المنظمة: ${ORG_B_NAME}` }).click();
     await expect(page).toHaveURL(new RegExp(`/supervisor/organizations/${ORG_B_ID}/assessment/1$`));
     await expect(page.getByText(`أنت تُدخل التقييم نيابة عن: ${ORG_B_NAME}`)).toBeVisible();
-    await expect(page.getByText("أُرسل التقييم للمراجعة. الإجابات للعرض فقط.")).toBeVisible();
-    await expect(itemRows(page).first().getByRole("checkbox")).toBeDisabled();
-    await screen(page, "supervisor-proxy-org-b");
+    await openIndicator(page, 1);
+    await tickWithEvidence(page, 0, { url: "https://example.org/e2e/proxy-org-b" });
+    await screen(page, "supervisor-proxy-org-b-written");
 
     expect(problems).toEqual([]);
   });
 
-  test("admin: org B journey panel, four roles, cycle scope tab", async ({ page }) => {
+  test("org B: sees the proxy entry, submits, under review, read only", async ({ page }) => {
     const problems = watch(page);
-    await login(page, env("E2E_ADMIN_EMAIL"), env("E2E_PASSWORD"));
-    await expect(page).toHaveURL(/\/admin$/);
+    await login(page, env("E2E_ORG_B_EMAIL"), env("E2E_PASSWORD"));
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("region", { name: "ملخص التقييم" })).toContainText(/(^|\D)1 من 378/);
+    await expectCleanFigures(page);
+    await screen(page, "org-b-dashboard-after-proxy");
 
-    await page.goto(`/admin/associations/${ORG_B_ID}`);
-    await expect(page.getByRole("heading", { name: "مسار التقييم في الدورة الحالية" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "بيانات المنظمة" })).toBeVisible();
-    await screen(page, "admin-org-b");
+    await page.goto("/assessment/1");
+    await openIndicator(page, 1);
+    await expect(itemRows(page).first().getByRole("checkbox")).toBeChecked();
+    await expect(itemRows(page).first().getByText("محتسب", { exact: true })).toBeVisible();
 
-    await page.goto("/admin/roles");
-    for (const role of ["مدير النظام", "المشرف الفني", "مدقق", "منظمة"]) {
-      await expect(page.getByRole("button", { name: role, exact: true }).or(page.getByRole("tab", { name: role, exact: true })).first()).toBeVisible();
-    }
-    await screen(page, "admin-roles");
+    await page.getByRole("button", { name: "إرسال التقييم للمراجعة" }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "تأكيد الإرسال" });
+    await expect(dialog).toBeVisible();
+    await screen(page, "org-b-submit-dialog");
+    await dialog.getByRole("button", { name: "تأكيد الإرسال" }).click();
 
-    await page.goto("/admin/performance/evaluation-years");
-    await page.getByText(CYCLE_NAME, { exact: true }).first().click();
-    await page.getByRole("tab", { name: "نطاق التقييم في الدورة" }).click();
-    await expect(page.getByText(/البنود الفعّالة في الدورة: \d+ من 378/)).toBeVisible();
-    await expect(page.getByRole("checkbox").first()).toBeEnabled();
-    await screen(page, "admin-cycle-scope");
+    await page.waitForURL(/\/under-review$/);
+    await expect(page.getByRole("heading", { name: "التقييم قيد التدقيق" })).toBeVisible();
+    await screen(page, "org-b-under-review");
+
+    await page.goto("/assessment/1");
+    await expect(page.getByText("أُرسل التقييم للمراجعة. الإجابات للعرض فقط.")).toBeVisible();
+    await expect(itemRows(page).first().getByRole("checkbox")).toBeDisabled();
+    await expect(page.getByRole("button", { name: "إضافة شاهد" })).toHaveCount(0);
+    await screen(page, "org-b-read-only");
+
+    expect(problems).toEqual([]);
+  });
+
+  test("evaluator2: org B submitted, organization card, actions wait for the review period", async ({ page }) => {
+    const problems = watch(page);
+    await login(page, "evaluator2@tamkeen.local", env("E2E_PASSWORD"));
+    await expect(page).toHaveURL(/\/evaluator$/);
+    await expect(page.getByRole("heading", { name: "لوحة تحكم المدقق" })).toBeVisible();
+    await screen(page, "evaluator2-dashboard");
+
+    await page.goto("/evaluator/assignments");
+    const row = page.getByRole("row").filter({ hasText: ORG_B_NAME });
+    await expect(row).toContainText("مرسل للمراجعة");
+    await screen(page, "evaluator2-assignments");
+    await row.click();
+
+    await expect(page).toHaveURL(/\/evaluator\/assessments\/[0-9a-f-]+$/);
+    await expect(page.getByRole("heading", { level: 1, name: ORG_B_NAME })).toBeVisible();
+    const card = page.getByRole("heading", { name: "بيانات المنظمة" }).locator("xpath=ancestor::section[1]");
+    await expect(card).toContainText("TEST-0002");
+    await expect(card).toContainText("خالد الشمري");
+    await expect(page.getByRole("button", { name: "بدء المراجعة" })).toBeDisabled();
+    await expect(page.getByText(/تبدأ فترة المراجعة في/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "إضافة شاهد" })).toHaveCount(0);
+    await screen(page, "evaluator2-review-org-b");
 
     expect(problems).toEqual([]);
   });

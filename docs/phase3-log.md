@@ -265,6 +265,55 @@ Built (`components/dashboard/`):
 - [x] The note sits behind the text button "إضافة ملاحظة"; it is open from the start only when a note exists (and focuses the field when opened).
 - [x] The indicator result is a sticky footer inside the indicator card from lg up.
 
+### E. Tests
+
+- [x] `e2e/demo-path.spec.ts` extended (5 tests, all pass, no console error, no failed request, no HTTP error; 17 screenshots in `e2e/screens/`):
+  1. Org A: dashboard (h1, journey, deadline, 48 %, "أكملت 183 من 378"), no "متوسط المستوى" and no slash fraction; track 1 indicator 1: item 1 with `e2e/fixtures/evidence.pdf` (a generated 595-byte valid PDF) through "إضافة شاهد" → ملف, item 2 with a link; both show "محتسب"; the label moves from غير مكتمل to بحاجة لتحسين كبير (2 من 7); a reload keeps both, with evidence.pdf listed.
+  2. Admin: assigns evaluator1 then evaluator2 to org B in the journey panel; four roles; cycle scope tab.
+  3. Supervisor: both organizations; proxy entry WRITES on org B's draft (tick + link, "محتسب").
+  4. Org B: its dashboard shows the proxy entry ("1 من 378"), clean figures; the item is ticked and counted; submits, lands on `/under-review`; the track is read only.
+  5. evaluator2: dashboard; org B listed as "مرسل للمراجعة"; review page with the organization card (TEST-0002, delegate خالد الشمري); "بدء المراجعة" disabled with "تبدأ فترة المراجعة في 12 نوفمبر 2026"; no evidence actions.
+  The screenshot helper waits for network idle first: the supervisor dashboard's count requests were aborted by the next navigation (test timing, not an app error).
+- [x] Reset after the run: `node e2e/reset-demo.mjs` (removed the uploaded PDF from storage). Org A draft, 48 %, 183 met, 182 evidences, track 1 indicator 1 at 0 of 7 غير مكتمل; org B empty draft assigned to evaluator2; 0 exclusions.
+- [x] `e2e/api-check.mjs`: reads what one test user sees through the real API (used for the evaluator checks in A).
+
+#### Phase 2 security evidence: `supabase/checks/rls_checks.sql` on staging (2026-10-28, one transaction, rolled back)
+
+Each case runs as the test user (`set local role authenticated` + `request.jwt.claims`). Afterwards staging was unchanged (both drafts, 0 exclusions).
+
+| # | Account | Action | Expected | Actual | Result |
+|---|---|---|---|---|---|
+| 1 | org A | select items (open cycle tool) | 378 | 378 | PASS |
+| 2 | org A | ensure_my_assessment() | draft | draft | PASS |
+| 3 | org B | select assessments | A: 0, total 1 (own) | A: 0, total 1 | PASS |
+| 4 | org A | update profiles set organization_id = B | error | organization_id, status, email and registration_number can only be changed by an administrator | PASS |
+| 5 | org A | update assessments set status = approved | 0 rows or error | 0 rows | PASS |
+| 6 | org A | insert item_responses, transition submitted | submitted | submitted | PASS |
+| 7 | org A | update item_responses after submit | 0 rows | 0 rows | PASS |
+| 8 | evaluator2 | select assessments | A: 0, total 1 (org B) | A: 0, total 1 | PASS |
+| 9 | evaluator1 | select count(*) from assessments | 1 | 1 | PASS |
+| 10 | evaluator1 | transition approved from submitted | error: not allowed | Transition submitted -> approved is not allowed for this user at this time | PASS |
+| 11 | evaluator1 | transition under_review before review_start | error: not allowed | Transition submitted -> under_review is not allowed for this user at this time | PASS |
+| 12 | admin | transition under_review without note | error: requires a note | Administrative override requires a note | PASS |
+| 13 | admin | transition under_review with note | under_review, 1 history row | under_review, 1 history row | PASS |
+| 14 | evaluator1 | update item_responses set is_met = false | 0 rows | 0 rows | PASS |
+| 15 | evaluator1 | transition returned without note (review period) | error: note is required | A note is required when returning an assessment | PASS |
+| 16 | org B | upload into org A's evidences folder | error | new row violates row-level security policy for table "objects" | PASS |
+| 17 | org A | select assessment_status_history | own > 0, other 0 | own 2, other 0 | PASS |
+| 18 | anon | select from items | error: permission denied | permission denied for table items | PASS |
+| 19 | Advisors | `supabase db advisors --linked --type security` | no ERROR | 0 ERROR, 23 WARN (below) | PASS |
+| 20 | supervisor | insert item_responses on org B (draft) | allowed | allowed | PASS |
+| 21 | supervisor | update assessment_reviews (reassign org B) | 0 rows or error | 0 rows | PASS |
+| 22 | evaluator2 | insert item_responses on org B | error | new row violates row-level security policy for table "item_responses" | PASS |
+| 23 | evaluator1 | select delegates | org A: 1, org B: 0 | org A: 1, org B: 0 | PASS |
+| 24 | org A | select cycle_item_exclusions | 1 | 1 | PASS |
+| 25 | evaluator2 (unassigned) | select count(*) from assessments | 0 | 0 | PASS |
+| 26 | evaluator1 | transition returned with note (review period) | returned | returned | PASS |
+
+Adjustments to `rls_scenarios.md`, written when evaluator2 was unassigned: case 3 and case 8 now check "never org A" plus the user's own count, because org B and evaluator2 now have their own assessment; the unassigned case is 25 (evaluator2's assignment removed inside the transaction). Cases 15 and 26 move the cycle dates inside the transaction so that today is the first review day; before the review period the database refuses the evaluator first (case 11), so the note rule cannot be reached otherwise.
+
+Advisor warnings (no ERROR): 22 are "security definer function executable by anon/authenticated" for assessment_editable_by_org, assessment_reviewable_by_me, current_org_id, ensure_assessment_for, ensure_my_assessment, has_role, is_admin, is_assigned_evaluator, is_evaluator, is_supervisor, transition_assessment (each checks `auth.uid()` inside, so anon gets false or an error); 1 is leaked-password protection disabled in Auth. Recommended follow-up: a migration revoking EXECUTE on these functions from anon, and turning on leaked-password protection in the dashboard.
+
 ## Decisions
 
 - `ensureMyAssessment` and `ensureAssessmentFor` return the full `Assessment` (with cycle and deadline): after the RPC they read the row by id. The page then has one type in every case.
