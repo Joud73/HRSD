@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { copy } from "@/lib/copy";
 import Container from "@/components/layout/Container";
-import hrsdWhiteLogo from "@/assets/logos/hrsd-white.png";
+import aolWhiteLogo from "@/assets/logos/aol-white.png";
 import vision2030White from "@/assets/logos/vision-2030-white.webp";
 
 const COL1_LINKS = [
@@ -30,7 +30,7 @@ const Footer = () => (
   <footer dir="rtl" className="bg-primary text-primary-foreground">
     <Container className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.3fr_1fr] lg:gap-12 lg:py-16">
       <div>
-        <img src={hrsdWhiteLogo} alt={copy.logo_alt} className="h-14 w-auto" />
+        <img src={aolWhiteLogo} alt={copy.logo_alt} className="h-12 w-auto" />
         <p className="mt-5 max-w-[40ch] text-small font-hrsd-regular text-primary-foreground/75">{copy.footer_about}</p>
       </div>
 
