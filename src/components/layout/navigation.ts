@@ -6,6 +6,8 @@ import {
   FileBarChart,
   Inbox,
   LayoutDashboard,
+  LayoutGrid,
+  Settings,
   ShieldCheck,
   UserCheck,
   Users,
@@ -13,9 +15,9 @@ import {
 } from "lucide-react";
 import { copy } from "@/lib/copy";
 
-export type ShellRole = "admin" | "evaluator" | "organization";
+export type ShellRole = "admin" | "supervisor" | "evaluator" | "organization";
 
-interface SidebarItem {
+export interface SidebarItem {
   label: string;
   icon: LucideIcon;
   to: string;
@@ -30,6 +32,7 @@ interface SidebarGroup {
 
 const A = copy.nav_admin;
 const E = copy.nav_evaluator;
+const S = copy.nav_supervisor;
 
 export const SIDEBAR_NAV: Partial<Record<ShellRole, SidebarGroup[]>> = {
   admin: [
@@ -53,6 +56,14 @@ export const SIDEBAR_NAV: Partial<Record<ShellRole, SidebarGroup[]>> = {
       ],
     },
   ],
+  supervisor: [
+    {
+      items: [
+        { label: S.dashboard, icon: LayoutDashboard, to: "/supervisor", end: true },
+        { label: S.organizations, icon: Building2, to: "/supervisor/organizations" },
+      ],
+    },
+  ],
   evaluator: [
     {
       items: [
@@ -61,4 +72,18 @@ export const SIDEBAR_NAV: Partial<Record<ShellRole, SidebarGroup[]>> = {
       ],
     },
   ],
+};
+
+/** Organization pages: no sidebar, opened from the account menu (see AppShell). */
+export const ORGANIZATION_NAV: SidebarItem[] = [
+  { label: copy.account_dashboard, icon: LayoutGrid, to: "/dashboard" },
+  { label: copy.account_settings, icon: Settings, to: "/settings" },
+];
+
+/** Every page a role can open from the interface, flattened (used by the roles reference page). */
+export const ROLE_PAGES: Record<ShellRole, SidebarItem[]> = {
+  admin: (SIDEBAR_NAV.admin ?? []).flatMap((g) => g.items),
+  supervisor: (SIDEBAR_NAV.supervisor ?? []).flatMap((g) => g.items),
+  evaluator: (SIDEBAR_NAV.evaluator ?? []).flatMap((g) => g.items),
+  organization: ORGANIZATION_NAV,
 };

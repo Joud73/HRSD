@@ -8,10 +8,12 @@ interface StatusBadgeProps {
   status: StatusKey | string | null | undefined;
   /** Optional count shown after the label (status summaries) */
   count?: number;
+  /** Overrides the label, keeping the status colour (e.g. a completed track shown in the approved colour as مكتمل) */
+  label?: string;
   className?: string;
 }
 
-const StatusBadge = ({ status, count, className }: StatusBadgeProps) => {
+const StatusBadge = ({ status, count, label, className }: StatusBadgeProps) => {
   const key = status && status in STATUS ? (status as StatusKey) : toStatusKey(status);
   const s = STATUS[key];
   return (
@@ -27,7 +29,7 @@ const StatusBadge = ({ status, count, className }: StatusBadgeProps) => {
       )}
     >
       <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", s.dot)} />
-      {s.label}
+      {label ?? s.label}
       {count !== undefined && <span className="tabular font-hrsd-bold">{count}</span>}
     </motion.span>
   );

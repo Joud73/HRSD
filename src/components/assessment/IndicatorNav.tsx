@@ -3,17 +3,23 @@ import { assessmentCopy as t } from "@/lib/copy";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Course, Indicator } from "@/components/assessment/indicatorsData";
+import type { Track } from "@/services/toolService";
 import { stripOrdinal } from "@/components/assessment/indicatorUtils";
 
 export type IndicatorState = "not_started" | "in_progress" | "complete";
 
+/** Per-indicator figures from v_indicator_scores (counted over active items). */
+export interface IndicatorProgress {
+  counted: number;
+  total: number;
+  state: IndicatorState;
+}
+
 interface IndicatorNavProps {
-  course: Course;
+  track: Track;
   selectedId: string;
   onSelect: (indicatorId: string) => void;
-  answered: (indicator: Indicator) => number;
-  stateOf: (indicator: Indicator) => IndicatorState;
+  progressOf: (indicatorId: string) => IndicatorProgress;
 }
 
 const StateIcon = ({ state }: { state: IndicatorState }) => {
@@ -23,10 +29,10 @@ const StateIcon = ({ state }: { state: IndicatorState }) => {
 };
 
 /**
- * Standards and their indicators with per-indicator completion. Desktop: a sticky list on the
+ * Standards and their indicators with counted items per indicator. Desktop: a sticky list on the
  * start side that scrolls on its own. Below lg: a select above the form.
  */
-const IndicatorNav = ({ course, selectedId, onSelect, answered, stateOf }: IndicatorNavProps) => (
+const IndicatorNav = ({ track, selectedId, onSelect, progressOf }: IndicatorNavProps) => (
   <>
     {/* Mobile and tablet */}
     <div className="lg:hidden">
@@ -38,17 +44,19 @@ const IndicatorNav = ({ course, selectedId, onSelect, answered, stateOf }: Indic
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="max-h-[60vh]">
-          {course.criteria.map((criterion, ci) => (
-            <SelectGroup key={criterion.id}>
+          {track.standards.map((standard) => (
+            <SelectGroup key={standard.id}>
               <SelectLabel className="text-caption text-muted-foreground">
-                {t.standard_label} {formatNumber(ci + 1)}: {stripOrdinal(criterion.name)}
+                {t.standard_label} {formatNumber(standard.number)}: {stripOrdinal(standard.name)}
               </SelectLabel>
-              {criterion.indicators.map((indicator, ii) => (
-                <SelectItem key={indicator.id} value={indicator.id} className="text-small">
-                  {t.indicator_label} {formatNumber(ci + 1)}.{formatNumber(ii + 1)} ({formatNumber(answered(indicator))}/
-                  {formatNumber(indicator.items.length)})
-                </SelectItem>
-              ))}
+              {standard.indicators.map((indicator) => {
+                const p = progressOf(indicator.id);
+                return (
+                  <SelectItem key={indicator.id} value={indicator.id} className="text-small">
+                    {t.indicator_label} {formatNumber(indicator.number)} ({formatNumber(p.counted)} {t.of} {formatNumber(p.total)})
+                  </SelectItem>
+                );
+              })}
             </SelectGroup>
           ))}
         </SelectContent>
@@ -60,15 +68,15 @@ const IndicatorNav = ({ course, selectedId, onSelect, answered, stateOf }: Indic
       aria-label={t.nav_label}
       className="scrollbar-thin hidden overflow-y-auto rounded-lg border border-border bg-card lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)]"
     >
-      {course.criteria.map((criterion, ci) => (
-        <div key={criterion.id} className="border-b border-border last:border-0">
+      {track.standards.map((standard) => (
+        <div key={standard.id} className="border-b border-border last:border-0">
           <p className="px-4 pb-2 pt-4 text-caption font-hrsd-medium text-muted-foreground">
-            {t.standard_label} {formatNumber(ci + 1)}: {stripOrdinal(criterion.name)}
+            {t.standard_label} {formatNumber(standard.number)}: {stripOrdinal(standard.name)}
           </p>
           <ul className="flex flex-col pb-2">
-            {criterion.indicators.map((indicator, ii) => {
+            {standard.indicators.map((indicator) => {
               const active = indicator.id === selectedId;
-              const state = stateOf(indicator);
+              const p = progressOf(indicator.id);
               return (
                 <li key={indicator.id}>
                   <button
@@ -82,16 +90,16 @@ const IndicatorNav = ({ course, selectedId, onSelect, answered, stateOf }: Indic
                   >
                     {active && <span aria-hidden className="absolute inset-y-2 start-0 w-0.5 rounded-full bg-primary" />}
                     <span className="mt-1">
-                      <StateIcon state={state} />
+                      <StateIcon state={p.state} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className={cn("block text-small font-hrsd-medium", active ? "text-primary" : "text-ink")}>
-                        {t.indicator_label} {formatNumber(ci + 1)}.{formatNumber(ii + 1)}
+                        {t.indicator_label} {formatNumber(indicator.number)}
                       </span>
-                      <span className="line-clamp-2 text-caption text-muted-foreground">{stripOrdinal(indicator.title)}</span>
+                      <span className="line-clamp-2 text-caption text-muted-foreground">{stripOrdinal(indicator.text)}</span>
                     </span>
-                    <span className="tabular mt-0.5 shrink-0 text-caption text-muted-foreground">
-                      {formatNumber(answered(indicator))}/{formatNumber(indicator.items.length)}
+                    <span className="tabular mt-0.5 shrink-0 text-caption text-muted-foreground" aria-label={`${formatNumber(p.counted)} ${t.of} ${formatNumber(p.total)} ${t.items_counted}`}>
+                      {formatNumber(p.counted)} {t.of} {formatNumber(p.total)}
                     </span>
                   </button>
                 </li>

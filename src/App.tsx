@@ -11,10 +11,15 @@ import AppShell from "@/components/layout/AppShell";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
+import SetPassword from "./pages/SetPassword";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
-import TechnicalEvaluationIndicators from "./pages/TechnicalEvaluationIndicators";
+import AssessmentTrack, { LegacyTrackRedirect } from "./pages/AssessmentTrack";
+import SupervisorDashboard from "./pages/SupervisorDashboard";
+import SupervisorOrganizations from "./pages/SupervisorOrganizations";
+import SupervisorProxyAssessment from "./pages/SupervisorProxyAssessment";
+import AccountProfile from "@/components/shared/AccountProfile";
 import TrainingStage from "./pages/TrainingStage";
 import CourseDetail from "./pages/CourseDetail";
 import IndividualCourseDetail from "./pages/IndividualCourseDetail";
@@ -38,7 +43,7 @@ import AdminRoles from "./pages/AdminRoles";
 import AdminOrganizationRequests from "./pages/AdminOrganizationRequests";
 import EvaluatorDashboard from "./pages/EvaluatorDashboard";
 import EvaluatorAssignments from "./pages/EvaluatorAssignments";
-import EvaluationDetails from "./pages/EvaluationDetails";
+import EvaluatorReview from "./pages/EvaluatorReview";
 import PendingApproval from "./pages/PendingApproval";
 import AdminProfile from "./pages/AdminProfile";
 import EvaluatorProfile from "./pages/EvaluatorProfile";
@@ -65,6 +70,7 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/login-local" element={<Navigate to="/login" replace />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/nafath-auth" element={<Navigate to="/login" replace />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/pending-approval" element={<PendingApproval />} />
@@ -81,7 +87,8 @@ const App = () => (
               <Route element={guard(["organization"], <AppShell role="organization" />)}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/technical-indicators/:courseSlug" element={<TechnicalEvaluationIndicators />} />
+                <Route path="/assessment/:trackNumber" element={<AssessmentTrack />} />
+                <Route path="/technical-indicators/:courseSlug" element={<LegacyTrackRedirect />} />
                 <Route path="/training-stage" element={<TrainingStage />} />
                 <Route path="/course/:courseId" element={<CourseDetail />} />
                 <Route path="/certificate/:organizationId" element={<Certificate />} />
@@ -106,11 +113,20 @@ const App = () => (
                 <Route path="/admin/profile" element={<AdminProfile />} />
               </Route>
 
+              {/* Supervisor */}
+              <Route element={guard(["supervisor"], <AppShell role="supervisor" />)}>
+                <Route path="/supervisor" element={<SupervisorDashboard />} />
+                <Route path="/supervisor/organizations" element={<SupervisorOrganizations />} />
+                <Route path="/supervisor/organizations/:orgId/assessment/:trackNumber" element={<SupervisorProxyAssessment />} />
+                <Route path="/supervisor/profile" element={<AccountProfile role="supervisor" home="/supervisor" />} />
+              </Route>
+
               {/* Evaluator */}
               <Route element={guard(["evaluator"], <AppShell role="evaluator" />)}>
                 <Route path="/evaluator" element={<EvaluatorDashboard />} />
                 <Route path="/evaluator/assignments" element={<EvaluatorAssignments />} />
-                <Route path="/evaluator/assignment/:assignmentId" element={<EvaluationDetails />} />
+                <Route path="/evaluator/assessments/:assessmentId" element={<EvaluatorReview />} />
+                <Route path="/evaluator/assignment/:assignmentId" element={<Navigate to="/evaluator/assignments" replace />} />
                 <Route path="/evaluator/profile" element={<EvaluatorProfile />} />
               </Route>
             </Routes>

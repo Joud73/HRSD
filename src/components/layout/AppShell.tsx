@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutGrid, Menu, Settings, User } from "lucide-react";
+import { Menu, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
@@ -9,24 +9,22 @@ import UserDropdown, { type UserMenuItem } from "@/components/UserDropdown";
 import Container from "@/components/layout/Container";
 import RouteFade from "@/components/layout/RouteFade";
 import AppSidebar, { AppSidebarNav } from "@/components/layout/AppSidebar";
-import { SIDEBAR_NAV, type ShellRole } from "@/components/layout/navigation";
-import hrsdColoredLogo from "@/assets/logos/hrsd-colored.png";
-import hrsdWhiteLogo from "@/assets/logos/hrsd-white.png";
+import { ORGANIZATION_NAV, SIDEBAR_NAV, type ShellRole } from "@/components/layout/navigation";
+import aolLogo from "@/assets/logos/aol.png";
+import aolWhiteLogo from "@/assets/logos/aol-white.png";
 
-const HOME: Record<ShellRole, string> = { admin: "/admin", evaluator: "/evaluator", organization: "/dashboard" };
+const HOME: Record<ShellRole, string> = { admin: "/admin", supervisor: "/supervisor", evaluator: "/evaluator", organization: "/dashboard" };
 
 const MENU: Record<ShellRole, UserMenuItem[]> = {
   admin: [{ label: copy.account_profile, to: "/admin/profile", icon: User }],
+  supervisor: [{ label: copy.account_profile, to: "/supervisor/profile", icon: User }],
   evaluator: [{ label: copy.account_profile, to: "/evaluator/profile", icon: User }],
-  organization: [
-    { label: copy.account_dashboard, to: "/dashboard", icon: LayoutGrid },
-    { label: copy.account_settings, to: "/settings", icon: Settings },
-  ],
+  organization: ORGANIZATION_NAV.map(({ label, to, icon }) => ({ label, to, icon })),
 };
 
 /**
- * Internal app frame for admin, evaluator and organization pages: compact top bar,
- * green sidebar (admin, evaluator), content on the section grey. Pages render their
+ * Internal app frame for admin, supervisor, evaluator and organization pages: compact top bar,
+ * green sidebar (admin, supervisor, evaluator), content on the section grey. Pages render their
  * own PageHeader inside.
  */
 const AppShell = ({ role }: { role: ShellRole }) => {
@@ -58,13 +56,13 @@ const AppShell = ({ role }: { role: ShellRole }) => {
                 className="flex w-[280px] flex-col gap-6 border-0 bg-primary p-4 pt-6 text-primary-foreground [&>button]:text-primary-foreground"
               >
                 <SheetTitle className="sr-only">{copy.main_nav}</SheetTitle>
-                <img src={hrsdWhiteLogo} alt={copy.logo_alt} className="h-10 w-auto self-start" />
+                <img src={aolWhiteLogo} alt={copy.logo_alt} className="h-9 w-auto self-start" />
                 <AppSidebarNav role={role} onNavigate={() => setSheetOpen(false)} />
               </SheetContent>
             </Sheet>
           )}
           <Link to={HOME[role]} className="shrink-0 rounded-md">
-            <img src={hrsdColoredLogo} alt={copy.logo_alt} className="h-10 w-auto" />
+            <img src={aolLogo} alt={copy.logo_alt} className="h-9 w-auto" />
           </Link>
           <span aria-hidden className="hidden h-6 w-px bg-border sm:block" />
           <p className="hidden truncate text-small font-hrsd-medium text-muted-foreground sm:block">{copy.shell_context[role]}</p>

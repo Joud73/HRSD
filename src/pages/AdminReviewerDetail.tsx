@@ -1,89 +1,152 @@
-import { useParams } from "react-router-dom";
-import { ClipboardList } from "lucide-react";
-import { copy, adminCopy } from "@/lib/copy";
-import { formatDate, formatNumber, formatPercent } from "@/lib/format";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { AlertCircle, ClipboardList, Pencil, UserCheck } from "lucide-react";
+import { copy, adminCopy, fieldsCopy as fc } from "@/lib/copy";
+import { formatDate, formatNumber } from "@/lib/format";
+import { STATUS, toStatusKey, type StatusKey } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useEvaluator, useEvaluatorAssessments, useUpsertEvaluatorProfile } from "@/hooks/useEvaluators";
+import type { Evaluator, EvaluatorAssessment } from "@/services/evaluatorService";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable, { type Column } from "@/components/shared/DataTable";
 import EmptyState from "@/components/shared/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
-import { Fact, KeyFacts, Panel, ProgressCell } from "@/components/admin/AdminParts";
+import { SkeletonPanel } from "@/components/shared/Skeletons";
+import { FieldShell, FormError } from "@/components/shared/FormField";
+import { EvaluatorFields } from "@/components/shared/ProfileFields";
+import { validateEvaluator, type EvaluatorErrors, type EvaluatorFormValues } from "@/components/shared/profileForm";
+import { Fact, KeyFacts, Panel } from "@/components/admin/AdminParts";
+import { FormDialog, fieldRowClass } from "@/components/admin/setup/SetupDialogs";
 import { tabsUi } from "@/components/admin/adminUi";
 
-/* ── Demo data (mirrors the reviewers page prototype) ── */
-const reviewersMap: Record<string, { name: string; email: string; phone: string; active: boolean; assignedCount: number; avgDurationDays: number; avgScorePercent: number }> = {
-  r1: { name: "أحمد محمد العتيبي", email: "ahmed@hrsd.gov.sa", phone: "0501234567", active: true, assignedCount: 12, avgDurationDays: 5, avgScorePercent: 85 },
-  r2: { name: "سارة علي القحطاني", email: "sara@hrsd.gov.sa", phone: "0559876543", active: true, assignedCount: 9, avgDurationDays: 4, avgScorePercent: 91 },
-  r3: { name: "خالد عمر الشهري", email: "khaled@hrsd.gov.sa", phone: "0541112233", active: true, assignedCount: 7, avgDurationDays: 6, avgScorePercent: 78 },
-  r4: { name: "نورة سعد المالكي", email: "noura@hrsd.gov.sa", phone: "0533344556", active: false, assignedCount: 3, avgDurationDays: 8, avgScorePercent: 65 },
-  r5: { name: "فهد ناصر الدوسري", email: "fahad@hrsd.gov.sa", phone: "0567788990", active: true, assignedCount: 15, avgDurationDays: 3, avgScorePercent: 92 },
-};
-
-interface Evaluation {
-  id: string;
-  association: string;
-  year: number;
-  track: string;
-  status: string;
-  completion: number;
-  assignedDate: string;
-}
-
-const [T_ORIENTATION, T_TEAM] = copy.nav_tracks_items;
-
-const mockEvaluations: Evaluation[] = [
-  { id: "e1", association: "جمعية البر الخيرية", year: 2026, track: T_ORIENTATION, status: "in_progress", completion: 60, assignedDate: "2026-01-15" },
-  { id: "e2", association: "جمعية إنسان", year: 2026, track: T_TEAM, status: "submitted", completion: 100, assignedDate: "2026-01-12" },
-  { id: "e3", association: "جمعية تكافل", year: 2026, track: T_ORIENTATION, status: "in_progress", completion: 45, assignedDate: "2026-01-10" },
-  { id: "e4", association: "مؤسسة العطاء", year: 2025, track: T_TEAM, status: "approved", completion: 100, assignedDate: "2025-11-20" },
-  { id: "e5", association: "جمعية رعاية", year: 2025, track: T_ORIENTATION, status: "approved", completion: 100, assignedDate: "2025-10-05" },
+const crumbs = (name: string) => [
+  { label: adminCopy.breadcrumb_root, to: "/admin" },
+  { label: copy.nav_admin.reviewers, to: "/admin/reviewers" },
+  { label: name },
 ];
 
-const AccountState = ({ active }: { active: boolean }) => (
+/** Status groups counted in the header, in workflow order */
+const COUNTED: StatusKey[] = ["in_progress", "submitted", "returned", "approved"];
+
+const orDash = (v: string | null | undefined) => (v ? v : "-");
+
+const ActiveState = ({ active }: { active: boolean }) => (
   <span className={cn("inline-flex items-center gap-2", active ? "text-ink" : "text-muted-foreground")}>
     <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", active ? "bg-primary" : "bg-neutral")} />
-    {active ? adminCopy.users_status_active : adminCopy.users_status_disabled}
+    {active ? adminCopy.reviewer_active : adminCopy.reviewer_inactive}
   </span>
 );
 
-const columns: Column<Evaluation>[] = [
-  { key: "association", header: adminCopy.col_association, cell: (ev) => <span className="font-hrsd-medium">{ev.association}</span> },
-  { key: "year", header: adminCopy.col_year, cell: (ev) => <span className="tabular">{ev.year}</span> },
-  { key: "track", header: adminCopy.col_track, cell: (ev) => ev.track },
-  { key: "status", header: adminCopy.col_status, cell: (ev) => <StatusBadge status={ev.status} /> },
-  { key: "completion", header: adminCopy.col_progress, cell: (ev) => <ProgressCell value={ev.completion} /> },
-  {
-    key: "assigned",
-    header: adminCopy.col_assigned_at,
-    cell: (ev) => <span className="tabular whitespace-nowrap text-muted-foreground">{formatDate(ev.assignedDate)}</span>,
-  },
-];
+/* ── Profile dialog ── */
+
+const ProfileDialog = ({ evaluator, onOpenChange }: { evaluator: Evaluator; onOpenChange: (o: boolean) => void }) => {
+  const { toast } = useToast();
+  const upsert = useUpsertEvaluatorProfile(evaluator.userId);
+  const [form, setForm] = useState<EvaluatorFormValues>(() => ({
+    idNumber: evaluator.idNumber ?? "",
+    fullName: evaluator.hasProfile ? evaluator.fullName : "",
+    mobile: evaluator.mobile ?? "",
+    email: evaluator.email ?? evaluator.accountEmail ?? "",
+    employer: evaluator.employer ?? "",
+  }));
+  const [isActive, setIsActive] = useState(evaluator.isActive);
+  const [errors, setErrors] = useState<EvaluatorErrors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const submit = () => {
+    const errs = validateEvaluator(form);
+    setErrors(errs);
+    setServerError(null);
+    if (Object.keys(errs).length > 0) return;
+    upsert.mutate(
+      { ...form, isActive },
+      {
+        onSuccess: () => {
+          toast({ title: adminCopy.saved });
+          onOpenChange(false);
+        },
+        onError: (e) => setServerError(e.message),
+      }
+    );
+  };
+
+  return (
+    <FormDialog open onOpenChange={onOpenChange} title={adminCopy.reviewer_edit} description={adminCopy.assoc_edit_desc} onSubmit={submit}>
+      <FormError message={serverError} />
+      <EvaluatorFields idPrefix="reviewer" values={form} onChange={setForm} errors={errors} />
+      <FieldShell id="reviewer-active" label={adminCopy.reviewer_status}>
+        <div className={fieldRowClass}>
+          <span className="text-small text-ink">{isActive ? adminCopy.reviewer_active : adminCopy.reviewer_inactive}</span>
+          <Switch id="reviewer-active" checked={isActive} onCheckedChange={setIsActive} />
+        </div>
+      </FieldShell>
+    </FormDialog>
+  );
+};
+
+/* ── Page ── */
 
 const AdminReviewerDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const reviewer = reviewersMap[id || ""] ?? reviewersMap.r1;
+  const navigate = useNavigate();
+  const { data: evaluator, isLoading, isError, refetch } = useEvaluator(id);
+  const assessments = useEvaluatorAssessments(id);
+  const [editOpen, setEditOpen] = useState(false);
+
+  if (isLoading || isError || !evaluator) {
+    return (
+      <>
+        <PageHeader title={copy.nav_admin.reviewers} breadcrumbs={crumbs(copy.nav_admin.reviewers)} />
+        {isLoading ? (
+          <SkeletonPanel lines={4} />
+        ) : (
+          <div className="rounded-lg border border-border bg-card">
+            {isError ? (
+              <EmptyState icon={AlertCircle} message={adminCopy.load_error} action={{ label: adminCopy.retry, onClick: () => void refetch() }} />
+            ) : (
+              <EmptyState icon={UserCheck} message={adminCopy.reviewer_not_found} action={{ label: adminCopy.reviewer_back, to: "/admin/reviewers" }} />
+            )}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const rows = assessments.data ?? [];
+  const countOf = (key: StatusKey) => rows.filter((r) => toStatusKey(r.status) === key).length;
+
+  const columns: Column<EvaluatorAssessment>[] = [
+    { key: "association", header: adminCopy.col_association, cell: (r) => <span className="font-hrsd-medium">{r.organizationName}</span> },
+    { key: "cycle", header: adminCopy.col_cycle, cell: (r) => r.cycleName },
+    { key: "status", header: adminCopy.col_status, cell: (r) => <StatusBadge status={r.status} /> },
+    {
+      key: "assigned",
+      header: adminCopy.col_assigned_at,
+      cell: (r) => <span className="tabular whitespace-nowrap text-muted-foreground">{formatDate(r.assignedAt)}</span>,
+    },
+  ];
 
   return (
     <>
       <PageHeader
-        title={reviewer.name}
+        title={evaluator.fullName}
         description={adminCopy.reviewer_detail_desc}
-        breadcrumbs={[
-          { label: adminCopy.breadcrumb_root, to: "/admin" },
-          { label: copy.nav_admin.reviewers, to: "/admin/reviewers" },
-          { label: reviewer.name },
-        ]}
+        breadcrumbs={crumbs(evaluator.fullName)}
+        actions={
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil aria-hidden /> {adminCopy.reviewer_edit}
+          </Button>
+        }
         meta={
           <KeyFacts
             items={[
-              { label: adminCopy.reviewer_status, value: <AccountState active={reviewer.active} /> },
-              { label: adminCopy.reviewer_assigned, value: <span className="tabular">{formatNumber(reviewer.assignedCount)}</span> },
-              {
-                label: adminCopy.reviewer_avg_duration,
-                value: <span className="tabular">{formatNumber(reviewer.avgDurationDays)}{adminCopy.days_suffix}</span>,
-              },
-              { label: adminCopy.reviewer_avg_score, value: <span className="tabular">{formatPercent(reviewer.avgScorePercent)}</span> },
+              { label: adminCopy.reviewer_status, value: <ActiveState active={evaluator.isActive} /> },
+              { label: adminCopy.reviewer_assigned, value: <span className="tabular">{formatNumber(rows.length)}</span> },
+              ...COUNTED.map((key) => ({ label: STATUS[key].label, value: <span className="tabular">{formatNumber(countOf(key))}</span> })),
             ]}
           />
         }
@@ -96,12 +159,16 @@ const AdminReviewerDetail = () => {
         </TabsList>
 
         <TabsContent value="overview" className={tabsUi.content}>
-          <Panel title={adminCopy.reviewer_info_title}>
-            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
-              <Fact label={adminCopy.reviewer_name}>{reviewer.name}</Fact>
-              <Fact label={adminCopy.reviewer_email}><bdi dir="ltr">{reviewer.email}</bdi></Fact>
-              <Fact label={adminCopy.reviewer_phone}><bdi dir="ltr" className="tabular">{reviewer.phone}</bdi></Fact>
-              <Fact label={adminCopy.reviewer_status}><AccountState active={reviewer.active} /></Fact>
+          <Panel title={fc.section_evaluator}>
+            {!evaluator.hasProfile && <p className="mb-5 text-small text-muted-foreground">{adminCopy.reviewer_profile_missing}</p>}
+            <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+              <Fact label={fc.evaluator.id_number}><span className="tabular">{orDash(evaluator.idNumber)}</span></Fact>
+              <Fact label={fc.evaluator.name}>{evaluator.fullName}</Fact>
+              <Fact label={fc.evaluator.mobile}>{evaluator.mobile ? <bdi dir="ltr" className="tabular">{evaluator.mobile}</bdi> : "-"}</Fact>
+              <Fact label={fc.evaluator.email}>{evaluator.email ? <bdi dir="ltr">{evaluator.email}</bdi> : "-"}</Fact>
+              <Fact label={fc.evaluator.employer}>{orDash(evaluator.employer)}</Fact>
+              <Fact label={adminCopy.reviewer_account_email}>{evaluator.accountEmail ? <bdi dir="ltr">{evaluator.accountEmail}</bdi> : "-"}</Fact>
+              <Fact label={adminCopy.reviewer_status}><ActiveState active={evaluator.isActive} /></Fact>
             </dl>
           </Panel>
         </TabsContent>
@@ -109,13 +176,24 @@ const AdminReviewerDetail = () => {
         <TabsContent value="evaluations" className={tabsUi.content}>
           <DataTable
             columns={columns}
-            rows={mockEvaluations}
-            getRowKey={(ev) => ev.id}
+            rows={rows}
+            loading={assessments.isLoading}
+            getRowKey={(r) => r.assessmentId}
+            onRowClick={(r) => navigate(`/admin/associations/${r.organizationId}`)}
+            rowLabel={(r) => `${adminCopy.associations_view}: ${r.organizationName}`}
             caption={adminCopy.reviewer_tab_evaluations}
-            empty={<EmptyState icon={ClipboardList} message={adminCopy.reviewer_evaluations_empty} />}
+            empty={
+              assessments.isError ? (
+                <EmptyState icon={AlertCircle} message={adminCopy.load_error} action={{ label: adminCopy.retry, onClick: () => void assessments.refetch() }} />
+              ) : (
+                <EmptyState icon={ClipboardList} message={adminCopy.reviewer_evaluations_empty} />
+              )
+            }
           />
         </TabsContent>
       </Tabs>
+
+      {editOpen && <ProfileDialog evaluator={evaluator} onOpenChange={setEditOpen} />}
     </>
   );
 };

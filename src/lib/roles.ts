@@ -1,9 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "evaluator" | "organization" | "individual";
+export type AppRole = "admin" | "supervisor" | "evaluator" | "organization" | "individual";
 
 export const roleDefaultRoute: Record<AppRole, string> = {
   admin: "/admin",
+  supervisor: "/supervisor",
   evaluator: "/evaluator",
   organization: "/dashboard",
   individual: "/individuals-journey",
@@ -26,7 +27,7 @@ export async function fetchUserRole(userId: string): Promise<AppRole | null> {
 
     const role = data.role as string;
     // Ignore legacy "user" role
-    if (role === "admin" || role === "evaluator" || role === "organization" || role === "individual") {
+    if (role === "admin" || role === "supervisor" || role === "evaluator" || role === "organization" || role === "individual") {
       return role;
     }
     return null;

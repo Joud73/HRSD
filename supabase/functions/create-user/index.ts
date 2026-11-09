@@ -1,24 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Creates a user by email invitation: the invitee opens the link and sets a password on
+// ${SITE_URL}/set-password. No password is ever chosen or shown by the administrator.
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+  const cors = corsHeaders(req);
+  const json = (body: unknown, status: number) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
   try {
     // Verify caller is admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Unauthorized" }, 401);
     }
 
     const anonClient = createClient(
@@ -30,10 +27,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Unauthorized" }, 401);
     }
 
     const callerId = claimsData.claims.sub as string;
@@ -49,10 +43,12 @@ Deno.serve(async (req) => {
     });
 
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin role required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Forbidden: admin role required" }, 403);
+    }
+
+    const siteUrl = Deno.env.get("SITE_URL")?.replace(/\/$/, "");
+    if (!siteUrl) {
+      return json({ error: "SITE_URL is not configured" }, 500);
     }
 
     // Parse body
@@ -60,85 +56,65 @@ Deno.serve(async (req) => {
     const { email, role, organization_name, registration_number } = body;
 
     if (!email || !role) {
-      return new Response(
-        JSON.stringify({ error: "email and role are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: "email and role are required" }, 400);
     }
 
-    const validRoles = ["admin", "evaluator", "organization"];
+    const validRoles = ["admin", "supervisor", "evaluator", "organization"];
     if (!validRoles.includes(role)) {
-      return new Response(
-        JSON.stringify({ error: `Invalid role. Must be one of: ${validRoles.join(", ")}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: `Invalid role. Must be one of: ${validRoles.join(", ")}` }, 400);
     }
 
-    if (role === "organization" && !organization_name) {
-      return new Response(
-        JSON.stringify({ error: "organization_name is required for organization role" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // organizations.registration_number is required (migration 20261020090000)
+    if (role === "organization" && (!organization_name || !registration_number)) {
+      return json({ error: "organization_name and registration_number are required for organization role" }, 400);
     }
 
-    // 1. Create auth user
-    const defaultPassword = "Aa123456";
-    const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
-      email,
-      password: defaultPassword,
-      email_confirm: true,
-    });
-
-    if (authError) {
-      return new Response(JSON.stringify({ error: authError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userId = authData.user.id;
-
-    // 2. For organization role, create organization record first
+    // 1. For organization role, create the organization record first
     let organizationId: string | null = null;
     if (role === "organization") {
       const { data: orgData, error: orgError } = await serviceClient
         .from("organizations")
-        .insert({
-          name: organization_name,
-          registration_number: registration_number || null,
-        })
+        .insert({ name: organization_name, registration_number })
         .select("id")
         .single();
 
       if (orgError) {
-        await serviceClient.auth.admin.deleteUser(userId);
-        return new Response(JSON.stringify({ error: orgError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: orgError.message }, 400);
       }
       organizationId = orgData.id;
     }
 
+    const removeOrganization = async () => {
+      if (organizationId) await serviceClient.from("organizations").delete().eq("id", organizationId);
+    };
+
+    // 2. Create the auth user and send the invitation
+    const { data: authData, error: authError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
+      data: { role },
+      redirectTo: `${siteUrl}/set-password`,
+    });
+
+    if (authError) {
+      await removeOrganization();
+      return json({ error: authError.message }, 400);
+    }
+
+    const userId = authData.user.id;
+
     // 3. Insert profile linked to organization
-    const profileData: Record<string, unknown> = {
+    const { error: profileError } = await serviceClient.from("profiles").insert({
       id: userId,
       email,
       status: "active",
       organization_id: organizationId,
       organization_name: role === "organization" ? organization_name : null,
-      registration_number: role === "organization" ? (registration_number || null) : null,
-    };
-
-    const { error: profileError } = await serviceClient.from("profiles").insert(profileData);
+      registration_number: role === "organization" ? registration_number : null,
+    });
 
     if (profileError) {
-      if (organizationId) await serviceClient.from("organizations").delete().eq("id", organizationId);
       await serviceClient.auth.admin.deleteUser(userId);
-      return new Response(JSON.stringify({ error: profileError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      await removeOrganization();
+      return json({ error: profileError.message }, 500);
     }
 
     // 4. Insert role
@@ -148,22 +124,14 @@ Deno.serve(async (req) => {
     });
 
     if (roleError) {
-      if (organizationId) await serviceClient.from("organizations").delete().eq("id", organizationId);
+      // Deleting the auth user cascades to the profile
       await serviceClient.auth.admin.deleteUser(userId);
-      return new Response(JSON.stringify({ error: roleError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      await removeOrganization();
+      return json({ error: roleError.message }, 500);
     }
 
-    return new Response(
-      JSON.stringify({ id: userId, email, role, organization_name: organization_name || null }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({ id: userId, email, role, organization_name: organization_name || null }, 200);
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: String(err) }, 500);
   }
 });

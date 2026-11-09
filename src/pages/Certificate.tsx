@@ -8,7 +8,7 @@ import OrganizationJourney from "@/components/OrganizationJourney";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
-import hrsdLogo from "@/assets/logos/hrsd-colored.png";
+import aolLogo from "@/assets/logos/aol.png";
 import visionLogo from "@/assets/logos/vision-2030-colored.png";
 
 /** html2canvas cannot read CSS variables in its options, so resolve the background token first. */
@@ -54,7 +54,7 @@ const Certificate = () => {
       return formatPercent(finalPercentage);
     }
     if (finalScore !== null && finalScore !== undefined) {
-      return `${formatNumber(finalScore)} / ${formatNumber(100)}`;
+      return `${formatNumber(finalScore)} ${copy.of} ${formatNumber(100)}`;
     }
     return null;
   };
@@ -164,9 +164,9 @@ const Certificate = () => {
           <div className="h-1.5 bg-primary" />
 
           <div className="px-6 py-10 md:px-12 md:py-12 lg:px-16 lg:py-14">
-            {/* Logos: ministry at the start, Vision 2030 at the end */}
+            {/* Logos: Academy of Learning at the start, Vision 2030 at the end */}
             <div className="mb-10 flex items-start justify-between gap-6">
-              <img src={hrsdLogo} alt={copy.logo_alt} className="h-14 w-auto object-contain md:h-20" />
+              <img src={aolLogo} alt={copy.logo_alt} className="h-12 w-auto object-contain md:h-16" />
               <img src={visionLogo} alt={copy.vision_alt} className="h-14 w-auto object-contain md:h-20" />
             </div>
 

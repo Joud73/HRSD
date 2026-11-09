@@ -105,7 +105,10 @@ export const copy = {
 
   status_not_started: "لم يبدأ",
   status_in_progress: "قيد التقييم",
+  /** Fractions read "68 من 75", never with a slash */
+  of: "من",
   status_submitted: "مرسل للمراجعة",
+  status_under_review: "قيد المراجعة",
   status_returned: "معاد للاستكمال",
   status_approved: "معتمد",
 
@@ -115,7 +118,7 @@ export const copy = {
   not_found_action: "العودة إلى الرئيسية",
 
   // ---------- Shell ----------
-  logo_alt: "وزارة الموارد البشرية والتنمية الاجتماعية",
+  logo_alt: "أكاديمية التعلم",
   vision_alt: "رؤية المملكة 2030",
   main_nav: "القائمة الرئيسية",
   open_menu: "فتح القائمة",
@@ -134,10 +137,12 @@ export const copy = {
     admin: "لوحة الإدارة",
     evaluator: "بوابة المدقق",
     organization: "بوابة المنظمة",
+    supervisor: "بوابة المشرف الفني",
   },
   shell_user: {
     admin: "مدير النظام",
     evaluator: "المدقق",
+    supervisor: "المشرف الفني",
   },
   nav_admin: {
     dashboard: "لوحة التحكم",
@@ -151,6 +156,10 @@ export const copy = {
     setup: "تهيئة التقييم",
     years: "سنوات التقييم",
     reports: "التقارير",
+  },
+  nav_supervisor: {
+    dashboard: "لوحة المتابعة",
+    organizations: "المنظمات",
   },
   nav_evaluator: {
     dashboard: "لوحة التحكم",
@@ -228,3 +237,5 @@ export { adminCopy } from "@/lib/strings/admin";
 export { adminSetupCopy } from "@/lib/strings/adminSetup";
 export { assessmentCopy } from "@/lib/strings/assessment";
 export { pagesCopy } from "@/lib/strings/pages";
+export { supervisorCopy } from "@/lib/strings/supervisor";
+export { fieldsCopy } from "@/lib/strings/fields";

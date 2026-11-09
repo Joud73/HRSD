@@ -183,6 +183,23 @@
   }
 }
 
+/*
+ * DataTable: the wrapper is a size container. Below the table's minimum width (640px) the
+ * table scrolls inside its card. From 640px on desktop, overflow is visible so the header can
+ * stick to the page (an overflow-x scroller would trap position: sticky). No fixed heights.
+ */
+.data-table {
+  container-type: inline-size;
+}
+
+@media (min-width: 1024px) {
+  @container (min-width: 640px) {
+    .data-table-scroll {
+      overflow: visible;
+    }
+  }
+}
+
 /* Journey auto-advance indicator: fills once over its duration; animationend advances the step */
 @keyframes progress-fill {
   from {

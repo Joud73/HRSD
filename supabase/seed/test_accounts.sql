@@ -1,5 +1,5 @@
 -- Test accounts wiring for STAGING ONLY. Never run on prod.
--- Prerequisite: create the five users in Dashboard > Authentication > Users (Auto Confirm User),
+-- Prerequisite: create the six users in Dashboard > Authentication > Users (Auto Confirm User),
 -- with the emails below. This script links roles, organizations and the evaluator assignment.
 
 begin;
@@ -19,7 +19,8 @@ join (values
   ('org.a@tamkeen.local',      'organization'),
   ('org.b@tamkeen.local',      'organization'),
   ('evaluator1@tamkeen.local', 'evaluator'),
-  ('evaluator2@tamkeen.local', 'evaluator')
+  ('evaluator2@tamkeen.local', 'evaluator'),
+  ('supervisor.test@tamkeen.local', 'supervisor')
 ) as r(email, role) on r.email = u.email
 on conflict (user_id, role) do nothing;
 
@@ -37,7 +38,7 @@ on conflict (id) do update set organization_id = excluded.organization_id, statu
 -- profiles (staff) so the app's profile lookup does not fail
 insert into public.profiles (id, email, status)
 select id, email, 'active' from auth.users
-where email in ('admin.test@tamkeen.local', 'evaluator1@tamkeen.local', 'evaluator2@tamkeen.local')
+where email in ('admin.test@tamkeen.local', 'evaluator1@tamkeen.local', 'evaluator2@tamkeen.local', 'supervisor.test@tamkeen.local')
 on conflict (id) do nothing;
 
 -- org A draft assessment in the open cycle, assigned to evaluator 1

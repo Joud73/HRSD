@@ -19,7 +19,7 @@ import {
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import UserDropdown, { type UserMenuItem } from "@/components/UserDropdown";
 import Container from "@/components/layout/Container";
-import hrsdColoredLogo from "@/assets/logos/hrsd-colored.png";
+import aolLogo from "@/assets/logos/aol.png";
 
 interface NavChild {
   label: string;
@@ -132,7 +132,7 @@ const AppHeader = () => {
       {/* ---------- Desktop ---------- */}
       <Container className="hidden h-full items-center lg:flex">
         <Link to="/" className="shrink-0 rounded-md">
-          <img src={hrsdColoredLogo} alt={copy.logo_alt} className="h-14 w-auto" />
+          <img src={aolLogo} alt={copy.logo_alt} className="h-12 w-auto" />
         </Link>
 
         <nav aria-label={copy.main_nav} className="ms-10 flex h-full items-stretch gap-8">
@@ -215,7 +215,7 @@ const AppHeader = () => {
           <SheetContent side="right" dir="rtl" className="flex w-[300px] flex-col gap-0 overflow-y-auto p-0 sm:max-w-[300px]">
             <div className="flex h-16 shrink-0 items-center border-b border-border px-6">
               <SheetTitle className="sr-only">{copy.main_nav}</SheetTitle>
-              <img src={hrsdColoredLogo} alt={copy.logo_alt} className="h-10 w-auto" />
+              <img src={aolLogo} alt={copy.logo_alt} className="h-9 w-auto" />
             </div>
             <nav aria-label={copy.main_nav} className="flex flex-col py-2">
               {NAV.map((entry) => {
@@ -276,7 +276,7 @@ const AppHeader = () => {
         </Sheet>
 
         <Link to="/" className="justify-self-center rounded-md">
-          <img src={hrsdColoredLogo} alt={copy.logo_alt} className="h-10 w-auto" />
+          <img src={aolLogo} alt={copy.logo_alt} className="h-9 w-auto" />
         </Link>
 
         <DropdownMenu dir="rtl" modal={false}>
