@@ -111,6 +111,7 @@ export const copy = {
   status_under_review: "قيد المراجعة",
   status_returned: "معاد للاستكمال",
   status_approved: "معتمد",
+  status_issued: "صدرت النتائج",
 
   empty_default: "لا توجد بيانات بعد",
   not_found_title: "الصفحة غير موجودة",
@@ -239,3 +240,4 @@ export { assessmentCopy } from "@/lib/strings/assessment";
 export { pagesCopy } from "@/lib/strings/pages";
 export { supervisorCopy } from "@/lib/strings/supervisor";
 export { fieldsCopy } from "@/lib/strings/fields";
+export { documentsCopy } from "@/lib/strings/documents";

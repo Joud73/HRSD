@@ -66,7 +66,7 @@ function mapError(error: PostgrestError): ServiceError {
   return new ServiceError(t.err_save_generic, error);
 }
 
-const emptyCounts = (): AssignmentCounts => ({ total: 0, draft: 0, submitted: 0, under_review: 0, returned: 0, approved: 0 });
+const emptyCounts = (): AssignmentCounts => ({ total: 0, draft: 0, submitted: 0, under_review: 0, returned: 0, approved: 0, issued: 0 });
 
 type ProfileRow = {
   user_id: string;

@@ -4,7 +4,7 @@ import { copy } from "@/lib/copy";
  * Statuses the product shows. Organizations see five (under review reads as submitted, brief phase 6.5);
  * the evaluator also sees قيد المراجعة, through reviewStatusKey().
  */
-export type StatusKey = "not_started" | "in_progress" | "submitted" | "under_review" | "returned" | "approved";
+export type StatusKey = "not_started" | "in_progress" | "submitted" | "under_review" | "returned" | "approved" | "issued";
 
 export const STATUS: Record<StatusKey, { label: string; className: string; dot: string }> = {
   not_started: { label: copy.status_not_started, className: "bg-neutral/10 text-ink/80", dot: "bg-neutral" },
@@ -13,10 +13,11 @@ export const STATUS: Record<StatusKey, { label: string; className: string; dot: 
   under_review: { label: copy.status_under_review, className: "bg-accent/15 text-ink", dot: "bg-accent" },
   returned: { label: copy.status_returned, className: "bg-danger/10 text-danger", dot: "bg-danger" },
   approved: { label: copy.status_approved, className: "bg-success/10 text-success", dot: "bg-success" },
+  issued: { label: copy.status_issued, className: "bg-success/10 text-success", dot: "bg-success" },
 };
 
 /**
- * Maps every legacy status value (Arabic labels and database codes) onto the five states.
+ * Maps every legacy status value (Arabic labels and database codes) onto the product states.
  * Unknown values fall back to not_started.
  */
 const LEGACY: Record<string, StatusKey> = {
@@ -40,6 +41,7 @@ const LEGACY: Record<string, StatusKey> = {
   "غير مسندة": "not_started",
   "مكتمل": "approved",
   "معتمد": "approved",
+  "صدرت النتائج": "issued",
   // Database codes
   not_started: "not_started",
   pending: "not_started",
@@ -51,6 +53,7 @@ const LEGACY: Record<string, StatusKey> = {
   completed: "approved",
   complete: "approved",
   approved: "approved",
+  issued: "issued",
   returned: "returned",
   resubmitted: "submitted",
   waiting_response: "returned",

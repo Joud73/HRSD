@@ -8,7 +8,7 @@ const PREFIX = /^(المعيار|المؤشر|البند)\s+[^\s:]+\s*:\s*/;
 
 export const stripOrdinal = (text: string) => text.replace(PREFIX, "").trim();
 
-/** Assessment status -> one of the five product statuses. A draft with nothing marked yet has not started. */
+/** Assessment status -> one of the product statuses. A draft with nothing marked yet has not started. */
 export function assessmentStatusKey(status: AssessmentStatus | null | undefined, progress?: AssessmentProgress | null): StatusKey {
   switch (status) {
     case "draft":
@@ -20,6 +20,8 @@ export function assessmentStatusKey(status: AssessmentStatus | null | undefined,
       return "returned";
     case "approved":
       return "approved";
+    case "issued":
+      return "issued";
     default:
       return "not_started";
   }
@@ -50,6 +52,8 @@ export function journeyStep(status: AssessmentStatus | undefined): number {
     case "under_review":
       return 3;
     case "approved":
+      return 4;
+    case "issued":
       return 5;
     default:
       return 1;

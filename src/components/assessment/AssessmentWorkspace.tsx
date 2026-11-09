@@ -11,7 +11,7 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useApprovedTool } from "@/hooks/useApprovedTool";
 import {
   useAddFileEvidence, useAddLinkEvidence, useAssessment, useEvidences, useExcludedItems, useIndicatorScores,
-  useProgress, useRemoveEvidence, useResponses, useSaveStatus, useSetItemMet,
+  useProgress, useRemoveEvidence, useResponses, useSaveItemNote, useSaveStatus,
 } from "@/hooks/useAssessment";
 import { getEvidenceUrl, today, type Assessment, type AssessmentScope, type Evidence, type IndicatorScore } from "@/services/assessmentService";
 import type { LevelBand, Track } from "@/services/toolService";
@@ -130,7 +130,7 @@ interface ItemRowProps {
 /** One verification item: checkbox (saved immediately), optional note (saved on blur), evidences. */
 const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidences, editable }: ItemRowProps) => {
   const { toast } = useToast();
-  const setItemMet = useSetItemMet(assessmentId);
+  const saveItemNote = useSaveItemNote(assessmentId);
   const addFile = useAddFileEvidence(assessmentId);
   const addLink = useAddLinkEvidence(assessmentId);
   const removeEvidence = useRemoveEvidence(assessmentId);
@@ -144,7 +144,7 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
 
   const saveNote = () => {
     if (note.trim() === (orgNote ?? "")) return;
-    setItemMet.mutate({ itemId, isMet, orgNote: note }, { onError: fail });
+    saveItemNote.mutate({ itemId, orgNote: note }, { onError: fail });
   };
 
   const attachFile = async (file: File) => {
@@ -165,8 +165,7 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
         <Checkbox
           id={checkboxId}
           checked={isMet}
-          disabled={!editable}
-          onCheckedChange={(value) => setItemMet.mutate({ itemId, isMet: value === true }, { onError: fail })}
+          disabled
           className="mt-1 h-5 w-5 rounded-[4px]"
         />
         <label htmlFor={checkboxId} className={cn("min-w-0 flex-1", editable && "cursor-pointer")}>

@@ -5,8 +5,9 @@ import { assessmentCopy } from "@/lib/copy";
 import { ServiceError } from "@/services/errors";
 import {
   addFileEvidence, addLinkEvidence, ensureAssessmentFor, ensureMyAssessment, getAssessment, getIndicatorScores,
-  getProgress, getTrackScores, isEditable, listEvidences, listExcludedItemIds, listMyAssessmentHistory, listResponses,
-  removeEvidence, setItemMet, setSubmissionDue, submitAssessment, transitionAssessment,
+  getPendingVerdicts, getProgress, getTrackScores, isEditable, listEvidences, listExcludedItemIds, listMyAssessmentHistory,
+  listResponses, removeEvidence, returnToEvaluator, saveItemNote, setSubmissionDue, setVerdict, submitAssessment,
+  transitionAssessment,
   type Assessment, type AssessmentScope, type Evidence, type ItemResponse, type ReviewTransition,
 } from "@/services/assessmentService";
 
@@ -110,6 +111,15 @@ export function useProgress(assessmentId: string | undefined) {
   });
 }
 
+/** Items with evidence still awaiting the evaluator's verdict (the approval gate). */
+export function usePendingVerdicts(assessmentId: string | undefined) {
+  return useQuery({
+    queryKey: [...assessmentKey(assessmentId), "pending-verdicts"],
+    queryFn: () => getPendingVerdicts(assessmentId as string),
+    enabled: !!assessmentId,
+  });
+}
+
 /** Items excluded from the cycle. Keyed under ["cycles", id] so the admin's scope edits refresh it. */
 export function useExcludedItems(cycleId: string | undefined) {
   return useQuery({
@@ -124,29 +134,66 @@ export function useExcludedItems(cycleId: string | undefined) {
 // (useIsMutating) and all invalidate ["assessment", id] so scores and progress follow.
 // ---------------------------------------------------------------
 
-type ItemMetInput = { itemId: string; isMet: boolean; orgNote?: string | null };
+const EMPTY_RESPONSE: ItemResponse = { isMet: false, orgNote: null, verified: null, evaluatorNote: null };
 
-/** Saves one item immediately with an optimistic update of the answers map; rolls back on error. */
-export function useSetItemMet(assessmentId: string | undefined) {
+/**
+ * Saves one item's answer fields with an optimistic update of the answers map; rolls back on error.
+ * `patch` is what the screen shows at once; the database stays the authority on is_met.
+ */
+function useResponseMutation<TInput extends { itemId: string }>(
+  assessmentId: string | undefined,
+  mutationFn: (input: TInput) => Promise<void>,
+  patch: (input: TInput) => Partial<ItemResponse>,
+  extraKeys: readonly (readonly unknown[])[] = []
+) {
   const queryClient = useQueryClient();
   const responsesKey = [...assessmentKey(assessmentId), "responses"];
   return useMutation({
     mutationKey: assessmentKey(assessmentId),
-    mutationFn: ({ itemId, isMet, orgNote }: ItemMetInput) => setItemMet(assessmentId as string, itemId, isMet, orgNote),
-    onMutate: async ({ itemId, isMet, orgNote }: ItemMetInput) => {
+    mutationFn,
+    onMutate: async (input: TInput) => {
       await queryClient.cancelQueries({ queryKey: responsesKey });
       const previous = queryClient.getQueryData<Map<string, ItemResponse>>(responsesKey);
       const next = new Map(previous ?? []);
-      const current = next.get(itemId);
-      next.set(itemId, { isMet, orgNote: orgNote !== undefined ? orgNote?.trim() || null : current?.orgNote ?? null });
+      next.set(input.itemId, { ...(next.get(input.itemId) ?? EMPTY_RESPONSE), ...patch(input) });
       queryClient.setQueryData(responsesKey, next);
       return { previous };
     },
     onError: (_err, _input, context) => {
       if (context?.previous) queryClient.setQueryData(responsesKey, context.previous);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: assessmentKey(assessmentId) }),
+    onSettled: () =>
+      Promise.all([assessmentKey(assessmentId), ...extraKeys].map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
   });
+}
+
+type NoteInput = { itemId: string; orgNote: string | null };
+
+/** The organization's note on one item (saved on blur). */
+export function useSaveItemNote(assessmentId: string | undefined) {
+  return useResponseMutation(
+    assessmentId,
+    ({ itemId, orgNote }: NoteInput) => saveItemNote(assessmentId as string, itemId, orgNote),
+    ({ orgNote }) => ({ orgNote: orgNote?.trim() || null })
+  );
+}
+
+type VerdictInput = { itemId: string; verified: boolean | null; evaluatorNote?: string | null };
+
+/**
+ * The evaluator's verdict on one item. The last pending verdict makes the database generate both documents,
+ * so the documents refresh too.
+ */
+export function useSetVerdict(assessmentId: string | undefined) {
+  return useResponseMutation(
+    assessmentId,
+    ({ itemId, verified, evaluatorNote }: VerdictInput) => setVerdict(assessmentId as string, itemId, verified, evaluatorNote),
+    ({ verified, evaluatorNote }) => ({
+      verified,
+      ...(evaluatorNote !== undefined ? { evaluatorNote: evaluatorNote?.trim() || null } : {}),
+    }),
+    [["documents", assessmentId]]
+  );
 }
 
 function useAssessmentMutation<TInput>(assessmentId: string | undefined, mutationFn: (input: TInput) => Promise<void>) {
@@ -229,17 +276,35 @@ export function useSetSubmissionDue() {
   });
 }
 
-/** Evaluator review actions. Refreshes the assessment, the scope lookups, the evaluator's list and organization lists. */
+/**
+ * After a status change: the assessment, its documents and frozen results (approval freezes them, a return to the
+ * evaluator unfreezes them), the scope lookups, the evaluator's list and the organization lists.
+ */
+function invalidateAfterTransition(queryClient: ReturnType<typeof useQueryClient>, assessmentId: string) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: assessmentKey(assessmentId) }),
+    queryClient.invalidateQueries({ queryKey: ["documents", assessmentId] }),
+    queryClient.invalidateQueries({ queryKey: ["results", assessmentId] }),
+    queryClient.invalidateQueries({ queryKey: SCOPE_KEY }),
+    queryClient.invalidateQueries({ queryKey: ["evaluator", "reviews"] }),
+    queryClient.invalidateQueries({ queryKey: ["organizations"] }),
+  ]);
+}
+
+/** Evaluator review actions: start review, return to the organization, approve. */
 export function useTransitionAssessment(assessmentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ to, note }: { to: ReviewTransition; note?: string }) => transitionAssessment(assessmentId, to, note),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: assessmentKey(assessmentId) }),
-        queryClient.invalidateQueries({ queryKey: SCOPE_KEY }),
-        queryClient.invalidateQueries({ queryKey: ["evaluator", "reviews"] }),
-        queryClient.invalidateQueries({ queryKey: ["organizations"] }),
-      ]),
+    onSuccess: () => invalidateAfterTransition(queryClient, assessmentId),
+  });
+}
+
+/** Final sign-off: send an approved assessment back to the evaluator with a note. */
+export function useReturnToEvaluator(assessmentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (note: string) => returnToEvaluator(assessmentId, note),
+    onSuccess: () => invalidateAfterTransition(queryClient, assessmentId),
   });
 }

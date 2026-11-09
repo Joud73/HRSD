@@ -23,7 +23,7 @@ export async function getReportSummary(): Promise<ReportSummary> {
   if (orgRes.error) throw orgRes.error;
   if (evalRes.error) throw evalRes.error;
 
-  const assessmentsByStatus: Record<AssessmentStatus, number> = { draft: 0, submitted: 0, under_review: 0, returned: 0, approved: 0 };
+  const assessmentsByStatus: Record<AssessmentStatus, number> = { draft: 0, submitted: 0, under_review: 0, returned: 0, approved: 0, issued: 0 };
   if (cycle) {
     const { data, error } = await supabase.from("assessments").select("status").eq("cycle_id", cycle.id);
     if (error) throw error;
