@@ -114,5 +114,46 @@ Removed as redundant: "البنود المرفق لها شواهد" in the organ
 - Throwaway Playwright smoke (deleted after) on staging, read only, failing on console/page/HTTP errors: org A dashboard and track 1 at 1440 and 390 (no checkbox, rule line present, chips), supervisor dashboard (new KPIs) and organizations: 2 passed. Fixed from the screenshots: chip stretched full width at 390; leftover ticking copy.
 - Playwright Chromium was not installed on this machine; installed with `npx playwright install chromium`.
 
+## Before Step 3 (owner's order change, 9 Nov)
+
+- [x] `supabase/seed/demo_phase4.sql` (Step 4.1, pulled forward) written and run on staging: org B under_review, evaluator2, 189 evidenced items, 184 confirmed, 2 rejected with notes (track 1 indicator 2 item 1; track 3 first indicator item 1), 3 pending (track 1 indicator 1 items 1 to 3), no documents. Idempotent (asserts 3 pending).
+- [x] `supabase/seed/programs.sql` (Step 4.2, pulled forward) written and run: DEMO-T1..T5, one per track, mapped to all its indicators (13/14/10/14/10), levels 0 to 2, placeholder URLs on example.org.
+- [x] Browser pass of Step 2 review mode as evaluator2 on org B (1440 and 390): verdict controls (pending items show no selection), indicator 1 "4 من 7" with the pending dot, header "بانتظار التحقق 3", approve disabled with tooltip "3 بند بانتظار التحقق", return note pre-filled "المؤشر 2: …" / "المؤشر 28: …". No console/page/HTTP errors. Nothing needed fixing.
+- `e2e/.env` on this machine does not contain `E2E_EVALUATOR1_EMAIL` / `E2E_EVALUATOR2_EMAIL` (the file may not have been saved); the passes used `evaluator2@tamkeen.local` inline with `E2E_PASSWORD`.
+
+### Found: cascade delete of evidences fails since migration 11b
+Deleting an assessment that has evidence fails: the cascade deletes the evidences, `propagate_evidence_change()` (AFTER DELETE on evidences) upserts an `item_responses` row for the assessment being deleted, and `assert_item_matches_cycle_tool()` raises "Item does not belong to the tool version of this assessment cycle". It breaks the second run of `demo_phase4.sql` and `demo_reset.sql` (org A has evidence), and any admin delete of an assessment with evidence.
+- Workaround in both seeds: delete the evidences first, then the assessment.
+- **Proposed fix (not applied, needs the owner's go):** a migration that makes the trigger skip when the parent is gone, e.g. at the top of `propagate_evidence_change()`: `if not exists (select 1 from public.assessments where id = v_assessment) then return coalesce(new, old); end if;`.
+
+## Step 3: documents, issuance, organization results
+
+- [x] 3.1 DocumentView (shared, print-ready)
+- [x] 3.2 Evaluator document editor
+- [x] 3.3 Issuance (supervisor)
+- [x] 3.4 Organization results page
+
+### Decisions (Step 3)
+- `DocumentView` renders the template structure as `.doc-page` A4 sheets (210mm wide, covers exactly 297mm): cover (AOL white logo, gold rule, title, organization, QR of `/results`, rights line), facts table, numbered sections, track and standard chips, "لا يوجد" for empty standards, back cover. Plan: three scores (dash when null), indicator register with level chips (0 danger, 1 warning, 2 accent, 4 success), task register grouped by a filled "{track} - {standard}" row, numbered within the standard, status from `task_status`. Accepts `number`/`issuedAt` overrides: issuance prints the number before the database stores it. Vertical stacks use block `space-y-*` (Chrome does not fragment tall flex columns in print; html2canvas slices cleanly).
+- Report number (Arabic + Latin) is isolated with `<bdi>` wherever printed, and with U+2068/U+2069 inside `issued_on`.
+- Platform logo: AOL (the repo has no HRSD logo asset). QR: `qrcode` package (added with `@types/qrcode`).
+- Print: `DocumentScreen` mounts a print-only copy on `<body>` through a portal; `@media print` hides every other body child, `@page A4 margin 0`, one `.doc-page` per sheet, rows and list items not split, padding cloned on continuation sheets.
+- `lib/pdf.ts` factored out of `Certificate` (`elementToPdf`, unchanged behaviour) plus `pagesToPdf`: each `.doc-page` captured at scale 2; a page taller than A4 is sliced at the last line boundary (`li`, `tr`, `p`, headings) that fits, continuations keep the page padding; JPEG 0.92.
+- html2canvas fixes, both found in the issued PDFs and verified by rebuilding: (1) it measures font baselines with a 1×1 GIF placed in the live page, which Tailwind's preflight makes block-level, shifting every captured line down; `index.css` keeps that exact image inline. (2) RTL list markers land on the wrong side; bullets are explicit elements.
+- Editor (`/evaluator/assessments/:id/documents/:kind`): sections per kind, tracks as `<details>` (first open, chevron), standards with their lines (textarea saved on blur, include switch, tag مولد آلياً / معدل / يدوي, remove for manual), inline "إضافة سطر" with حفظ. Live preview (zoom 0.6) sticky on lg, toggled below lg. Read only with a banner when the document is not a draft or the assessment is not under review.
+- Supervisor results: documents in tabs (`DocumentScreen`, print and PDF download), "إصدار النتائج" + "إعادة للمدقق". Issuance dialog: number from `results_number`, progress (إعداد التقرير التعقيبي / إعداد خطة التحسين / إصدار), off-screen render with the number and today's date, both PDFs uploaded, `issue_results`; a stale number is fetched again and the PDFs rebuilt once.
+- Organization: `/results` (redirects to `/dashboard` unless issued): facts تاريخ الإصدار and رقم التقرير, `ResultsOverview`, documents (عرض → `/results/documents/:kind`, تحميل PDF via signed URL), programs (title, matched indicators, external link; one-sentence empty state). History: issued cycles show the frozen `review_pct` without "تقديرية"; `Assessment` gains `issuedAt`.
+- `RegisterIndicator` lives in `resultsService`; `useDocumentBundle` gives a document, its lines, and the register (frozen results once approved, live review columns while a draft).
+
+### Checks (Step 3), staging, throwaway Playwright specs (deleted after)
+Full flow run twice; the second run starts from a fresh `demo_phase4.sql` with every fix in (the first run's two PDFs were removed from the bucket before re-seeding):
+1. evaluator2 confirms the 3 pending items → both documents appear, approve enabled; plan editor: first task edited (tag معدل), manual line added (tag يدوي). 192 task lines = 189 items without evidence + 2 rejected + 1 manual.
+2. evaluator2 approves; dialog shows مؤكد 187, مرفوض 2, النتيجة الذاتية 50%, نتيجة المراجعة 49%.
+3. supervisor: organizations list shows org B "معتمد", "النتائج" opens the results page; print preview (Chromium print emulation, A4): report 20 sheets, plan 25 sheets, rendered with pdf.js and checked (covers, facts, numbered sections, chips, task register with repeated header). Issue: number ت.م.TEST-0002|26.11.09, both PDFs uploaded, status issued.
+4. org B: dashboard "صدرت نتائج التقييم وخطة التحسين."; `/results` with both documents, both PDFs download through signed URLs (200, application/pdf, report 20 pages 7.4 MB, plan 24 pages 6.1 MB), programs panel lists 4 DEMO programs (track 2 is all level 4, so none).
+Every role: no console errors, page errors or HTTP 4xx/5xx. `tsc` 0 errors, lint 6 (baseline).
+
 ## Not finished
-- Review mode (verdicts, approval gate, documents, supervisor results with frozen data) has not run in the browser: staging has no assessment under review and no evaluator account in `e2e/.env`. `demo_phase4.sql` and `e2e/review.spec.ts` (Step 4) cover it; Step 4 also needs `E2E_EVALUATOR2_EMAIL` (and evaluator1) in `e2e/.env`.
+- PDFs are 6 to 7 MB each (raster pages, JPEG 0.92 at scale 2). Fine for the demo; lower quality or scale if storage or download time matters.
+- Issued PDFs from deleted assessments are not removed by the seeds (the bucket is not cascaded). `reset-demo.mjs` should remove `documents/{assessment}/*` too: Step 4.
+- Org B is issued on staging now. Run `node e2e/reset-demo.mjs` then `demo_phase4.sql` before the demo or Step 4's e2e.

@@ -42,6 +42,8 @@ export interface Assessment {
   submittedAt: string | null;
   returnedAt: string | null;
   approvedAt: string | null;
+  /** Final sign-off: results and documents visible to the organization from this moment */
+  issuedAt: string | null;
   returnNote: string | null;
   /** Admin extension for this organization (yyyy-mm-dd); null = the cycle's submission end */
   submissionDue: string | null;
@@ -57,6 +59,7 @@ export interface AssessmentHistoryRow {
   cycleStatus: CycleStatus;
   status: AssessmentStatus;
   approvedAt: string | null;
+  /** Issued: the frozen review result; otherwise the estimated self-assessment result */
   scorePct: number;
 }
 
@@ -194,7 +197,7 @@ export function daysUntil(date: string): number {
 // ---------------------------------------------------------------
 
 const assessmentColumns =
-  "id, cycle_id, organization_id, status, submitted_at, returned_at, approved_at, return_note, submission_due, assessment_cycles!inner(id, name, status, submission_start, submission_end, review_start, review_end, approval_end)";
+  "id, cycle_id, organization_id, status, submitted_at, returned_at, approved_at, issued_at, return_note, submission_due, assessment_cycles!inner(id, name, status, submission_start, submission_end, review_start, review_end, approval_end)";
 
 type AssessmentRow = {
   id: string;
@@ -204,6 +207,7 @@ type AssessmentRow = {
   submitted_at: string | null;
   returned_at: string | null;
   approved_at: string | null;
+  issued_at: string | null;
   return_note: string | null;
   submission_due: string | null;
   assessment_cycles: {
@@ -226,6 +230,7 @@ const toAssessment = (r: AssessmentRow): Assessment => ({
   submittedAt: r.submitted_at,
   returnedAt: r.returned_at,
   approvedAt: r.approved_at,
+  issuedAt: r.issued_at,
   returnNote: r.return_note,
   submissionDue: r.submission_due,
   cycle: {
@@ -304,6 +309,18 @@ export async function listMyAssessmentHistory(): Promise<AssessmentHistoryRow[]>
   if (progressError) throw mapError(progressError, t.err_load);
   const byId = new Map(progress.map((p) => [p.assessment_id, p]));
 
+  // Issued cycles: the frozen review result (row-level security opens it to the organization once issued)
+  const issuedIds = data.filter((a) => a.status === "issued").map((a) => a.id);
+  const frozen = new Map<string, number>();
+  if (issuedIds.length > 0) {
+    const { data: overall, error: overallError } = await supabase
+      .from("v_assessment_results_overall")
+      .select("assessment_id, review_pct")
+      .in("assessment_id", issuedIds);
+    if (overallError) throw mapError(overallError, t.err_load);
+    for (const o of overall) if (o.assessment_id) frozen.set(o.assessment_id, o.review_pct ?? 0);
+  }
+
   return data
     .slice()
     .sort((a, b) => b.assessment_cycles.submission_start.localeCompare(a.assessment_cycles.submission_start))
@@ -314,7 +331,7 @@ export async function listMyAssessmentHistory(): Promise<AssessmentHistoryRow[]>
       cycleStatus: a.assessment_cycles.status,
       status: a.status,
       approvedAt: a.approved_at,
-      scorePct: byId.get(a.id)?.score_pct ?? 0,
+      scorePct: frozen.get(a.id) ?? byId.get(a.id)?.score_pct ?? 0,
     }));
 }
 

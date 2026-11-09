@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DOCUMENT_KINDS } from "@/services/resultsService";
 import { useParams } from "react-router-dom";
 import { AlertCircle, FileCheck2, Undo2 } from "lucide-react";
 import { copy, documentsCopy as d, resultsCopy as r, supervisorCopy as t } from "@/lib/copy";
@@ -11,6 +12,7 @@ import { useOrganization } from "@/hooks/useOrganizations";
 import type { Assessment } from "@/services/assessmentService";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
@@ -18,11 +20,14 @@ import { SkeletonPanel } from "@/components/shared/Skeletons";
 import { FieldShell, FormError } from "@/components/shared/FormField";
 import { KeyFacts } from "@/components/admin/AdminParts";
 import { FormDialog } from "@/components/admin/setup/SetupDialogs";
+import { tabsUi } from "@/components/admin/adminUi";
 import OrganizationCard from "@/components/results/OrganizationCard";
 import ResultsOverview from "@/components/results/ResultsOverview";
-import DocumentCards from "@/components/results/DocumentCards";
+import IssueResults from "@/components/results/IssueResults";
+import DocumentScreen from "@/components/documents/DocumentScreen";
+import { KIND_LABEL } from "@/components/results/documentUtils";
 
-/* ── Final sign-off actions: return to the evaluator (issuance is added with the documents, Step 3) ── */
+/* ── Final sign-off actions: issue the results (both PDFs) or return to the evaluator ── */
 
 const SignOffActions = ({ assessment }: { assessment: Assessment }) => {
   const { toast } = useToast();
@@ -63,6 +68,7 @@ const SignOffActions = ({ assessment }: { assessment: Assessment }) => {
   return (
     <section aria-label={t.signoff_label} className="flex flex-col gap-3 rounded-lg border border-border bg-card px-5 py-4">
       <div className="flex flex-wrap items-center gap-3">
+        <IssueResults assessmentId={assessment.id} />
         <Button
           variant="outline"
           onClick={() => {
@@ -106,6 +112,7 @@ const SupervisorResults = () => {
   const frozen = assessment && (assessment.status === "approved" || assessment.status === "issued");
   const results = useFrozenResults(frozen ? assessment.id : undefined);
   const documents = useDocuments(frozen ? assessment.id : undefined);
+  const [docTab, setDocTab] = useState<string>(DOCUMENT_KINDS[0]);
   const { data: org } = useOrganization(assessment?.organizationId ?? "");
 
   const crumbsBase = [
@@ -177,7 +184,20 @@ const SupervisorResults = () => {
             <h2 id="documents-title" className="text-h3 text-ink">
               {d.documents_title}
             </h2>
-            <DocumentCards documents={documents.data ?? []} />
+            <Tabs value={docTab} onValueChange={setDocTab} dir="rtl">
+              <TabsList className={tabsUi.list} aria-label={d.documents_title}>
+                {(documents.data ?? []).map((doc) => (
+                  <TabsTrigger key={doc.kind} value={doc.kind} className={tabsUi.trigger}>
+                    {KIND_LABEL[doc.kind]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {(documents.data ?? []).map((doc) => (
+                <TabsContent key={doc.kind} value={doc.kind} className={tabsUi.content}>
+                  <DocumentScreen assessmentId={assessment.id} kind={doc.kind} />
+                </TabsContent>
+              ))}
+            </Tabs>
           </section>
         )}
 

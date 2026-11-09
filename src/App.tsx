@@ -20,6 +20,9 @@ import SupervisorDashboard from "./pages/SupervisorDashboard";
 import SupervisorOrganizations from "./pages/SupervisorOrganizations";
 import SupervisorProxyAssessment from "./pages/SupervisorProxyAssessment";
 import SupervisorResults from "./pages/SupervisorResults";
+import EvaluatorDocumentEditor from "./pages/EvaluatorDocumentEditor";
+import Results from "./pages/Results";
+import ResultsDocument from "./pages/ResultsDocument";
 import AccountProfile from "@/components/shared/AccountProfile";
 import TrainingStage from "./pages/TrainingStage";
 import CourseDetail from "./pages/CourseDetail";
@@ -89,6 +92,8 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/assessment/:trackNumber" element={<AssessmentTrack />} />
+                <Route path="/results" element={<Results />} />
+                <Route path="/results/documents/:kind" element={<ResultsDocument />} />
                 <Route path="/technical-indicators/:courseSlug" element={<LegacyTrackRedirect />} />
                 <Route path="/training-stage" element={<TrainingStage />} />
                 <Route path="/course/:courseId" element={<CourseDetail />} />
@@ -128,6 +133,7 @@ const App = () => (
                 <Route path="/evaluator" element={<EvaluatorDashboard />} />
                 <Route path="/evaluator/assignments" element={<EvaluatorAssignments />} />
                 <Route path="/evaluator/assessments/:assessmentId" element={<EvaluatorReview />} />
+                <Route path="/evaluator/assessments/:assessmentId/documents/:kind" element={<EvaluatorDocumentEditor />} />
                 <Route path="/evaluator/assignment/:assignmentId" element={<Navigate to="/evaluator/assignments" replace />} />
                 <Route path="/evaluator/profile" element={<EvaluatorProfile />} />
               </Route>

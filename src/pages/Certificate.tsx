@@ -1,21 +1,14 @@
 import { useRef, useState } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { Award, CalendarDays, Download, FileText, Printer, QrCode, type LucideIcon } from "lucide-react";
 import { copy, pagesCopy } from "@/lib/copy";
 import { formatDate, formatNumber, formatPercent } from "@/lib/format";
+import { elementToPdf } from "@/lib/pdf";
 import OrganizationJourney from "@/components/OrganizationJourney";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import aolLogo from "@/assets/logos/aol.png";
 import visionLogo from "@/assets/logos/vision-2030-colored.png";
-
-/** html2canvas cannot read CSS variables in its options, so resolve the background token first. */
-const resolveBackground = () => {
-  const value = getComputedStyle(document.documentElement).getPropertyValue("--background").trim();
-  return value ? `hsl(${value.split(/\s+/).join(", ")})` : null;
-};
 
 const CertificateFact = ({ icon: Icon, label, value, ltr }: { icon: LucideIcon; label: string; value: string; ltr?: boolean }) => (
   <div className="flex flex-col items-center gap-2 text-center">
@@ -78,42 +71,7 @@ const Certificate = () => {
     if (!certificateRef.current) return;
 
     try {
-      // Create canvas from the certificate card
-      const canvas = await html2canvas(certificateRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: resolveBackground(),
-        logging: false,
-      });
-
-      // Calculate dimensions for A4 PDF
-      const imgWidth = 210; // A4 width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: imgHeight > imgWidth ? "portrait" : "landscape",
-        unit: "mm",
-        format: "a4",
-      });
-
-      // Add the canvas as image
-      const imgData = canvas.toDataURL("image/png");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      // Center the image on the page
-      const scaleFactor = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight) * 0.9;
-      const scaledWidth = imgWidth * scaleFactor;
-      const scaledHeight = imgHeight * scaleFactor;
-      const xOffset = (pdfWidth - scaledWidth) / 2;
-      const yOffset = (pdfHeight - scaledHeight) / 2;
-
-      pdf.addImage(imgData, "PNG", xOffset, yOffset, scaledWidth, scaledHeight);
-
-      // Download the PDF
-      pdf.save(`Certificate-${certificateId}.pdf`);
+      await elementToPdf(certificateRef.current, `Certificate-${certificateId}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
     }

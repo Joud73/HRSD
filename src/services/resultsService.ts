@@ -129,6 +129,13 @@ export interface RecommendedProgram {
   indicatorIds: string[];
 }
 
+/** One indicator of the plan's register: its review level and label (frozen results, or the live view before approval). */
+export interface RegisterIndicator {
+  indicatorId: string;
+  reviewLevel: number;
+  reviewLabel: string;
+}
+
 export interface IssuedPdf {
   kind: DocumentKind;
   path: string;

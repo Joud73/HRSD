@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useIndicatorScores } from "@/hooks/useAssessment";
 import {
   addManualLine, getFrozenResults, getResultsNumber, issueResults, listDocumentLines, listDocuments,
   listRecommendedPrograms, regenerateDocuments, removeManualLine, updateLine,
-  type IssuedPdf, type LinePatch, type ManualLineInput,
+  type DocumentKind, type IssuedPdf, type LinePatch, type ManualLineInput, type RegisterIndicator,
 } from "@/services/resultsService";
 
 /** Frozen results and programs live under ["results", id]; documents and their lines under ["documents", id]. */
@@ -105,4 +107,34 @@ export function useIssueResults(assessmentId: string | undefined) {
         queryClient.invalidateQueries({ queryKey: ["organizations"] }),
       ]),
   });
+}
+
+/**
+ * Everything one document needs to render: the document, its lines, and the plan's indicator register
+ * (frozen results once approved; the live review columns of v_indicator_scores while a draft).
+ */
+export function useDocumentBundle(assessmentId: string | undefined, kind: DocumentKind | undefined) {
+  const documents = useDocuments(assessmentId);
+  const doc = documents.data?.find((x) => x.kind === kind);
+  const lines = useDocumentLines(assessmentId, doc?.id);
+  const frozen = useFrozenResults(doc && doc.status !== "draft" ? assessmentId : undefined);
+  const live = useIndicatorScores(doc && doc.status === "draft" ? assessmentId : undefined);
+
+  const indicators = useMemo<RegisterIndicator[]>(
+    () =>
+      doc?.status === "draft"
+        ? (live.data ?? []).map((s) => ({ indicatorId: s.indicatorId, reviewLevel: s.reviewLevel, reviewLabel: s.reviewLevelLabel }))
+        : (frozen.data?.indicators ?? []).map((r) => ({ indicatorId: r.indicatorId, reviewLevel: r.reviewLevel, reviewLabel: r.reviewLabel })),
+    [doc?.status, live.data, frozen.data]
+  );
+
+  return {
+    documents,
+    document: doc,
+    lines: lines.data ?? [],
+    indicators,
+    isLoading: documents.isLoading || (!!doc && (lines.isLoading || frozen.isLoading || live.isLoading)),
+    isError: documents.isError || lines.isError || frozen.isError || live.isError,
+    refetch: () => Promise.all([documents.refetch(), lines.refetch()]),
+  };
 }

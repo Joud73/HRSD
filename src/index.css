@@ -228,3 +228,50 @@ input:-webkit-autofill:focus-visible {
   -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset, 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
   box-shadow: 0 0 0 1000px hsl(var(--background)) inset, 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
 }
+
+/* Results documents (DocumentView). On screen the print copy is hidden; in print only that copy shows,
+   one .doc-page per A4 sheet. A page longer than A4 continues on the next sheet with its padding repeated. */
+.print-portal {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body {
+    background: hsl(var(--card)) !important;
+  }
+  body > *:not(.print-portal) {
+    display: none !important;
+  }
+  .print-portal {
+    display: block;
+  }
+  .print-portal .doc-sheets > * {
+    margin-top: 0 !important;
+  }
+  .print-portal .doc-page {
+    break-after: page;
+    border: 0 !important;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-portal .doc-page:last-child {
+    break-after: auto;
+  }
+  .print-portal tr,
+  .print-portal li {
+    break-inside: avoid;
+  }
+}
+
+/* html2canvas (lib/pdf.ts) measures each font's baseline with this 1x1 sample image placed in the live page.
+   Tailwind's preflight makes images block-level, which shifts every captured line of text down. Keep it inline. */
+img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"] {
+  display: inline;
+}

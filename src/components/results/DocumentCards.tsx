@@ -35,7 +35,7 @@ const DocumentCards = ({ documents, linkTo, linkLabel }: DocumentCardsProps) => 
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <h3 className="text-body font-hrsd-bold text-ink">{KIND_LABEL[doc.kind]}</h3>
                 <p className="tabular text-caption text-muted-foreground">
-                  {doc.number ?? d.number_pending}
+                  <bdi>{doc.number ?? d.number_pending}</bdi>
                   {doc.issuedAt && (
                     <>
                       <span aria-hidden className="mx-2">

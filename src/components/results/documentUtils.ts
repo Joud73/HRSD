@@ -1,6 +1,9 @@
 import { documentsCopy as d } from "@/lib/copy";
 import { getDocumentPdfUrl, type AssessmentDocument, type DocumentKind } from "@/services/resultsService";
 
+/** The organization's results page (the documents' QR code). */
+export const resultsUrl = () => `${window.location.origin}/results`;
+
 export const KIND_LABEL: Record<DocumentKind, string> = {
   feedback_report: d.kind_feedback_report,
   improvement_plan: d.kind_improvement_plan,

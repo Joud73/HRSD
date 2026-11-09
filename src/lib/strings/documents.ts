@@ -77,6 +77,7 @@ export const documentsCopy = {
   line_tag_manual: "يدوي",
   line_include: "إدراج في المستند",
   line_add: "إضافة سطر",
+  line_add_save: "حفظ",
   line_remove: "حذف السطر",
   line_placeholder: "نص السطر",
   line_saved: "حُفظ السطر",
@@ -101,7 +102,8 @@ export const documentsCopy = {
   issue_step_plan: "إعداد خطة التحسين",
   issue_step_publish: "إصدار النتائج",
   issue_done: "صدرت النتائج",
-  issued_on: (date: string, number: string) => `صدرت النتائج في ${date}، رقم التقرير ${number}`,
+  // The number mixes Arabic and Latin: first-strong isolates keep it whole inside the sentence
+  issued_on: (date: string, number: string) => `صدرت النتائج في ${date}، رقم التقرير ⁨${number}⁩`,
   return_to_evaluator: "إعادة للمدقق",
   return_to_evaluator_title: "إعادة التقييم للمدقق",
   return_to_evaluator_desc: "يعود التقييم إلى المدقق لمراجعة الأحكام أو المستندات، وتظهر له ملاحظتك.",
@@ -116,4 +118,6 @@ export const documentsCopy = {
   err_not_allowed: "هذا الإجراء غير متاح لك الآن.",
   err_line_empty: "اكتب نص السطر.",
   err_generic: "تعذر تنفيذ الإجراء. حاول مرة أخرى.",
+  retry: "إعادة المحاولة",
+  cancel: "إلغاء",
 } as const;
