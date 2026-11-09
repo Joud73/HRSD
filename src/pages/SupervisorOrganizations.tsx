@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, PenLine } from "lucide-react";
+import { Building2, FileCheck2, PenLine } from "lucide-react";
 import { copy, supervisorCopy as t } from "@/lib/copy";
 import { formatDate, formatNumber } from "@/lib/format";
-import { STATUS, toStatusKey, type StatusKey } from "@/lib/status";
+import { STATUS, reviewStatusKey, type StatusKey } from "@/lib/status";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import type { OrganizationListRow } from "@/services/organizationService";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,12 @@ import EmptyState from "@/components/shared/EmptyState";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { SearchField, Toolbar } from "@/components/admin/AdminParts";
 
-const STATUS_ORDER: StatusKey[] = ["not_started", "in_progress", "submitted", "returned", "approved"];
+const STATUS_ORDER: StatusKey[] = ["not_started", "in_progress", "submitted", "under_review", "returned", "approved", "issued"];
 type StatusFilter = "all" | StatusKey;
 
-/** Status shown for a row: a draft with nothing marked yet has not started. */
+/** Status shown for a row: a draft with no evidence yet has not started; under review stays apart from submitted. */
 const rowStatus = (r: OrganizationListRow): StatusKey =>
-  r.assessmentStatus === "draft" && !r.progressPct ? "not_started" : toStatusKey(r.assessmentStatus);
+  !r.assessmentStatus || (r.assessmentStatus === "draft" && !r.progressPct) ? "not_started" : reviewStatusKey(r.assessmentStatus);
 
 const Progress = ({ value }: { value: number | null }) =>
   value === null ? (
@@ -66,14 +66,22 @@ const SupervisorOrganizations = () => {
       key: "actions",
       header: <span className="sr-only">{t.col_actions}</span>,
       align: "end",
-      cell: (r) => (
-        <Button asChild variant="outline" size="sm" className="whitespace-nowrap">
-          <Link to={`/supervisor/organizations/${r.id}/assessment/1`} aria-label={`${t.proxy_action}: ${r.name}`}>
-            <PenLine aria-hidden />
-            {t.proxy_action}
-          </Link>
-        </Button>
-      ),
+      cell: (r) =>
+        r.assessmentId && (r.assessmentStatus === "approved" || r.assessmentStatus === "issued") ? (
+          <Button asChild variant="outline" size="sm" className="whitespace-nowrap">
+            <Link to={`/supervisor/assessments/${r.assessmentId}/results`} aria-label={`${t.results_action}: ${r.name}`}>
+              <FileCheck2 aria-hidden />
+              {t.results_action}
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild variant="outline" size="sm" className="whitespace-nowrap">
+            <Link to={`/supervisor/organizations/${r.id}/assessment/1`} aria-label={`${t.proxy_action}: ${r.name}`}>
+              <PenLine aria-hidden />
+              {t.proxy_action}
+            </Link>
+          </Button>
+        ),
     },
   ];
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Info, Loader2, RotateCcw } from "lucide-react";
+import { AlertCircle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, Info, Loader2, RotateCcw } from "lucide-react";
 import { assessmentCopy as t } from "@/lib/copy";
 import { counted, formatDate, formatNumber, formatTime } from "@/lib/format";
 import { ease, transition } from "@/lib/motion";
@@ -11,16 +11,16 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useApprovedTool } from "@/hooks/useApprovedTool";
 import {
   useAddFileEvidence, useAddLinkEvidence, useAssessment, useEvidences, useExcludedItems, useIndicatorScores,
-  useProgress, useRemoveEvidence, useResponses, useSaveItemNote, useSaveStatus,
+  useProgress, useRemoveEvidence, useResponses, useSaveItemNote, useSaveStatus, useSetVerdict,
 } from "@/hooks/useAssessment";
 import { getEvidenceUrl, today, type Assessment, type AssessmentScope, type Evidence, type IndicatorScore } from "@/services/assessmentService";
 import type { LevelBand, Track } from "@/services/toolService";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import PageHeader, { type Crumb } from "@/components/shared/PageHeader";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import SegmentedControl from "@/components/shared/SegmentedControl";
 import { SkeletonPanel } from "@/components/shared/Skeletons";
 import IndicatorNav, { type IndicatorProgress } from "@/components/assessment/IndicatorNav";
 import EvidencePanel from "@/components/assessment/EvidencePanel";
@@ -47,7 +47,7 @@ type BannerKind = "returned" | "submitted" | "approved" | "closed" | "not_open_y
 function bannerKind(a: Assessment, editable: boolean): BannerKind {
   if (a.status === "returned") return "returned";
   if (a.status === "submitted" || a.status === "under_review") return "submitted";
-  if (a.status === "approved") return "approved";
+  if (a.status === "approved" || a.status === "issued") return "approved";
   if (editable) return null;
   return a.cycle.status === "open" && today() < a.cycle.submissionStart ? "not_open_yet" : "closed";
 }
@@ -121,30 +121,72 @@ interface ItemRowProps {
   itemId: string;
   position: number;
   text: string;
-  isMet: boolean;
   orgNote: string | null;
   evidences: Evidence[];
   editable: boolean;
+  /** Review mode (the assigned evaluator): verdict control instead of the state chip, evidences read only */
+  review?: {
+    verified: boolean | null;
+    evaluatorNote: string | null;
+    /** under_review and today inside the review period */
+    canVerify: boolean;
+  };
 }
 
-/** One verification item: checkbox (saved immediately), optional note (saved on blur), evidences. */
-const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidences, editable }: ItemRowProps) => {
+type VerdictValue = "confirmed" | "rejected" | "pending";
+const toVerdictValue = (v: boolean | null): VerdictValue => (v === true ? "confirmed" : v === false ? "rejected" : "pending");
+
+const Chip = ({ tone, children }: { tone: "success" | "neutral"; children: ReactNode }) => (
+  <span
+    className={cn(
+      "inline-flex shrink-0 items-center gap-1 self-start rounded-full px-2.5 py-0.5 text-caption font-hrsd-medium",
+      tone === "success" ? "bg-success/10 text-success" : "bg-neutral/10 text-ink/80"
+    )}
+  >
+    {tone === "success" ? <CheckCircle2 aria-hidden className="h-3.5 w-3.5" /> : <CircleDashed aria-hidden className="h-3.5 w-3.5" />}
+    {children}
+  </span>
+);
+
+/**
+ * One item. It is met only through its evidence (the database derives it): the chip at the end says so.
+ * The organization's note is saved on blur. In review mode, items with evidence carry the verdict control
+ * and the evaluator's internal note (saved on blur through setVerdict).
+ */
+const ItemRow = ({ assessmentId, itemId, position, text, orgNote, evidences, editable, review }: ItemRowProps) => {
   const { toast } = useToast();
   const saveItemNote = useSaveItemNote(assessmentId);
+  const setVerdict = useSetVerdict(assessmentId);
   const addFile = useAddFileEvidence(assessmentId);
   const addLink = useAddLinkEvidence(assessmentId);
   const removeEvidence = useRemoveEvidence(assessmentId);
   const [note, setNote] = useState(orgNote ?? "");
   const [noteOpen, setNoteOpen] = useState(!!orgNote);
+  const [evaluatorNote, setEvaluatorNote] = useState(review?.evaluatorNote ?? "");
+  const [evaluatorNoteOpen, setEvaluatorNoteOpen] = useState(!!review?.evaluatorNote);
   const [uploading, setUploading] = useState(false);
 
   const fail = (err: unknown) => toast({ title: err instanceof Error ? err.message : t.err_save, variant: "destructive" });
-  const checkboxId = `item-${itemId}`;
+  const textId = `item-${itemId}`;
   const noteId = `note-${itemId}`;
+  const evaluatorNoteId = `evaluator-note-${itemId}`;
+  const hasEvidence = evidences.length > 0;
 
   const saveNote = () => {
     if (note.trim() === (orgNote ?? "")) return;
     saveItemNote.mutate({ itemId, orgNote: note }, { onError: fail });
+  };
+
+  const saveVerdict = (value: VerdictValue) => {
+    if (!review) return;
+    const verified = value === "confirmed" ? true : value === "rejected" ? false : null;
+    if (verified === review.verified) return;
+    setVerdict.mutate({ itemId, verified }, { onError: fail });
+  };
+
+  const saveEvaluatorNote = () => {
+    if (!review || evaluatorNote.trim() === (review.evaluatorNote ?? "")) return;
+    setVerdict.mutate({ itemId, verified: review.verified, evaluatorNote }, { onError: fail });
   };
 
   const attachFile = async (file: File) => {
@@ -160,35 +202,36 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
   };
 
   return (
-    <li className={cn("flex flex-col gap-3 px-5 py-4 transition-colors duration-micro md:px-6", isMet && "bg-primary/5")}>
-      <div className="flex items-start gap-3">
-        <Checkbox
-          id={checkboxId}
-          checked={isMet}
-          disabled
-          className="mt-1 h-5 w-5 rounded-[4px]"
-        />
-        <label htmlFor={checkboxId} className={cn("min-w-0 flex-1", editable && "cursor-pointer")}>
+    <li className={cn("flex flex-col gap-3 px-5 py-4 transition-colors duration-micro md:px-6", hasEvidence && "bg-primary/5")}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <p id={textId} className="min-w-0 flex-1">
           <span className="block text-caption text-muted-foreground">
             {t.item_label} {formatNumber(position)}
           </span>
           <span className="block text-body text-ink">{stripOrdinal(text)}</span>
-        </label>
-        {isMet &&
-          (evidences.length > 0 ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-caption font-hrsd-medium text-success">
-              <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
-              {t.item_counted}
-            </span>
+        </p>
+        {review ? (
+          hasEvidence ? (
+            <SegmentedControl<VerdictValue>
+              label={t.verdict_label(formatNumber(position))}
+              value={toVerdictValue(review.verified)}
+              onChange={saveVerdict}
+              disabled={!review.canVerify || setVerdict.isPending}
+              options={[
+                { value: "confirmed", label: t.verdict_confirm, activeClassName: "bg-success" },
+                { value: "rejected", label: t.verdict_reject, activeClassName: "bg-danger" },
+              ]}
+              className="shrink-0 self-start"
+            />
           ) : (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/15 px-2.5 py-0.5 text-caption font-hrsd-medium text-warning-ink">
-              <AlertTriangle aria-hidden className="h-3.5 w-3.5" />
-              {t.item_met_without_evidence}
-            </span>
-          ))}
+            <Chip tone="neutral">{t.verdict_no_evidence}</Chip>
+          )
+        ) : (
+          <Chip tone={hasEvidence ? "success" : "neutral"}>{hasEvidence ? t.item_counted : t.item_no_evidence}</Chip>
+        )}
       </div>
 
-      <div className="flex flex-col gap-3 ps-8">
+      <div className="flex flex-col gap-3">
 
         <EvidencePanel
           evidences={evidences}
@@ -203,7 +246,14 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
           onDelete={(e) => removeEvidence.mutate(e, { onSuccess: () => toast({ title: t.evidence_removed }), onError: fail })}
         />
 
-        {editable && !noteOpen && (
+        {review && orgNote && (
+          <div className="flex flex-col gap-1">
+            <p className="text-caption text-muted-foreground">{t.org_note_label}</p>
+            <p className="whitespace-pre-line text-small text-ink">{orgNote}</p>
+          </div>
+        )}
+
+        {!review && editable && !noteOpen && (
           <button
             type="button"
             onClick={() => setNoteOpen(true)}
@@ -212,7 +262,7 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
             {t.note_add}
           </button>
         )}
-        {noteOpen && (editable || orgNote) && (
+        {!review && noteOpen && (editable || orgNote) && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor={noteId} className="text-caption text-muted-foreground">
               {t.item_note_label}
@@ -226,6 +276,34 @@ const ItemRow = ({ assessmentId, itemId, position, text, isMet, orgNote, evidenc
               onChange={(e) => setNote(e.target.value)}
               onBlur={saveNote}
               autoFocus={!orgNote}
+              className="min-h-[64px] text-small"
+            />
+          </div>
+        )}
+
+        {review && hasEvidence && review.canVerify && !evaluatorNoteOpen && (
+          <button
+            type="button"
+            onClick={() => setEvaluatorNoteOpen(true)}
+            className="self-start rounded-md text-small font-hrsd-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t.evaluator_note_add}
+          </button>
+        )}
+        {review && hasEvidence && evaluatorNoteOpen && (review.canVerify || review.evaluatorNote) && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={evaluatorNoteId} className="text-caption text-muted-foreground">
+              {t.evaluator_note_label}
+            </label>
+            <Textarea
+              id={evaluatorNoteId}
+              rows={2}
+              value={evaluatorNote}
+              disabled={!review.canVerify}
+              placeholder={t.evaluator_note_placeholder}
+              onChange={(e) => setEvaluatorNote(e.target.value)}
+              onBlur={saveEvaluatorNote}
+              autoFocus={!review.evaluatorNote}
               className="min-h-[64px] text-small"
             />
           </div>
@@ -383,24 +461,89 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
   const indicator = indicators[selectedIndex];
   const score = scoreById.get(indicator.id);
 
+  // Review mode (the evaluator, scope by id): no page header, banner or submit; the host page frames it
+  const reviewMode = scope.kind === "assessment";
+  const day = today();
+  const canVerify =
+    reviewMode && assessment.status === "under_review" && day >= assessment.cycle.reviewStart && day <= assessment.cycle.approvalEnd;
+
   const progressOf = (indicatorId: string): IndicatorProgress => {
     const s = scoreById.get(indicatorId);
     const total = s?.itemsTotal ?? indicators.find((i) => i.id === indicatorId)?.items.length ?? 0;
-    return { counted: s?.itemsCounted ?? 0, total, state: s?.isComplete ? "complete" : s?.isStarted ? "in_progress" : "not_started" };
+    const state = s?.isComplete ? "complete" : s?.isStarted ? "in_progress" : "not_started";
+    return reviewMode
+      ? { counted: s?.itemsReviewCounted ?? 0, total, state, pending: s?.itemsReviewPending ?? 0 }
+      : { counted: s?.itemsCounted ?? 0, total, state };
   };
 
-  // Track figures: sums of the view's per-indicator rows
+  // Track figures: sums of the view's per-indicator rows (the self basis; review mode shows the assessment totals)
   const trackScores = (scores.data ?? []).filter((s) => s.trackNumber === trackNumber);
   const trackTotal = trackScores.reduce((n, s) => n + s.itemsTotal, 0);
-  const trackMet = trackScores.reduce((n, s) => n + s.itemsMet, 0);
-  const trackWithEvidence = trackScores.reduce((n, s) => n + s.itemsWithEvidence, 0);
+  const trackCounted = trackScores.reduce((n, s) => n + s.itemsCounted, 0);
   const trackComplete = trackScores.filter((s) => s.isComplete).length;
-  const trackPct = trackTotal > 0 ? Math.round((trackMet / trackTotal) * 100) : 0;
+  const trackPct = trackTotal > 0 ? Math.round((trackCounted / trackTotal) * 100) : 0;
 
   const countdown = deadlineCountdown(assessment.deadline);
   const kind = bannerKind(assessment, editable);
   const title = `${t.page_title_prefix} ${track.name}`;
   const standardCount = track.standards.length;
+
+  // Review mode: the assessment totals from v_assessment_progress; the bar is the share of evidenced items judged
+  const p = progress.data;
+  const judged = (p?.itemsReviewCounted ?? 0) + (p?.itemsReviewRejected ?? 0);
+  const evidenced = p?.itemsWithEvidence ?? 0;
+  const judgedPct = evidenced > 0 ? Math.round((judged / evidenced) * 100) : 0;
+  const reviewPanel = (
+    <section aria-label={t.review_progress_label} className="rounded-lg border border-border bg-card p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <p className="text-small font-hrsd-medium text-ink">
+          {t.review_progress_label}{" "}
+          <span className="tabular ms-2 text-primary">
+            {formatNumber(judged)} {t.of} {formatNumber(evidenced)}
+          </span>
+        </p>
+        <dl className="flex flex-wrap gap-x-6 gap-y-1 text-small text-muted-foreground">
+          {(
+            [
+              [t.review_items_evidence, evidenced],
+              [t.review_confirmed, p?.itemsReviewCounted ?? 0],
+              [t.review_rejected, p?.itemsReviewRejected ?? 0],
+              [t.review_pending, p?.itemsReviewPending ?? 0],
+            ] as const
+          ).map(([label, value]) => (
+            <div key={label} className="flex gap-2">
+              <dt>{label}</dt>
+              <dd className="tabular font-hrsd-medium text-ink">{formatNumber(value)}</dd>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <dt>{t.review_self_pct}</dt>
+            <dd className="tabular font-hrsd-medium text-ink">{formatNumber(p?.scorePct ?? 0)}%</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt>{t.review_review_pct}</dt>
+            <dd className="tabular font-hrsd-medium text-ink">{formatNumber(p?.reviewScorePct ?? 0)}%</dd>
+          </div>
+        </dl>
+      </div>
+      <div
+        role="progressbar"
+        aria-label={t.review_progress_label}
+        aria-valuemin={0}
+        aria-valuemax={evidenced}
+        aria-valuenow={judged}
+        className="mt-3 h-2 overflow-hidden rounded-full bg-section-alt"
+      >
+        <motion.div
+          className="h-full rounded-full bg-primary"
+          initial={false}
+          animate={{ width: `${judgedPct}%` }}
+          transition={reduced ? { duration: 0 } : { duration: 0.6, ease }}
+        />
+      </div>
+      {!canVerify && <p className="mt-3 text-caption text-muted-foreground">{t.verdict_readonly}</p>}
+    </section>
+  );
 
   const progressPanel = (
     <section aria-label={t.progress_label} className="rounded-lg border border-border bg-card p-5">
@@ -412,7 +555,7 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
           <div className="flex gap-2">
             <dt>{t.progress_items}</dt>
             <dd className="tabular font-hrsd-medium text-ink">
-              {formatNumber(trackMet)} {t.of} {formatNumber(trackTotal)}
+              {formatNumber(trackCounted)} {t.of} {formatNumber(trackTotal)}
             </dd>
           </div>
           <div className="flex gap-2">
@@ -421,10 +564,6 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
               {formatNumber(trackComplete)} {t.of} {formatNumber(indicators.length)}
             </dd>
           </div>
-          <div className="flex gap-2">
-            <dt>{t.progress_evidence}</dt>
-            <dd className="tabular font-hrsd-medium text-ink">{formatNumber(trackWithEvidence)}</dd>
-          </div>
         </dl>
       </div>
       <div
@@ -432,7 +571,7 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
         aria-label={t.progress_label}
         aria-valuemin={0}
         aria-valuemax={trackTotal}
-        aria-valuenow={trackMet}
+        aria-valuenow={trackCounted}
         className="mt-3 h-2 overflow-hidden rounded-full bg-section-alt"
       >
         <motion.div
@@ -452,13 +591,10 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
     formTopRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   };
 
-  // Review mode (the evaluator, scope by id): no page header, banner or submit; the host page frames it
-  const reviewMode = scope.kind === "assessment";
-
   return (
     <>
       {reviewMode ? (
-        <div className="mb-6">{progressPanel}</div>
+        <div className="mb-6">{reviewPanel}</div>
       ) : (
         <PageHeader
           title={title}
@@ -525,6 +661,24 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
                     {t.indicator_label} {formatNumber(indicator.number)}
                   </p>
                   <h2 className="text-h3 text-ink">{stripOrdinal(indicator.text)}</h2>
+                  {reviewMode ? (
+                    <div className="flex flex-col gap-2">
+                      <p className="tabular text-small text-muted-foreground">
+                        {t.review_counts(
+                          formatNumber(score?.itemsReviewCounted ?? 0),
+                          formatNumber(score?.itemsReviewRejected ?? 0),
+                          formatNumber(score?.itemsReviewPending ?? 0)
+                        )}
+                      </p>
+                      <p className="flex flex-wrap items-center gap-x-6 gap-y-1 text-small" aria-live="polite">
+                        <span className="tabular text-ink">{t.review_self_result(formatNumber(score?.scorePct ?? 0))}</span>
+                        <span className={cn("tabular inline-flex items-center gap-1.5 font-hrsd-medium", levelTone(score?.reviewLevel ?? 0).text)}>
+                          <span aria-hidden className={cn("h-2 w-2 rounded-full", levelTone(score?.reviewLevel ?? 0).dot)} />
+                          {t.review_result(formatNumber(score?.reviewScorePct ?? 0), score?.reviewLevelLabel ?? "…")}
+                        </span>
+                      </p>
+                    </div>
+                  ) : (
                   <div className="flex flex-wrap items-center gap-3">
                     {score?.isComplete ? (
                       <span className="inline-flex h-7 items-center gap-1.5 text-small font-hrsd-medium text-success">
@@ -538,6 +692,7 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
                       {formatNumber(score?.itemsCounted ?? 0)} {t.of} {formatNumber(score?.itemsTotal ?? indicator.items.length)} {t.items_counted}
                     </span>
                   </div>
+                  )}
                 </header>
 
                 <div className="px-5 pt-4 md:px-6">
@@ -558,16 +713,21 @@ const AssessmentWorkspace = ({ scope, trackNumber, breadcrumbs, backTo, onSubmit
                         itemId={item.id}
                         position={index + 1}
                         text={item.text}
-                        isMet={response?.isMet ?? false}
                         orgNote={response?.orgNote ?? null}
                         evidences={evidencesByItem.get(item.id) ?? []}
                         editable={editable}
+                        review={
+                          reviewMode
+                            ? { verified: response?.verified ?? null, evaluatorNote: response?.evaluatorNote ?? null, canVerify }
+                            : undefined
+                        }
                       />
                     );
                   })}
                 </ul>
 
-                <ResultBlock score={score} bands={tool.data?.levelBands ?? []} onHeight={setBarHeight} />
+                {/* Review mode: both results sit in the indicator header */}
+                {!reviewMode && <ResultBlock score={score} bands={tool.data?.levelBands ?? []} onHeight={setBarHeight} />}
               </article>
 
               <nav className="flex items-center justify-between gap-3">

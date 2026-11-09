@@ -13,6 +13,8 @@ export interface IndicatorProgress {
   counted: number;
   total: number;
   state: IndicatorState;
+  /** Review mode: items with evidence still awaiting a verdict (a warning dot when > 0) */
+  pending?: number;
 }
 
 interface IndicatorNavProps {
@@ -54,6 +56,7 @@ const IndicatorNav = ({ track, selectedId, onSelect, progressOf }: IndicatorNavP
                 return (
                   <SelectItem key={indicator.id} value={indicator.id} className="text-small">
                     {t.indicator_label} {formatNumber(indicator.number)} ({formatNumber(p.counted)} {t.of} {formatNumber(p.total)})
+                    {!!p.pending && ` · ${t.review_pending} ${formatNumber(p.pending)}`}
                   </SelectItem>
                 );
               })}
@@ -98,8 +101,17 @@ const IndicatorNav = ({ track, selectedId, onSelect, progressOf }: IndicatorNavP
                       </span>
                       <span className="line-clamp-2 text-caption text-muted-foreground">{stripOrdinal(indicator.text)}</span>
                     </span>
-                    <span className="tabular mt-0.5 shrink-0 text-caption text-muted-foreground" aria-label={`${formatNumber(p.counted)} ${t.of} ${formatNumber(p.total)} ${t.items_counted}`}>
-                      {formatNumber(p.counted)} {t.of} {formatNumber(p.total)}
+                    <span className="tabular mt-0.5 inline-flex shrink-0 items-center gap-1.5 text-caption text-muted-foreground">
+                      {!!p.pending && (
+                        <span className="h-2 w-2 rounded-full bg-warning" title={t.review_pending_dot}>
+                          <span className="sr-only">
+                            {t.review_pending_dot}: {formatNumber(p.pending)}
+                          </span>
+                        </span>
+                      )}
+                      <span aria-label={`${formatNumber(p.counted)} ${t.of} ${formatNumber(p.total)} ${t.items_counted}`}>
+                        {formatNumber(p.counted)} {t.of} {formatNumber(p.total)}
+                      </span>
                     </span>
                   </button>
                 </li>

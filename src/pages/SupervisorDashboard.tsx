@@ -1,4 +1,4 @@
-import { AlertCircle, Building2, CalendarDays, ClipboardList, Users } from "lucide-react";
+import { AlertCircle, BadgeCheck, Building2, CalendarDays, ClipboardList, FileCheck2, Users } from "lucide-react";
 import { copy, supervisorCopy as t } from "@/lib/copy";
 import { useReportSummary } from "@/hooks/useReports";
 import PageHeader from "@/components/shared/PageHeader";
@@ -27,7 +27,7 @@ const SupervisorDashboard = () => {
       <div className="flex flex-col gap-6">
         {isLoading ? (
           <>
-            <SkeletonKpis count={3} className="lg:grid-cols-3" />
+            <SkeletonKpis count={5} className="lg:grid-cols-5" />
             <SkeletonPanel lines={6} />
           </>
         ) : isError || !data ? (
@@ -36,10 +36,12 @@ const SupervisorDashboard = () => {
           </div>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <KpiCard label={t.kpi_organizations} value={data.organizations} icon={Building2} />
               <KpiCard label={t.kpi_evaluators} value={data.evaluators} icon={Users} />
               <KpiCard label={t.kpi_assessments} value={data.cycle ? assessmentsTotal : null} icon={ClipboardList} />
+              <KpiCard label={t.kpi_awaiting_issue} value={data.cycle ? data.assessmentsByStatus.approved : null} icon={BadgeCheck} />
+              <KpiCard label={t.kpi_issued} value={data.cycle ? data.assessmentsByStatus.issued : null} icon={FileCheck2} />
             </div>
 
             <Panel title={t.status_title} description={data.cycle ? t.status_cycle(data.cycle.name) : undefined}>

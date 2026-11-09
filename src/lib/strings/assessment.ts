@@ -6,7 +6,7 @@ export const assessmentCopy = {
 
   // ---------- Self-assessment ----------
   page_title_prefix: "مسار",
-  page_desc: "حدّد البنود المتحققة في منظمتك، وأرفق شاهداً لكل بند محدد.",
+  page_desc: "أرفق شاهداً لكل بند متحقق في منظمتك، فيُحتسب البند.",
   back_to_dashboard: "العودة إلى لوحة التحكم",
   retry: "إعادة المحاولة",
   track_not_found: "المسار غير موجود.",
@@ -28,9 +28,8 @@ export const assessmentCopy = {
   saved_at: (time: string) => `تم الحفظ ${time}`,
 
   progress_label: "تقدم المسار",
-  progress_items: "البنود المحددة",
+  progress_items: "البنود المحققة",
   progress_indicators: "المؤشرات المكتملة",
-  progress_evidence: "البنود المرفق لها شواهد",
 
   // Read-only and returned banners
   banner_returned_title: "أُعيد التقييم للاستكمال",
@@ -52,9 +51,9 @@ export const assessmentCopy = {
 
   // Items
   items_heading: "بنود التحقق",
-  item_rule: "يُحتسب البند عند تحديده وإرفاق شاهد له",
-  item_met_without_evidence: "محدد دون شاهد، لا يُحتسب",
-  item_counted: "محتسب",
+  item_rule: "يُحتسب البند عند إرفاق شاهد له. حذف آخر شاهد يلغي احتسابه.",
+  item_counted: "محقق",
+  item_no_evidence: "بدون شاهد",
   note_add: "إضافة ملاحظة",
   item_note_label: "ملاحظة المنظمة (اختياري)",
   item_note_placeholder: "أضف توضيحاً للبند",
@@ -72,6 +71,7 @@ export const assessmentCopy = {
   evidence_delete: "حذف الشاهد",
   evidence_delete_title: "حذف الشاهد؟",
   evidence_delete_desc: "لا يمكن التراجع عن الحذف.",
+  evidence_delete_last: "سيُلغى احتساب البند.",
   evidence_delete_confirm: "حذف",
   link_dialog_title: "إضافة رابط شاهد",
   link_dialog_desc: "أدخل رابط الشاهد كاملاً، مثل https://example.org/report.",
@@ -79,6 +79,28 @@ export const assessmentCopy = {
   link_label_field: "وصف الرابط (اختياري)",
   link_submit: "إضافة الرابط",
   cancel: "إلغاء",
+
+  // Review mode (the assigned evaluator verifies items with evidence)
+  verdict_label: (n: string) => `حكم المدقق على البند ${n}`,
+  verdict_confirm: "تأكيد",
+  verdict_reject: "رفض",
+  verdict_no_evidence: "لا يوجد شاهد، لا يُحتسب",
+  verdict_readonly: "الأحكام للعرض فقط: تُسجَّل أثناء المراجعة وضمن فترة المراجعة.",
+  evaluator_note_add: "ملاحظة المدقق",
+  evaluator_note_label: "ملاحظة المدقق (داخلية)",
+  evaluator_note_placeholder: "سبب الرفض أو ما يلزم استكماله",
+  org_note_label: "ملاحظة المنظمة",
+  review_counts: (confirmed: string, rejected: string, pending: string) => `${confirmed} مؤكد · ${rejected} مرفوض · ${pending} بانتظار`,
+  review_self_result: (pct: string) => `النتيجة الذاتية ${pct}%`,
+  review_result: (pct: string, label: string) => `نتيجة المراجعة ${pct}% · ${label}`,
+  review_pending_dot: "بنود بانتظار التحقق",
+  review_progress_label: "تقدم التحقق",
+  review_items_evidence: "بنود بشواهد",
+  review_confirmed: "مؤكدة",
+  review_rejected: "مرفوضة",
+  review_pending: "بانتظار التحقق",
+  review_self_pct: "النتيجة الذاتية",
+  review_review_pct: "نتيجة المراجعة",
 
   // Indicator result (values come from the scoring views)
   result_label: "نتيجة المؤشر",
@@ -96,13 +118,10 @@ export const assessmentCopy = {
   submit_title: "إرسال التقييم للمراجعة",
   submit_desc: "راجع ملخص التقييم قبل الإرسال.",
   submit_summary_label: "ملخص التقييم",
-  submit_items_met: "البنود المحددة",
-  submit_items_evidence: "البنود المرفق لها شواهد",
+  submit_items_counted: "البنود المحققة",
   submit_indicators_complete: "المؤشرات المكتملة",
-  submit_warning_title: "مؤشرات فيها بنود محددة دون شواهد",
-  submit_warning_desc: "هذه البنود لا تُحتسب في النتيجة. يمكنك الإرسال الآن، أو إرفاق الشواهد أولاً.",
-  submit_warning_count: (count: string) => `${count} دون شاهد`,
-  submit_empty: "لا يمكن إرسال تقييم دون تحديد أي بند.",
+  submit_score: "النتيجة التقديرية",
+  submit_empty: "لا يمكن إرسال تقييم دون إرفاق شاهد لأي بند.",
   submit_freeze: "بعد الإرسال تُجمَّد الإجابات والشواهد، ولا تُعدَّل إلا إذا أُعيد التقييم للاستكمال.",
   submit_confirm: "تأكيد الإرسال",
   submit_sending: "جارٍ الإرسال",

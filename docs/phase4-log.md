@@ -84,10 +84,35 @@ Exclusion check (expected (1, 6, 6, 100, 4)): (1, 6, 6, 100, 4).
 
 ## Step 2: evidence rule, verification, sign-off
 
-- [ ] 2.1 Organization and supervisor proxy
-- [ ] 2.2 Evaluator verification
-- [ ] 2.3 Evaluator review page
-- [ ] 2.4 Supervisor sign-off
+- [x] 2.1 Organization and supervisor proxy
+- [x] 2.2 Evaluator verification
+- [x] 2.3 Evaluator review page
+- [x] 2.4 Supervisor sign-off (return to evaluator; issuance comes with Step 3.3)
+
+### Design plan (frontend-design skill)
+Tokens only; status colours carry status alone: the chip محقق (success) / بدون شاهد (neutral), the verdict pill تأكيد (success) / رفض (danger), the pending dot (warning). No new cards: verdict control and evaluator note sit inside the existing item row. Two numbers per screen at most where they mean different things.
+Removed as redundant: "البنود المرفق لها شواهد" in the organization's track progress (now always equal to البنود المحققة), and in review mode the sticky result footer (the indicator header carries both results, per the brief).
+
+### Decisions (Step 2)
+- `ItemRow`: no checkbox. Text, then one end slot: the state chip (organization) or, in review mode, the verdict `SegmentedControl` for items with evidence and the chip "لا يوجد شاهد، لا يُحتسب" otherwise. The organization's note shows read only to the evaluator. Evaluator note: text button "ملاحظة المدقق", saved on blur through `setVerdict` with the current verdict.
+- `SegmentedControl` gained `disabled`, a per-option `activeClassName`, and a keyboard entry when nothing is selected (a pending verdict had no focusable option). Its pill's layout id is the label, so each verdict control carries the item number in its label.
+- Verdicts enabled only when `under_review` and today in `[reviewStart, approvalEnd]`; otherwise the review panel says why.
+- Review mode progress panel: بنود بشواهد, مؤكدة, مرفوضة, بانتظار التحقق, both overall percentages; the bar is judged / evidenced.
+- Deleting the only evidence of an item adds "سيُلغى احتساب البند." to the existing confirmation.
+- Submit dialog: البنود المحققة, المؤشرات المكتملة, النتيجة التقديرية; empty guard on `itemsCounted === 0` (message reworded to "دون إرفاق شاهد لأي بند").
+- Copy still describing ticking was reworded: page description, journey step 1, dashboard "محدداً" → "محققاً", the "كيف تُحتسب النتيجة؟" first line. Journey steps 4 and 5 now describe the two-step sign-off and issuance.
+- `NextAction`/`UnderReview`: `issued` links to `/results` (the page arrives in Step 3.4).
+- Evaluator: return note pre-filled from rejected items, one line per indicator in tool order (notes joined with "، ", duplicates removed, "شاهد مرفوض" when a rejection has no note). Approve is a disabled button with tooltip while pending > 0 (or while the count loads). Button "إعادة للاستكمال" renamed "إعادة للمنظمة" per the brief.
+- Documents section on the review page shows once the review started: the "تُنشأ المستندات تلقائياً…" sentence until documents exist, then the two cards (link to the Step 3.2 editor route; "معاينة" once not drafts) and the regenerate button with confirmation (under_review only).
+- `ReviewsTable`: queue sort in `reviewUtils.sortReviews` (submitted oldest first, then the rest); the evaluator dashboard shows the head of that queue. Score column = review result for under_review/approved/issued, dash otherwise.
+- `OrganizationCard` moved to `components/results/` (shared). New shared `ResultsOverview` (overall review vs self, tracks table with indicator squares by review level, legend from the frozen labels) and `DocumentCards`; strings in new `strings/results.ts`.
+- Supervisor organizations: seven filter values (not started, in progress, submitted, under review, returned, approved, issued); the row action becomes "النتائج" for approved and issued. Dashboard: KPIs "بانتظار الإصدار" and "صدرت النتائج" (5 columns).
+- `SupervisorResults` in Step 2 shows documents as cards; the read-only `DocumentView` and "إصدار النتائج" are added in Step 3.
+
+### Checks (Step 2)
+- `tsc`: 0 errors. Lint: 6 (baseline). Helpers moved out of component files (`reviewUtils.ts`, `documentUtils.ts`) to keep fast-refresh warnings at baseline.
+- Throwaway Playwright smoke (deleted after) on staging, read only, failing on console/page/HTTP errors: org A dashboard and track 1 at 1440 and 390 (no checkbox, rule line present, chips), supervisor dashboard (new KPIs) and organizations: 2 passed. Fixed from the screenshots: chip stretched full width at 390; leftover ticking copy.
+- Playwright Chromium was not installed on this machine; installed with `npx playwright install chromium`.
 
 ## Not finished
-- `setVerdict`, `saveItemNote` and the results services are typechecked but not yet exercised against staging from the browser; Step 2 and the Step 4 e2e cover them.
+- Review mode (verdicts, approval gate, documents, supervisor results with frozen data) has not run in the browser: staging has no assessment under review and no evaluator account in `e2e/.env`. `demo_phase4.sql` and `e2e/review.spec.ts` (Step 4) cover it; Step 4 also needs `E2E_EVALUATOR2_EMAIL` (and evaluator1) in `e2e/.env`.

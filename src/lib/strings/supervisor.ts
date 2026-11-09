@@ -8,6 +8,8 @@ export const supervisorCopy = {
   kpi_organizations: "المنظمات المسجلة",
   kpi_evaluators: "المدققون",
   kpi_assessments: "التقييمات في الدورة المفتوحة",
+  kpi_awaiting_issue: "بانتظار الإصدار",
+  kpi_issued: "صدرت النتائج",
   status_title: "التقييمات حسب الحالة",
   status_cycle: (name: string) => `دورة التقييم: ${name}`,
   no_cycle: "لا توجد دورة تقييم مفتوحة حالياً",
@@ -28,9 +30,21 @@ export const supervisorCopy = {
   col_actions: "الإجراءات",
   not_assigned: "غير مسند",
   proxy_action: "إدخال التقييم نيابة عن المنظمة",
+  results_action: "النتائج",
   empty: "لا توجد منظمات مسجلة بعد.",
   no_results: "لا توجد نتائج مطابقة.",
   clear_filters: "مسح التصفية",
+
+  // Results and final sign-off
+  results_title: "نتائج التقييم",
+  results_desc: "النتائج المجمدة عند اعتماد المدقق، والمستندات قبل إصدارها للمنظمة.",
+  results_not_found: "التقييم غير موجود.",
+  col_cycle: "دورة التقييم",
+  col_approved: "تاريخ اعتماد المدقق",
+  signoff_label: "الاعتماد النهائي",
+  return_note_required: "اكتب ملاحظة الإعادة للمدقق.",
+  return_note_hint: "مطلوبة. تظهر للمدقق.",
+  toast_returned_to_evaluator: "أُعيد التقييم للمدقق",
 
   // Proxy entry
   proxy_banner: (name: string) => `أنت تُدخل التقييم نيابة عن: ${name}`,

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, BadgeCheck, CalendarDays, ClipboardCheck, ClipboardList, Loader2, RotateCcw, type LucideIcon } from "lucide-react";
+import { AlertCircle, BadgeCheck, CalendarDays, ClipboardCheck, ClipboardList, FileCheck2, Loader2, RotateCcw, type LucideIcon } from "lucide-react";
 import { assessmentCopy, authCopy } from "@/lib/copy";
 import { formatDateTime } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
@@ -35,9 +35,9 @@ const UnderReview = () => {
     );
   }
 
-  const back = (label: string = authCopy.review_action) => (
+  const back = (label: string = authCopy.review_action, to = "/dashboard") => (
     <Button asChild className={authButtonClass}>
-      <Link to="/dashboard">{label}</Link>
+      <Link to={to}>{label}</Link>
     </Button>
   );
 
@@ -63,8 +63,10 @@ const UnderReview = () => {
   }
 
   const status = assessment.status;
-  const view: { icon: LucideIcon; tone: "primary" | "success" | "warning"; title: string; desc: string; action: string } =
-    status === "returned"
+  const view: { icon: LucideIcon; tone: "primary" | "success" | "warning"; title: string; desc: string; action: string; to?: string } =
+    status === "issued"
+      ? { icon: FileCheck2, tone: "success", title: authCopy.review_issued_title, desc: authCopy.review_issued_desc, action: authCopy.review_issued_action, to: "/results" }
+      : status === "returned"
       ? { icon: RotateCcw, tone: "warning", title: authCopy.review_returned_title, desc: authCopy.review_returned_desc, action: authCopy.review_returned_action }
       : status === "approved"
         ? { icon: BadgeCheck, tone: "success", title: authCopy.review_approved_title, desc: authCopy.review_approved_desc, action: authCopy.review_action }
@@ -102,7 +104,7 @@ const UnderReview = () => {
           </div>
         }
       >
-        {back(view.action)}
+        {back(view.action, view.to)}
       </AuthStatus>
     </AuthShell>
   );

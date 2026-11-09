@@ -241,3 +241,4 @@ export { pagesCopy } from "@/lib/strings/pages";
 export { supervisorCopy } from "@/lib/strings/supervisor";
 export { fieldsCopy } from "@/lib/strings/fields";
 export { documentsCopy } from "@/lib/strings/documents";
+export { resultsCopy } from "@/lib/strings/results";

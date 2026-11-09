@@ -12,7 +12,7 @@ import SubmitAssessment from "@/components/assessment/SubmitAssessment";
 export interface TrackSummary {
   number: number;
   name: string;
-  itemsMet: number;
+  itemsCounted: number;
   itemsTotal: number;
 }
 
@@ -23,7 +23,7 @@ interface NextActionProps {
   tracks: TrackSummary[];
 }
 
-type Kind = "no_cycle" | "start" | "progress" | "all_ticked" | "returned" | "in_review" | "approved" | "closed" | "not_open";
+type Kind = "no_cycle" | "start" | "progress" | "all_ticked" | "returned" | "in_review" | "approved" | "issued" | "closed" | "not_open";
 
 function kindOf(assessment: Assessment | null, editable: boolean, progress: AssessmentProgress | undefined): Kind {
   if (!assessment) return "no_cycle";
@@ -33,12 +33,14 @@ function kindOf(assessment: Assessment | null, editable: boolean, progress: Asse
       return "in_review";
     case "approved":
       return "approved";
+    case "issued":
+      return "issued";
     case "returned":
       return editable ? "returned" : "closed";
     default:
       if (!editable) return today() < assessment.cycle.submissionStart ? "not_open" : "closed";
-      if (!progress || progress.itemsMet === 0) return "start";
-      return progress.itemsTotal > 0 && progress.itemsMet >= progress.itemsTotal ? "all_ticked" : "progress";
+      if (!progress || progress.itemsCounted === 0) return "start";
+      return progress.itemsTotal > 0 && progress.itemsCounted >= progress.itemsTotal ? "all_ticked" : "progress";
   }
 }
 
@@ -47,7 +49,7 @@ const NextAction = ({ assessment, editable, progress, tracks }: NextActionProps)
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const kind = kindOf(assessment, editable, progress);
-  const incomplete = tracks.filter((tr) => tr.itemsMet < tr.itemsTotal);
+  const incomplete = tracks.filter((tr) => tr.itemsCounted < tr.itemsTotal);
   const firstOpen = incomplete[0] ?? tracks[0];
   const submit = (variant: "default" | "outline") => (
     <SubmitAssessment assessmentId={assessment?.id} editable={editable} variant={variant} onSubmitted={() => navigate("/under-review")} />
@@ -74,7 +76,7 @@ const NextAction = ({ assessment, editable, progress, tracks }: NextActionProps)
       break;
     case "progress":
       sentence = t.next_progress(
-        formatNumber(progress?.itemsMet ?? 0),
+        formatNumber(progress?.itemsCounted ?? 0),
         counted(progress?.itemsTotal ?? 0, assessmentCopy.items_forms),
         incomplete.map((tr) => tr.name).join(t.list_separator)
       );
@@ -104,6 +106,17 @@ const NextAction = ({ assessment, editable, progress, tracks }: NextActionProps)
     case "approved":
       sentence = t.next_approved;
       actions = <Button disabled>{t.next_approved_action}</Button>;
+      break;
+    case "issued":
+      sentence = t.next_issued;
+      actions = (
+        <Button asChild>
+          <Link to="/results">
+            {t.next_issued_action}
+            <ArrowLeft aria-hidden />
+          </Link>
+        </Button>
+      );
       break;
     case "closed":
       sentence = t.next_closed;

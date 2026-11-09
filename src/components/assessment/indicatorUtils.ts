@@ -12,7 +12,7 @@ export const stripOrdinal = (text: string) => text.replace(PREFIX, "").trim();
 export function assessmentStatusKey(status: AssessmentStatus | null | undefined, progress?: AssessmentProgress | null): StatusKey {
   switch (status) {
     case "draft":
-      return progress && progress.itemsMet === 0 && progress.itemsWithEvidence === 0 ? "not_started" : "in_progress";
+      return progress && progress.itemsCounted === 0 ? "not_started" : "in_progress";
     case "submitted":
     case "under_review":
       return "submitted";

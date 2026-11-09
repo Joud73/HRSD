@@ -19,6 +19,7 @@ import AssessmentTrack, { LegacyTrackRedirect } from "./pages/AssessmentTrack";
 import SupervisorDashboard from "./pages/SupervisorDashboard";
 import SupervisorOrganizations from "./pages/SupervisorOrganizations";
 import SupervisorProxyAssessment from "./pages/SupervisorProxyAssessment";
+import SupervisorResults from "./pages/SupervisorResults";
 import AccountProfile from "@/components/shared/AccountProfile";
 import TrainingStage from "./pages/TrainingStage";
 import CourseDetail from "./pages/CourseDetail";
@@ -118,6 +119,7 @@ const App = () => (
                 <Route path="/supervisor" element={<SupervisorDashboard />} />
                 <Route path="/supervisor/organizations" element={<SupervisorOrganizations />} />
                 <Route path="/supervisor/organizations/:orgId/assessment/:trackNumber" element={<SupervisorProxyAssessment />} />
+                <Route path="/supervisor/assessments/:assessmentId/results" element={<SupervisorResults />} />
                 <Route path="/supervisor/profile" element={<AccountProfile role="supervisor" home="/supervisor" />} />
               </Route>
 

@@ -1,11 +1,9 @@
-import { Link } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
 import { motion } from "motion/react";
 import { assessmentCopy, orgCopy as t } from "@/lib/copy";
 import { counted, formatNumber } from "@/lib/format";
 import { ease } from "@/lib/motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import type { AssessmentProgress, IndicatorScore } from "@/services/assessmentService";
+import type { AssessmentProgress } from "@/services/assessmentService";
 import CountUp from "@/components/shared/CountUp";
 
 const RING = 44;
@@ -40,14 +38,14 @@ const Ring = ({ pct }: { pct: number }) => {
 interface SummaryPanelProps {
   progress: AssessmentProgress;
   evidenceCount: number;
-  /** First indicator with items marked met but not counted (no evidence) */
-  firstUncounted: IndicatorScore | undefined;
 }
 
-/** إنجاز التقييم and النتيجة التقديرية side by side, split by a rule (stacked on small screens). */
-/** The overall result is a percentage only: level labels belong to indicators. */
-const SummaryPanel = ({ progress: p, evidenceCount, firstUncounted }: SummaryPanelProps) => {
-  const uncounted = p.itemsMet - p.itemsCounted;
+/**
+ * إنجاز التقييم and النتيجة التقديرية side by side, split by a rule (stacked on small screens). Since items are met
+ * only through evidence the two percentages coincide: the ring is a count, the result carries the estimate note.
+ * The overall result is a percentage only: level labels belong to indicators.
+ */
+const SummaryPanel = ({ progress: p, evidenceCount }: SummaryPanelProps) => {
   return (
     <section aria-label={t.summary_label} className="grid rounded-lg border border-border bg-card md:grid-cols-2">
       <div className="flex flex-col gap-4 p-5 md:p-6">
@@ -56,7 +54,7 @@ const SummaryPanel = ({ progress: p, evidenceCount, firstUncounted }: SummaryPan
           <Ring pct={p.progressPct} />
           <div className="flex min-w-0 flex-col gap-2">
             <p className="tabular text-body font-hrsd-medium text-ink">
-              {t.progress_items(formatNumber(p.itemsMet), counted(p.itemsTotal, assessmentCopy.items_forms))}
+              {t.progress_items(formatNumber(p.itemsCounted), counted(p.itemsTotal, assessmentCopy.items_forms))}
             </p>
             <p className="tabular text-small text-muted-foreground">
               {t.progress_indicators(formatNumber(p.indicatorsComplete), formatNumber(p.indicatorsTotal))}
@@ -73,15 +71,6 @@ const SummaryPanel = ({ progress: p, evidenceCount, firstUncounted }: SummaryPan
         <h2 className="text-h3 text-ink">{t.result_title}</h2>
         <CountUp value={p.scorePct} suffix="%" className="tabular text-h2 font-hrsd-bold text-ink" />
         <p className="text-small text-muted-foreground">{t.result_note}</p>
-        {uncounted > 0 && firstUncounted && (
-          <Link
-            to={`/assessment/${firstUncounted.trackNumber}?indicator=${firstUncounted.indicatorId}`}
-            className="inline-flex items-center gap-1.5 self-start rounded-md text-small font-hrsd-medium text-warning-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <AlertTriangle aria-hidden className="h-4 w-4 shrink-0" />
-            {t.result_warning(counted(uncounted, assessmentCopy.items_forms))}
-          </Link>
-        )}
       </div>
     </section>
   );

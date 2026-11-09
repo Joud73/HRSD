@@ -21,7 +21,7 @@ export interface TrackRow {
 
 type State = "not_started" | "in_progress" | "complete";
 const stateOf = (s: TrackScore | undefined): State =>
-  !s || s.itemsMet === 0 ? "not_started" : s.indicatorsTotal > 0 && s.indicatorsComplete === s.indicatorsTotal ? "complete" : "in_progress";
+  !s || s.itemsCounted === 0 ? "not_started" : s.indicatorsTotal > 0 && s.indicatorsComplete === s.indicatorsTotal ? "complete" : "in_progress";
 
 const LEVELS = [0, 1, 2, 4];
 
@@ -82,7 +82,7 @@ const TracksPanel = ({ tracks, levelLabels, editable }: { tracks: TrackRow[]; le
         {tracks.map((tr) => {
           const s = tr.score;
           const state = stateOf(s);
-          const pct = s && s.itemsTotal > 0 ? Math.round((s.itemsMet / s.itemsTotal) * 100) : 0;
+          const pct = s && s.itemsTotal > 0 ? Math.round((s.itemsCounted / s.itemsTotal) * 100) : 0;
           const action = !editable || state === "complete" ? t.track_view : state === "not_started" ? t.track_start : t.track_continue;
           return (
             <li key={tr.number} className="flex flex-col gap-3 px-5 py-4 md:px-6">
@@ -91,7 +91,7 @@ const TracksPanel = ({ tracks, levelLabels, editable }: { tracks: TrackRow[]; le
                   {tr.name}
                 </p>
                 <p className="tabular text-small text-muted-foreground">
-                  {t.track_items(formatNumber(s?.itemsMet ?? 0), counted(s?.itemsTotal ?? 0, assessmentCopy.items_forms))}
+                  {t.track_items(formatNumber(s?.itemsCounted ?? 0), counted(s?.itemsTotal ?? 0, assessmentCopy.items_forms))}
                 </p>
                 <div
                   role="progressbar"
