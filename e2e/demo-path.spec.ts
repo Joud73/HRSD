@@ -1,5 +1,5 @@
 /**
- * Phase 3 demo path on staging, against the dev server on http://localhost:8080.
+ * Phase 3 demo path on staging (updated for phase 4: an item counts when it has evidence, no checkbox), against the dev server on http://localhost:8080.
  * Accounts and passwords come from e2e/.env (gitignored); see e2e/.env.example.
  * Every test fails on a console error, an uncaught page error, a failed request or an HTTP error response.
  * Screenshots of each screen go to e2e/screens/.
@@ -67,12 +67,10 @@ async function openIndicator(page: Page, n: number) {
 const itemRows = (page: Page) => page.locator("article > ul > li");
 const resultLabel = (page: Page) => page.locator("article footer p").first();
 
-/** Ticks item row `index`, then attaches one evidence through the "إضافة شاهد" menu (a link, or the PDF fixture). */
-async function tickWithEvidence(page: Page, index: number, evidence: { url: string } | { file: string }) {
+/** Item row `index` without evidence: attaches one through the "إضافة شاهد" menu (a link, or the PDF fixture). */
+async function addEvidence(page: Page, index: number, evidence: { url: string } | { file: string }) {
   const row = itemRows(page).nth(index);
-  await row.getByRole("checkbox").click();
-  await expect(row.getByRole("checkbox")).toBeChecked();
-  await expect(row.getByText("محدد دون شاهد، لا يُحتسب")).toBeVisible();
+  await expect(row.getByText("بدون شاهد", { exact: true })).toBeVisible();
   await row.getByRole("button", { name: "إضافة شاهد" }).click();
   if ("file" in evidence) {
     const chooser = page.waitForEvent("filechooser");
@@ -87,8 +85,10 @@ async function tickWithEvidence(page: Page, index: number, evidence: { url: stri
     await expect(dialog).toBeHidden();
   }
   await expect(row.getByRole("list", { name: "شواهد البند" }).getByRole("listitem")).toHaveCount(1);
-  await expect(row.getByText("محتسب", { exact: true })).toBeVisible();
+  await expect(row.getByText("محقق", { exact: true })).toBeVisible();
 }
+
+const counted = (page: Page, index: number) => itemRows(page).nth(index).getByText("محقق", { exact: true });
 
 /** The dashboard never shows an average level or a slash fraction. */
 async function expectCleanFigures(page: Page) {
@@ -109,7 +109,7 @@ test.describe.serial("phase 3 demo path", () => {
     await expect(page.getByRole("list", { name: "مراحل رحلة التقييم" })).toBeVisible();
     await expect(page.getByText(/الموعد النهائي \d+/)).toBeVisible();
     await expect(page.getByRole("region", { name: "ملخص التقييم" })).toContainText("48%");
-    await expect(page.getByRole("region", { name: "الخطوة التالية" })).toContainText("أكملت 183 من 378");
+    await expect(page.getByRole("region", { name: "الخطوة التالية" })).toContainText("أكملت 182 من 378");
     await expectCleanFigures(page);
     await screen(page, "org-a-dashboard");
 
@@ -118,19 +118,18 @@ test.describe.serial("phase 3 demo path", () => {
     await expect(resultLabel(page)).toContainText("غير مكتمل");
     await screen(page, "org-a-indicator-1-empty");
 
-    await tickWithEvidence(page, 0, { file: PDF });
-    await tickWithEvidence(page, 1, { url: "https://example.org/e2e/org-a-2" });
+    await addEvidence(page, 0, { file: PDF });
+    await addEvidence(page, 1, { url: "https://example.org/e2e/org-a-2" });
     await expect(resultLabel(page)).toContainText("بحاجة لتحسين كبير");
     await expect(page.locator("article header")).toContainText("2 من 7");
     await screen(page, "org-a-indicator-1-ticked");
 
     await page.reload();
     await openIndicator(page, 1);
-    await expect(itemRows(page).nth(0).getByRole("checkbox")).toBeChecked();
-    await expect(itemRows(page).nth(0).getByText("محتسب", { exact: true })).toBeVisible();
+    await expect(counted(page, 0)).toBeVisible();
     await expect(itemRows(page).nth(0).getByRole("listitem")).toContainText("evidence.pdf");
-    await expect(itemRows(page).nth(1).getByRole("checkbox")).toBeChecked();
-    await expect(itemRows(page).nth(2).getByRole("checkbox")).not.toBeChecked();
+    await expect(counted(page, 1)).toBeVisible();
+    await expect(itemRows(page).nth(2).getByText("بدون شاهد", { exact: true })).toBeVisible();
     await expect(resultLabel(page)).toContainText("بحاجة لتحسين كبير");
     await screen(page, "org-a-indicator-1-after-refresh");
 
@@ -187,7 +186,7 @@ test.describe.serial("phase 3 demo path", () => {
     await expect(page).toHaveURL(new RegExp(`/supervisor/organizations/${ORG_B_ID}/assessment/1$`));
     await expect(page.getByText(`أنت تُدخل التقييم نيابة عن: ${ORG_B_NAME}`)).toBeVisible();
     await openIndicator(page, 1);
-    await tickWithEvidence(page, 0, { url: "https://example.org/e2e/proxy-org-b" });
+    await addEvidence(page, 0, { url: "https://example.org/e2e/proxy-org-b" });
     await screen(page, "supervisor-proxy-org-b-written");
 
     expect(problems).toEqual([]);
@@ -203,8 +202,7 @@ test.describe.serial("phase 3 demo path", () => {
 
     await page.goto("/assessment/1");
     await openIndicator(page, 1);
-    await expect(itemRows(page).first().getByRole("checkbox")).toBeChecked();
-    await expect(itemRows(page).first().getByText("محتسب", { exact: true })).toBeVisible();
+    await expect(counted(page, 0)).toBeVisible();
 
     await page.getByRole("button", { name: "إرسال التقييم للمراجعة" }).click();
     const dialog = page.getByRole("dialog").filter({ hasText: "تأكيد الإرسال" });
@@ -218,16 +216,16 @@ test.describe.serial("phase 3 demo path", () => {
 
     await page.goto("/assessment/1");
     await expect(page.getByText("أُرسل التقييم للمراجعة. الإجابات للعرض فقط.")).toBeVisible();
-    await expect(itemRows(page).first().getByRole("checkbox")).toBeDisabled();
+    await expect(counted(page, 0)).toBeVisible();
     await expect(page.getByRole("button", { name: "إضافة شاهد" })).toHaveCount(0);
     await screen(page, "org-b-read-only");
 
     expect(problems).toEqual([]);
   });
 
-  test("evaluator2: org B submitted, organization card, actions wait for the review period", async ({ page }) => {
+  test("evaluator2: org B submitted, organization card, review period open", async ({ page }) => {
     const problems = watch(page);
-    await login(page, "evaluator2@tamkeen.local", env("E2E_PASSWORD"));
+    await login(page, env("E2E_EVALUATOR2_EMAIL"), env("E2E_PASSWORD"));
     await expect(page).toHaveURL(/\/evaluator$/);
     await expect(page.getByRole("heading", { name: "لوحة تحكم المدقق" })).toBeVisible();
     await screen(page, "evaluator2-dashboard");
@@ -243,8 +241,9 @@ test.describe.serial("phase 3 demo path", () => {
     const card = page.getByRole("heading", { name: "بيانات المنظمة" }).locator("xpath=ancestor::section[1]");
     await expect(card).toContainText("TEST-0002");
     await expect(card).toContainText("خالد الشمري");
-    await expect(page.getByRole("button", { name: "بدء المراجعة" })).toBeDisabled();
-    await expect(page.getByText(/تبدأ فترة المراجعة في/)).toBeVisible();
+    // review_start (1 Nov) has passed: the evaluator can start the review (review.spec.ts takes over from here)
+    await expect(page.getByRole("button", { name: "بدء المراجعة" })).toBeEnabled();
+    await expect(page.getByText(/تبدأ فترة المراجعة في/)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "إضافة شاهد" })).toHaveCount(0);
     await screen(page, "evaluator2-review-org-b");
 

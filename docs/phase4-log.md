@@ -188,7 +188,85 @@ Seeds: the evidence-first delete is removed from `demo_reset.sql` and `demo_phas
 | 50 | supervisor | upload canonical / other name while approved | allowed; refused | allowed; refused | PASS |
 | 51 | supervisor | upload a PDF for an issued assessment | refused | refused | PASS |
 
+## Step 4: demo data, tests, rehearsal
+
+- [x] 4.1 `demo_reset.sql` header: items_met equals the evidence count (182 for org A); the phase 3 "met without evidence" row is stored as not met. `demo_phase4.sql` (written before Step 3).
+- [x] 4.2 `programs.sql` (written before Step 3; still the five DEMO-T programs until the owner's طموحي list arrives).
+- [x] 4.3 `e2e/review.spec.ts`; `demo-path.spec.ts` updated to phase 4; both run together.
+- [x] 4.4 `review_checks.sql` (25 PASS, table above under Fixes), `rls_checks.sql` (25 PASS), security advisors (0 ERROR).
+- [x] 4.5 Staging reset to the demo start state; demo path below.
+
+### Decisions (Step 4)
+- `reset-demo.mjs` also deletes every object under `documents/{assessment}/` for org A's and org B's open-cycle assessments (Storage list + delete with the service key, never printed). Verified: the documents bucket is empty after the final reset (0 folders, 0 files).
+- `review.spec.ts` sets its own starting state in `beforeAll`: `reset-demo.mjs` (so PDFs from an earlier run are removed), then `demo_phase4.sql` through the CLI, asserting 3 pending and 0 documents. Playwright runs files alphabetically, so `demo-path` (needs the reset state) runs first and `review` re-seeds after it.
+- `demo-path.spec.ts` was still the phase 3 spec (checkboxes, "review period not started"). Updated: evidence is attached to an item without a tick (chip بدون شاهد → محقق), org A's next step reads "أكملت 182 من 378" (the evidence-less row no longer counts), evaluator2 sees "بدء المراجعة" enabled because review_start (1 Nov) has passed. Evaluator e-mails come from `E2E_EVALUATOR1_EMAIL` / `E2E_EVALUATOR2_EMAIL` (added to `e2e/.env.example`).
+- `rls_checks.sql` cases 11 to 13 assume the review period has not started; since Step 1 set review_start = 1 Nov they failed on the date, not on a rule (11 "allowed", then 12 "allowed" once 11 was fixed). They now move the cycle's review_start to tomorrow and restore it after case 13, inside the rolled-back transaction (verified: staging still 2026-11-01). Case 20 needs org B as a draft (its stated prerequisite), so the file runs after `reset-demo.mjs` and before `demo_phase4.sql`.
+- `e2e/.env` on this machine still lacks the two evaluator keys (file dated 28 Oct); the runs passed them inline. Add them to the file to run the specs as is.
+
+### Checks: e2e on staging (`npx playwright test e2e/demo-path.spec.ts e2e/review.spec.ts`, after `reset-demo.mjs`)
+Every test fails on console errors, page errors, failed requests or HTTP 4xx/5xx; screenshots in `e2e/screens/` and `e2e/screens/review/` (gitignored).
+```
+Running 10 tests using 1 worker
+  ✓   1 [chromium] › e2e\demo-path.spec.ts:103:3 › phase 3 demo path › org A: dashboard, track 1 indicator 1, PDF and link evidence, refresh keeps state
+  ✓   2 [chromium] › e2e\demo-path.spec.ts:139:3 › phase 3 demo path › admin: assign evaluator2 to org B, four roles, cycle scope tab
+  ✓   3 [chromium] › e2e\demo-path.spec.ts:171:3 › phase 3 demo path › supervisor: both organizations, proxy entry writes on org B's draft
+  ✓   4 [chromium] › e2e\demo-path.spec.ts:195:3 › phase 3 demo path › org B: sees the proxy entry, submits, under review, read only
+  ✓   5 [chromium] › e2e\demo-path.spec.ts:226:3 › phase 3 demo path › evaluator2: org B submitted, organization card, review period open
+  ✓   6 [chromium] › e2e\review.spec.ts:81:3 › phase 4 review path › evaluator2: approve waits for 3 verdicts, recording them generates both documents
+  ✓   7 [chromium] › e2e\review.spec.ts:124:3 › phase 4 review path › evaluator2: edits a task line of the plan, then approves
+  ✓   8 [chromium] › e2e\review.spec.ts:162:3 › phase 4 review path › supervisor: org B approved, issues the results with both PDFs
+  ✓   9 [chromium] › e2e\review.spec.ts:194:3 › phase 4 review path › org B: dashboard, results page with both PDFs and programs, no other organization's results
+  ✓  10 [chromium] › e2e\review.spec.ts:232:3 › phase 4 review path › evaluator1: cannot open org B's documents
+  10 passed (2.9m)
+```
+review.spec covers: evaluator2 queue (org B قيد المراجعة), header بانتظار التحقق 3, approve disabled with tooltip "3 بند بانتظار التحقق", confirm items 1 and 2 and reject item 3 of track 1 indicator 1, pending 0, both document cards appear, approve enabled; plan editor: first task line edited, toast حُفظ السطر, tag معدل, preview updated, kept after reload; approve dialog مؤكد 186, مرفوض 3, both scores, status بانتظار الاعتماد النهائي; supervisor: org B معتمد, النتائج, plan tab shows the edited task, issue (number ت.م.TEST-0002|yy.mm.dd), "صدرت النتائج في …", database: 2 documents issued, 2 sha256, 2 canonical paths; org B: dashboard صدرت النتائج and "صدرت نتائج التقييم وخطة التحسين.", عرض النتائج → /results with the report number, 2 تحميل PDF (each signed URL 200 application/pdf), programs panel; org B on the supervisor results URL of org A's assessment is sent away (no org A data); evaluator1 on org B's plan editor: "التقييم غير موجود أو غير مسند إليك." and no document text.
+
+### Checks: `rls_checks.sql` on staging (25 PASS, 0 FAIL)
+| n | who | action | expected | actual | result |
+|---|---|---|---|---|---|
+| 1 | org A | select count(*) from items (open cycle tool) | 378 | 378 | PASS |
+| 2 | org A | ensure_my_assessment() | draft | draft | PASS |
+| 3 | org B | select assessments | A: 0, total: 1 (own) | A: 0, total: 1 | PASS |
+| 4 | org A | update profiles set organization_id = B | error | organization_id, status, email and registration_number can only be changed by an administr | PASS |
+| 5 | org A | update assessments set status = approved | 0 rows or error | 0 rows | PASS |
+| 6 | org A | insert item_responses, transition submitted | submitted | submitted | PASS |
+| 7 | org A | update item_responses after submit | 0 rows | 0 rows | PASS |
+| 8 | evaluator2 | select assessments | A: 0, total: 1 (org B) | A: 0, total: 1 | PASS |
+| 9 | evaluator1 | select count(*) from assessments | 1 | 1 | PASS |
+| 10 | evaluator1 | transition approved from submitted | error: not allowed | Transition submitted -> approved is not allowed for this user at this time | PASS |
+| 11 | evaluator1 | transition under_review before review_start | error: not allowed | Transition submitted -> under_review is not allowed for this user at this time | PASS |
+| 12 | admin | transition under_review without note | error: requires a note | Administrative override requires a note | PASS |
+| 13 | admin | transition under_review with note | under_review, 1 history row | under_review, 1 history row | PASS |
+| 14 | evaluator1 | update item_responses set is_met = false | 0 rows | Evaluators cannot change the organization answer | PASS |
+| 15 | evaluator1 | transition returned without note (review period) | error: note is required | A note is required when returning an assessment | PASS |
+| 16 | org B | upload into org A's evidences folder | error | new row violates row-level security policy for table "objects" | PASS |
+| 17 | org A | select assessment_status_history | own > 0, other 0 | own 2, other 0 | PASS |
+| 18 | anon | select from items | error: permission denied | permission denied for table items | PASS |
+| 20 | supervisor | insert item_responses on org B (draft) | allowed | allowed | PASS |
+| 21 | supervisor | update assessment_reviews (reassign org B) | 0 rows or error | 0 rows | PASS |
+| 22 | evaluator2 | insert item_responses on org B | error | new row violates row-level security policy for table "item_responses" | PASS |
+| 23 | evaluator1 | select delegates | org A: 1, org B: 0 | org A: 1, org B: 0 | PASS |
+| 24 | org A | select cycle_item_exclusions | 1 | 1 | PASS |
+| 25 | evaluator2 (unassigned) | select count(*) from assessments | 0 | 0 | PASS |
+| 26 | evaluator1 | transition returned with note (review period) | returned | returned | PASS |
+
+### Checks: security advisors (`npx supabase db advisors --linked --type security`): 0 ERROR, 45 WARN
+- 44 are "SECURITY DEFINER function executable by anon / authenticated" (22 functions × 2). 11 were already listed in phase 3; the 11 new ones come from the phase 4 migrations: auto_generate_documents, can_issue_results, document_editable_by_me, document_header, document_path_writable, generate_assessment_documents, issue_results, item_has_evidence, pending_verdicts, propagate_evidence_change, results_number. Each checks `auth.uid()` or a role helper inside (anon gets false, an empty result or an error), and the two trigger functions cannot be called outside a trigger.
+- 1 is leaked-password protection disabled in Auth (unchanged since phase 3).
+- Follow-up unchanged: a migration revoking EXECUTE from anon on these functions, and leaked-password protection on in the dashboard.
+
+### Demo path (staging, start state: `node e2e/reset-demo.mjs`, then `demo_phase4.sql`, then `programs.sql`)
+State after the final reset: org A draft at 48 % (182 evidenced), org B under review with evaluator2: 189 evidenced, 184 confirmed, 2 rejected, 3 pending, no documents; five DEMO programs; documents bucket empty.
+1. **evaluator2** (`evaluator2@tamkeen.local`): التقييمات المسندة, org B "قيد المراجعة" with its submission date (3 days ago); open it. Header "بانتظار التحقق 3"; hover "اعتماد التقييم" (disabled): "3 بند بانتظار التحقق". مستندات النتائج: "تُنشأ المستندات تلقائياً عند اكتمال التحقق." Track التوجه, المؤشر 1: confirm items 1 and 2, reject item 3 (optionally add ملاحظة المدقق). Pending 0, both documents appear. خطة التحسين → تحرير: edit the first task, see معدل and the preview; back. "إعادة للمنظمة" shows the pre-filled note (cancel, do not send). "اعتماد التقييم": dialog with مؤكد 186, مرفوض 3, النتيجة الذاتية, نتيجة المراجعة → اعتماد.
+2. **supervisor** (`supervisor.test@tamkeen.local`): المنظمات, org B "معتمد", النتائج: both documents in tabs (print preview available), "إصدار النتائج": number, progress (إعداد التقرير التعقيبي, إعداد خطة التحسين, إصدار النتائج), then "صدرت النتائج في …، رقم التقرير …"; تحميل PDF.
+3. **org B** (`org.b@tamkeen.local`): dashboard journey at step 5, "صدرت نتائج التقييم وخطة التحسين.", عرض النتائج: results page (issue date, report number, results by track, both documents with عرض and تحميل PDF, البرامج المقترحة with 4 DEMO programs).
+4. **admin** (`admin.test@tamkeen.local`): unchanged pages: assign the evaluator on org B's association page, cycle dates, نطاق التقييم في الدورة (also covered by demo-path.spec).
+To run it again: `node e2e/reset-demo.mjs`, then `demo_phase4.sql`.
+
+Reference files (gitignored) in `e2e/screens/phase4/`: final-report-p1.jpg, final-plan-p1.jpg, is-07-org-results.png, issued-report.pdf, issued-plan.pdf (from the Step 3 issuance).
+
 ## Not finished
 - PDFs are 6 to 7 MB each (raster pages, JPEG 0.92 at scale 2). Fine for the demo; lower quality or scale if storage or download time matters.
-- Issued PDFs from deleted assessments are not removed by the seeds (the bucket is not cascaded). `reset-demo.mjs` should remove `documents/{assessment}/*` too: Step 4.
-- Org B is issued on staging now. Run `node e2e/reset-demo.mjs` then `demo_phase4.sql` before the demo or Step 4's e2e.
+- `demo_phase4.sql` alone does not remove the PDFs of an issued org B (the bucket is not cascaded): always run `reset-demo.mjs` first.
+- `e2e/.env` needs `E2E_EVALUATOR1_EMAIL` and `E2E_EVALUATOR2_EMAIL`.
+- Security advisors: revoke EXECUTE from anon on the 22 helper functions; turn on leaked-password protection.

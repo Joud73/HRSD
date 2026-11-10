@@ -126,6 +126,12 @@ exception when others then
 end $$;
 
 -- ── 11. evaluator1 cannot start the review before the review period ──
+-- Cases 11 to 13 run before the review period: they set it (the staging cycle's may already be open) and restore it after 13.
+reset role;
+create temp table cycle_dates on commit drop as select review_start from assessment_cycles where id = (select cycle_id from ids);
+update assessment_cycles set review_start = current_date + 1 where id = (select cycle_id from ids);
+select set_config('request.jwt.claims', pg_temp.claims((select eval1 from ids)), true);
+set local role authenticated;
 do $$ begin
   perform transition_assessment((select a_id from ids), 'under_review');
   insert into rls_out values (11, 'evaluator1', 'transition under_review before review_start', 'error: not allowed', 'allowed', false);
@@ -146,6 +152,9 @@ do $$ declare s text; h int; begin
   select count(*) into h from assessment_status_history where assessment_id = (select a_id from ids) and to_status = 'under_review' and note = 'rls check';
   insert into rls_out values (13, 'admin', 'transition under_review with note', 'under_review, 1 history row', s || ', ' || h || ' history row', s = 'under_review' and h = 1);
 end $$;
+reset role;
+update assessment_cycles set review_start = (select review_start from cycle_dates) where id = (select cycle_id from ids);
+set local role authenticated;
 
 -- ── 14. evaluator1 cannot change the organization's answers ──
 select set_config('request.jwt.claims', pg_temp.claims((select eval1 from ids)), true);
