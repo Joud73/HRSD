@@ -32,11 +32,7 @@ begin
   if v_cycle is null then raise exception 'No open cycle'; end if;
 
   -- Fresh assessment (responses, evidences, documents, results and the assignment go with the old row).
-  -- Evidences first: deleting them through the assessment cascade makes propagate_evidence_change() write a
-  -- response for an assessment that no longer exists (see docs/phase4-log.md).
   -- Inserted directly as under_review: the status guard only blocks updates.
-  delete from public.evidences e using public.assessments a
-   where a.id = e.assessment_id and a.organization_id = v_org and a.cycle_id = v_cycle;
   delete from public.assessments where organization_id = v_org and cycle_id = v_cycle;
   insert into public.assessments (cycle_id, organization_id, status, submitted_at)
   values (v_cycle, v_org, 'under_review', now() - interval '3 days')

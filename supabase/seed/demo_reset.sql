@@ -37,9 +37,6 @@ begin
   if v_cycle is null then raise exception 'No open cycle'; end if;
 
   -- Fresh draft (responses, evidences, history and the review assignment go with the old row).
-  -- Evidences first: since migration 11b a cascade delete of evidences trips propagate_evidence_change().
-  delete from public.evidences e using public.assessments a
-   where a.id = e.assessment_id and a.organization_id = v_org and a.cycle_id = v_cycle;
   delete from public.assessments where organization_id = v_org and cycle_id = v_cycle;
   insert into public.assessments (cycle_id, organization_id) values (v_cycle, v_org) returning id into v_a;
   insert into public.assessment_reviews (assessment_id, evaluator_id, assigned_by) values (v_a, v_eval, v_admin);
@@ -90,8 +87,6 @@ begin
   from public.assessment_reviews r join public.assessments a on a.id = r.assessment_id
   where a.organization_id = v_org and a.cycle_id = v_cycle;
 
-  delete from public.evidences e using public.assessments a
-   where a.id = e.assessment_id and a.organization_id = v_org and a.cycle_id = v_cycle;
   delete from public.assessments where organization_id = v_org and cycle_id = v_cycle;
   insert into public.assessments (cycle_id, organization_id) values (v_cycle, v_org) returning id into v_a;
   if v_eval is not null then

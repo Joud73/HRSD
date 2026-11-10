@@ -1,4 +1,4 @@
--- Phase 4 review and results checks (evidence rule, verdicts, approval gate, documents, issuance, programs).
+-- Phase 4 review and results checks (evidence rule, verdicts, approval gate, documents, issuance, document integrity, programs). 25 cases.
 -- STAGING ONLY, run as postgres:
 --   npx supabase db query --linked -f supabase/checks/review_checks.sql
 -- One transaction, rolled back at the end: nothing is kept. Each case switches to the test user
@@ -207,6 +207,31 @@ do $$ declare s text; begin
   insert into rls_out values (41, 'evaluator1', 'approve again', 'approved', s, s = 'approved');
 end $$;
 
+-- ── 49 to 51. document integrity (migration 13): canonical paths only, writes only while approved ──
+select set_config('request.jwt.claims', pg_temp.claims((select sup from ids)), true);
+do $$ declare e boolean := false; begin
+  begin
+    perform issue_results((select a_id from ids), results_number((select a_id from ids)), jsonb_build_array(
+      jsonb_build_object('kind', 'feedback_report',  'path', 'other-folder/feedback_report.pdf', 'sha256', repeat('a', 64)),
+      jsonb_build_object('kind', 'improvement_plan', 'path', (select a_id from ids) || '/improvement_plan.pdf', 'sha256', repeat('b', 64))));
+  exception when others then e := sqlerrm like 'Invalid PDF entry%';
+  end;
+  insert into rls_out values (49, 'supervisor', 'issue_results with a PDF outside the assessment folder', 'error: invalid entry', case when e then 'error' else 'accepted' end, e);
+end $$;
+do $$ declare ok1 boolean := false; e2 boolean := false; begin
+  begin
+    insert into storage.objects (bucket_id, name) values ('documents', (select a_id from ids) || '/feedback_report.pdf');
+    ok1 := true;
+  exception when others then ok1 := false;
+  end;
+  begin
+    insert into storage.objects (bucket_id, name) values ('documents', (select a_id from ids) || '/notes.pdf');
+  exception when others then e2 := true;
+  end;
+  insert into rls_out values (50, 'supervisor', 'upload canonical / other name while approved', 'allowed; refused',
+    case when ok1 then 'allowed' else 'refused' end || '; ' || case when e2 then 'refused' else 'allowed' end, ok1 and e2);
+end $$;
+
 -- ── 42. supervisor issues: stale number refused, correct number publishes ──
 select set_config('request.jwt.claims', pg_temp.claims((select sup from ids)), true);
 do $$ declare s text; e1 boolean := false; num text; dn text; ia timestamptz; begin
@@ -279,6 +304,16 @@ do $$ declare n int; begin
   exception when others then
     insert into rls_out values (47, 'supervisor', 'update document lines', '0 rows or error', left(sqlerrm, 90), true);
   end;
+end $$;
+
+-- ── 51. supervisor cannot replace a PDF after issuance ──
+select set_config('request.jwt.claims', pg_temp.claims((select sup from ids)), true);
+do $$ declare e boolean := false; begin
+  begin
+    insert into storage.objects (bucket_id, name) values ('documents', (select a_id from ids) || '/improvement_plan.pdf');
+  exception when others then e := true;
+  end;
+  insert into rls_out values (51, 'supervisor', 'upload a PDF for an issued assessment', 'refused', case when e then 'refused' else 'allowed' end, e);
 end $$;
 
 -- ── 48. org A cannot issue ──

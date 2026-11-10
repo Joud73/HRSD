@@ -123,8 +123,7 @@ Removed as redundant: "البنود المرفق لها شواهد" in the organ
 
 ### Found: cascade delete of evidences fails since migration 11b
 Deleting an assessment that has evidence fails: the cascade deletes the evidences, `propagate_evidence_change()` (AFTER DELETE on evidences) upserts an `item_responses` row for the assessment being deleted, and `assert_item_matches_cycle_tool()` raises "Item does not belong to the tool version of this assessment cycle". It breaks the second run of `demo_phase4.sql` and `demo_reset.sql` (org A has evidence), and any admin delete of an assessment with evidence.
-- Workaround in both seeds: delete the evidences first, then the assessment.
-- **Proposed fix (not applied, needs the owner's go):** a migration that makes the trigger skip when the parent is gone, e.g. at the top of `propagate_evidence_change()`: `if not exists (select 1 from public.assessments where id = v_assessment) then return coalesce(new, old); end if;`.
+- Fixed on 10 Nov by migration 12 (`20261109120000_fix_evidence_cascade_delete.sql`, see below); the seed workaround is removed.
 
 ## Step 3: documents, issuance, organization results
 
@@ -152,6 +151,42 @@ Full flow run twice; the second run starts from a fresh `demo_phase4.sql` with e
 3. supervisor: organizations list shows org B "معتمد", "النتائج" opens the results page; print preview (Chromium print emulation, A4): report 20 sheets, plan 25 sheets, rendered with pdf.js and checked (covers, facts, numbered sections, chips, task register with repeated header). Issue: number ت.م.TEST-0002|26.11.09, both PDFs uploaded, status issued.
 4. org B: dashboard "صدرت نتائج التقييم وخطة التحسين."; `/results` with both documents, both PDFs download through signed URLs (200, application/pdf, report 20 pages 7.4 MB, plan 24 pages 6.1 MB), programs panel lists 4 DEMO programs (track 2 is all level 4, so none).
 Every role: no console errors, page errors or HTTP 4xx/5xx. `tsc` 0 errors, lint 6 (baseline).
+
+## Fixes (10 Nov): cascade delete and issued document integrity
+Owner-provided migrations, `db push --dry-run` listed exactly these two, then pushed to staging:
+- `20261109120000_fix_evidence_cascade_delete.sql`: `propagate_evidence_change()` returns early on DELETE when the assessment is gone.
+- `20261110090000_phase4_document_integrity.sql`: the `documents` bucket accepts writes only to `{assessment}/feedback_report.pdf` or `{assessment}/improvement_plan.pdf`, and only while that assessment is approved; `issue_results()` requires those canonical paths and a 64-hex sha256. The app already uploads to `${id}/${kind}.pdf`, no code change.
+
+Seeds: the evidence-first delete is removed from `demo_reset.sql` and `demo_phase4.sql`. Confirmed on staging: `reset-demo.mjs` (demo_reset.sql deletes org A's assessment with 182 evidences through the cascade), then `demo_phase4.sql` twice in a row (the second run cascades org B's 189 evidences): both runs end with org B under_review, 189 evidenced, 184 confirmed, 2 rejected, 3 pending, 0 documents.
+
+### Checks: `review_checks.sql` on staging (25 PASS, 0 FAIL)
+| n | who | action | expected | actual | result |
+|---|---|---|---|---|---|
+| 27 | org A | insert item_responses is_met = true, no evidence | is_met false | false | PASS |
+| 28 | org A | insert evidence on item | is_met true | true | PASS |
+| 29 | org A | delete last evidence | is_met false | false | PASS |
+| 30 | org A | evidence on 2 items, submit | 2 met, submitted | 2 met, submitted | PASS |
+| 31 | evaluator1 | transition under_review | under_review | under_review | PASS |
+| 32 | evaluator1 | verdict on item without evidence | error | A verdict needs at least one evidence on the item | PASS |
+| 33 | evaluator1 | approve with 2 pending verdicts | error: await a verdict | 2 item(s) still await a verdict | PASS |
+| 34 | evaluator1 | last verdict recorded | 2 docs, 1 strength, 377 opportunities, 377 tasks | 2 docs, 1 strength, 377 opportunities, 377 tasks | PASS |
+| 35 | evaluator1 | edit line text; change source | edited true; source error | edited true; error | PASS |
+| 36 | evaluator1 | insert line with source auto | source forced to manual | manual | PASS |
+| 37 | org A | select assessment_documents (draft) | 0 | 0 | PASS |
+| 38 | eval1 / org A | return, org adds evidence on verified item, resubmit | verified null, submitted, 1 pending | null, submitted, 1 pending | PASS |
+| 39 | evaluator1 | approve | approved, 61 results, 1 review_counted, docs approved, header review_pct 0 | approved, 61 results, 1 review_counted, docs approved, header 0 | PASS |
+| 40 | supervisor | return to evaluator without / with note | error; under_review, 0 results, docs draft | error; under_review, 0 results, docs draft | PASS |
+| 41 | evaluator1 | approve again | approved | approved | PASS |
+| 42 | supervisor | issue_results wrong / right number | error; issued, number set | error; issued, ت.م.TEST-0001\|26.11.10, issued_at true | PASS |
+| 43 | org A | select documents, lines, results after issuance | 2 docs, 756 lines, 61 results, review_pct 0 | 2 docs, 756 lines, 61 results, review_pct 0 | PASS |
+| 44 | evaluator2 | select org A documents and results | 0, 0 | 0, 0 | PASS |
+| 45 | admin / org A | program on indicator 1 (level 1) recommended | 1 | 1 | PASS |
+| 46 | anon | select programs; select assessment_documents | >= 1; permission denied | 6; denied | PASS |
+| 47 | supervisor | update document lines | 0 rows or error | 0 rows | PASS |
+| 48 | org A | issue_results | error | Only the final sign-off issues results | PASS |
+| 49 | supervisor | issue_results with a PDF outside the assessment folder | error: invalid entry | error | PASS |
+| 50 | supervisor | upload canonical / other name while approved | allowed; refused | allowed; refused | PASS |
+| 51 | supervisor | upload a PDF for an issued assessment | refused | refused | PASS |
 
 ## Not finished
 - PDFs are 6 to 7 MB each (raster pages, JPEG 0.92 at scale 2). Fine for the demo; lower quality or scale if storage or download time matters.
