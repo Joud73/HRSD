@@ -6,7 +6,7 @@
  *
  * Starting state, set by beforeAll (staging only): `node e2e/reset-demo.mjs` (also removes earlier issued PDFs),
  * then supabase/seed/demo_phase4.sql through the Supabase CLI: org B under review with evaluator2, 3 items pending
- * a verdict, two rejected, no documents. Programs come from supabase/seed/programs.sql (run once).
+ * a verdict, two rejected, no documents. Programs come from supabase/seed/tamohi_catalog.sql (run once).
  * The run issues org B's results; put the demo back afterwards with reset-demo.mjs then demo_phase4.sql.
  */
 import { execSync } from "node:child_process";

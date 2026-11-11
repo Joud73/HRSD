@@ -281,16 +281,14 @@ do $$ declare pid uuid; n int; begin
   insert into rls_out values (45, 'admin / org A', 'program on indicator 1 (level 1) recommended', '1', n::text, n = 1);
 end $$;
 
--- ── 46. anon reads the catalog, nothing else ──
+-- ── 46. anon reads neither the catalog (since migration 14: lessons quote the tool) nor documents ──
 select set_config('request.jwt.claims', '', true);
 set local role anon;
-do $$ declare n int; e boolean := false; begin
-  select count(*) into n from programs;
-  begin
-    perform count(*) from assessment_documents;
-  exception when others then e := true;
-  end;
-  insert into rls_out values (46, 'anon', 'select programs; select assessment_documents', '>= 1; permission denied', n || '; ' || case when e then 'denied' else 'allowed' end, n >= 1 and e);
+do $$ declare e1 boolean := false; e2 boolean := false; begin
+  begin perform count(*) from programs; exception when others then e1 := true; end;
+  begin perform count(*) from assessment_documents; exception when others then e2 := true; end;
+  insert into rls_out values (46, 'anon', 'select programs; select assessment_documents', 'denied; denied',
+    case when e1 then 'denied' else 'allowed' end || '; ' || case when e2 then 'denied' else 'allowed' end, e1 and e2);
 end $$;
 
 -- ── 47. supervisor cannot edit lines directly ──

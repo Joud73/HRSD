@@ -1,6 +1,6 @@
 // Staging only. Puts the demo back: removes the uploaded evidence files of org A and org B and their issued
 // document PDFs (documents/{assessment}/*) from the private buckets (Storage API, service key read through the
-// Supabase CLI and never printed), then runs
+// Supabase CLI and never printed), deletes both organizations' طموحي enrollments (lesson progress cascades), then runs
 // supabase/seed/demo_reset.sql (org A demo state, org B fresh draft) and prints the result.
 // Usage: node e2e/reset-demo.mjs
 import { execSync } from "node:child_process";
@@ -50,6 +50,14 @@ for (const id of JSON.parse(ids.rows[0].ids)) {
 }
 await remove("documents", docs);
 console.log(`document files removed: ${docs.length}`);
+
+// طموحي: every reset starts with no enrollments (lesson_progress goes with them)
+const enrollments = json(
+  run(
+    `npx supabase db query --linked -o json "with d as (delete from public.program_enrollments where organization_id in ('${ORGS.join("','")}') returning 1) select count(*)::int as n from d"`
+  )
+);
+console.log(`enrollments removed: ${enrollments.rows[0].n}`);
 
 const result = json(run(`npx supabase db query --linked -o json -f supabase/seed/demo_reset.sql`));
 console.table(result.rows);

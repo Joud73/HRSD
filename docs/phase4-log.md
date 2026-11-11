@@ -255,7 +255,7 @@ review.spec covers: evaluator2 queue (org B قيد المراجعة), header ب�
 - 1 is leaked-password protection disabled in Auth (unchanged since phase 3).
 - Follow-up unchanged: a migration revoking EXECUTE from anon on these functions, and leaked-password protection on in the dashboard.
 
-### Demo path (staging, start state: `node e2e/reset-demo.mjs`, then `demo_phase4.sql`, then `programs.sql`)
+### Demo path (staging, start state: `node e2e/reset-demo.mjs`, then `demo_phase4.sql`; programs: `tamohi_catalog.sql`, which superseded `programs.sql`)
 State after the final reset: org A draft at 48 % (182 evidenced), org B under review with evaluator2: 189 evidenced, 184 confirmed, 2 rejected, 3 pending, no documents; five DEMO programs; documents bucket empty.
 1. **evaluator2** (`evaluator2@tamkeen.local`): التقييمات المسندة, org B "قيد المراجعة" with its submission date (3 days ago); open it. Header "بانتظار التحقق 3"; hover "اعتماد التقييم" (disabled): "3 بند بانتظار التحقق". مستندات النتائج: "تُنشأ المستندات تلقائياً عند اكتمال التحقق." Track التوجه, المؤشر 1: confirm items 1 and 2, reject item 3 (optionally add ملاحظة المدقق). Pending 0, both documents appear. خطة التحسين → تحرير: edit the first task, see معدل and the preview; back. "إعادة للمنظمة" shows the pre-filled note (cancel, do not send). "اعتماد التقييم": dialog with مؤكد 186, مرفوض 3, النتيجة الذاتية, نتيجة المراجعة → اعتماد.
 2. **supervisor** (`supervisor.test@tamkeen.local`): المنظمات, org B "معتمد", النتائج: both documents in tabs (print preview available), "إصدار النتائج": number, progress (إعداد التقرير التعقيبي, إعداد خطة التحسين, إصدار النتائج), then "صدرت النتائج في …، رقم التقرير …"; تحميل PDF.
