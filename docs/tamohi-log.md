@@ -134,4 +134,34 @@ Brief: `docs/tamohi-brief.md`. Branch `feat/tamohi`.
 - Smoke (throwaway, deleted): org B enrolls in TMH-11, "متابعة البرنامج", marks the first lesson → ring "1 من 34", reload keeps it, status قيد التنفيذ, the recommendation card shows it. Enrollment removed afterwards (org B only).
 - Critique fixes: filter bar not sticky below md; الكتالوج active on program pages. `tsc` 0 errors, lint 6 (baseline).
 
+## Step 3: my path and the integration with مركز التمكين
+
+### Design plan: my path `/tamohi/my-path` (written before building)
+1. Tokens: white header band, section-alt body; primary for the ring and progress bars; track colour for node dots; warning tint for the high-priority group label only.
+2. Type: h1 "خطتي التطويرية", description small muted; summary numbers h3 bold (the ring carries the first number); node titles body bold; meta caption.
+3. Wireframe: `| h1 + "مبنية على نتائج …" |` then one summary row `| (ring) البنود المعالجة x من y │ البرامج المقترحة n │ المسجلة n │ المكتملة n |` with vertical rules, no cards; then `أولوية عالية` timeline, `أولوية متوسطة` timeline.
+4. Carries the page: the first summary number (gap lessons closed / gap lessons in recommended programs) with its ring.
+5. Timeline: vertical line at the start, a node per program in rank order (track-colour dot on the line), row content: rank, title (link), "يعالج {gap} بنداً", status chip and progress bar when enrolled, action at the end (سجّل / متابعة / عرض).
+6. The line draws once on load (scaleY from the top, reveal duration), static under reduced motion; nothing else moves.
+7. 390: summary wraps to 2×2 with rules between pairs, ring beside the first number; timeline rows stack, action full width.
+8. Empty (no issued results): one sentence + "العودة إلى لوحة المنظمة".
+9. Gap lessons closed are computed from the gap set (`v_program_lesson_gaps`) intersected with each enrollment's lesson progress, so the number moves the moment a gap lesson is ticked.
+10. Generic-default check: no stat cards, no badges for decoration (status chips encode state), no gold.
+
+- [x] 3.1 خطتي التطويرية `/tamohi/my-path`
+- [x] 3.2 Integration: results page programs panel, organization menu item, `review.spec.ts`
+
+### Decisions (Step 3)
+- "البنود المعالجة x من y": y = sum of `gap_lessons` over the recommended programs; x = gap lessons (`v_program_lesson_gaps`, this assessment) found in the lesson progress of the enrollments in those programs (one progress query per enrollment, the same cache keys as the program page, so ticking a lesson there moves the number here).
+- المسجلة counts every enrollment of the organization; المكتملة the completed ones.
+- Timeline: high priority, then medium, each group in rank order; the node on the line carries the track colour (the track name next to it has no second dot). Actions: سجّل enrolls in place (with the issued assessment id); متابعة (enrolled, in progress) and عرض (completed) open the program. The line draws once (scaleY, 0.84 s), static under reduced motion.
+- Organizations have no sidebar in this platform: their navigation is the account menu built from `ORGANIZATION_NAV`, so "طموحي" (GraduationCap) → `/tamohi` is added there; it shows in the app shell's menu and in طموحي's own menu. `AppShell.tsx` (owner's uncommitted edits) is not touched.
+- `/results` البرامج المقترحة: top 3 by `rank`, "يعالج {n} بنداً لم يتحقق", internal `Link` "عرض البرنامج" to `/tamohi/programs/{code}`, and "افتح خطتي التطويرية" → `/tamohi/my-path` in the panel header. `listRecommendedPrograms` orders by `rank`; `RecommendedProgram` gains `gapLessons`, `lessonsTotal`, `priority`, `rank`. `programs_desc` reworded to say what the list is.
+- `review.spec.ts`: the programs panel now expects 3 rows, the first = rank 1 (title and gap read from `v_program_recommendations` through the CLI), its link `/tamohi/programs/{code}`, and the my-path link.
+
+### Checks (Step 3)
+- Browser (throwaway spec, deleted), org B issued: `/results` panel shows TMH-11 (34), TMH-12 (31), TMH-10 (29) with internal links; "افتح خطتي التطويرية" opens my path: "0 من 192", 10 recommended (9 high, 1 medium: TMH-01 at level 2), 0 enrolled, 0 completed. 1440 and 390, no console/page/HTTP errors.
+- Critique fixes: duplicate track dot removed from path nodes; the three counts sit in one row at 390 instead of 2 + 1.
+- `tsc` 0 errors, lint 6 (baseline).
+
 ## Not finished

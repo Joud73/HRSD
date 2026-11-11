@@ -208,7 +208,15 @@ test.describe.serial("phase 4 review path", () => {
     const downloads = page.getByRole("button", { name: "تحميل PDF" });
     await expect(downloads).toHaveCount(2);
     const programs = page.getByRole("region", { name: "البرامج المقترحة" });
-    await expect(programs.getByRole("listitem").first()).toContainText("برنامج تجريبي");
+    // طموحي: the top 3 by rank, the first is rank 1, each linking inside the platform
+    const [top] = sql<{ code: string; title: string; gap: number }>(
+      `"select code, title, gap_lessons as gap from public.v_program_recommendations where assessment_id = '${assessmentId}' and rank = 1"`
+    );
+    await expect(programs.getByRole("listitem")).toHaveCount(3);
+    await expect(programs.getByRole("listitem").first()).toContainText(top.title);
+    await expect(programs.getByRole("listitem").first()).toContainText(`يعالج ${top.gap} بنداً لم يتحقق`);
+    await expect(programs.getByRole("listitem").first().getByRole("link", { name: "عرض البرنامج" })).toHaveAttribute("href", `/tamohi/programs/${top.code}`);
+    await expect(programs.getByRole("link", { name: "افتح خطتي التطويرية" })).toHaveAttribute("href", "/tamohi/my-path");
     await screen(page, "org-b-results");
 
     // Both PDFs open through a signed URL

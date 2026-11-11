@@ -2,6 +2,7 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  GraduationCap,
   ClipboardCheck,
   FileBarChart,
   Inbox,
@@ -13,7 +14,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { copy } from "@/lib/copy";
+import { copy, tamohiCopy } from "@/lib/copy";
 
 export type ShellRole = "admin" | "supervisor" | "evaluator" | "organization";
 
@@ -78,6 +79,7 @@ export const SIDEBAR_NAV: Partial<Record<ShellRole, SidebarGroup[]>> = {
 export const ORGANIZATION_NAV: SidebarItem[] = [
   { label: copy.account_dashboard, icon: LayoutGrid, to: "/dashboard" },
   { label: copy.account_settings, icon: Settings, to: "/settings" },
+  { label: tamohiCopy.wordmark, icon: GraduationCap, to: "/tamohi" },
 ];
 
 /** Every page a role can open from the interface, flattened (used by the roles reference page). */

@@ -1,5 +1,5 @@
-import { Navigate } from "react-router-dom";
-import { AlertCircle, ExternalLink, GraduationCap } from "lucide-react";
+import { Link, Navigate } from "react-router-dom";
+import { AlertCircle, ChevronLeft, GraduationCap } from "lucide-react";
 import { copy, documentsCopy as d, resultsCopy as t } from "@/lib/copy";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useAssessment } from "@/hooks/useAssessment";
@@ -14,17 +14,24 @@ import DocumentCards from "@/components/results/DocumentCards";
 
 const SCOPE = { kind: "mine" } as const;
 
-/** Programs matched to the frozen results (طموحي), or the one-sentence empty state. */
+/** The top 3 طموحي programs by rank, each with the gap it closes, and the way into the development path. */
 const Programs = ({ assessmentId }: { assessmentId: string }) => {
   const programs = useRecommendedPrograms(assessmentId);
-  const rows = programs.data ?? [];
+  const rows = (programs.data ?? []).slice(0, 3);
   return (
     <section aria-labelledby="programs-title" className="flex flex-col gap-4">
-      <div>
-        <h2 id="programs-title" className="text-h3 text-ink">
-          {t.programs_title}
-        </h2>
-        <p className="text-small text-muted-foreground">{t.programs_desc}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="programs-title" className="text-h3 text-ink">
+            {t.programs_title}
+          </h2>
+          <p className="text-small text-muted-foreground">{t.programs_desc}</p>
+        </div>
+        {rows.length > 0 && (
+          <Button asChild>
+            <Link to="/tamohi/my-path">{t.programs_path}</Link>
+          </Button>
+        )}
       </div>
       {programs.isLoading ? (
         <SkeletonPanel lines={3} />
@@ -38,16 +45,14 @@ const Programs = ({ assessmentId }: { assessmentId: string }) => {
             <li key={p.programId} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
               <div className="flex min-w-0 flex-col gap-1">
                 <p className="text-body font-hrsd-bold text-ink">{p.title}</p>
-                <p className="tabular text-small text-muted-foreground">{t.program_matched(formatNumber(p.matchedIndicators))}</p>
+                <p className="tabular text-small text-muted-foreground">{t.program_gap(formatNumber(p.gapLessons))}</p>
               </div>
-              {p.url && (
-                <Button asChild variant="outline" className="shrink-0 self-start sm:self-auto">
-                  <a href={p.url} target="_blank" rel="noopener noreferrer">
-                    {t.program_go}
-                    <ExternalLink aria-hidden />
-                  </a>
-                </Button>
-              )}
+              <Button asChild variant="outline" className="shrink-0 self-start sm:self-auto">
+                <Link to={`/tamohi/programs/${p.code}`}>
+                  {t.program_go}
+                  <ChevronLeft aria-hidden />
+                </Link>
+              </Button>
             </li>
           ))}
         </ul>

@@ -127,6 +127,12 @@ export interface RecommendedProgram {
   matchedIndicators: number;
   lowestLevel: number;
   indicatorIds: string[];
+  /** Lessons of the program whose item the evaluator did not confirm (طموحي) */
+  gapLessons: number;
+  lessonsTotal: number;
+  priority: "high" | "medium";
+  /** 1 = most urgent */
+  rank: number;
 }
 
 /** One indicator of the plan's register: its review level and label (frozen results, or the live view before approval). */
@@ -405,8 +411,7 @@ export async function listRecommendedPrograms(assessmentId: string): Promise<Rec
     .from("v_program_recommendations")
     .select("*")
     .eq("assessment_id", assessmentId)
-    .order("matched_indicators", { ascending: false })
-    .order("lowest_level");
+    .order("rank");
   if (error) throw mapError(error, d.err_generic);
   return data.map((r) => ({
     programId: r.program_id ?? "",
@@ -417,5 +422,9 @@ export async function listRecommendedPrograms(assessmentId: string): Promise<Rec
     matchedIndicators: r.matched_indicators ?? 0,
     lowestLevel: r.lowest_level ?? 0,
     indicatorIds: r.indicator_ids ?? [],
+    gapLessons: r.gap_lessons ?? 0,
+    lessonsTotal: r.lessons_total ?? 0,
+    priority: r.priority === "high" ? "high" : "medium",
+    rank: r.rank ?? 0,
   }));
 }
