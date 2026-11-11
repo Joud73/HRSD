@@ -9,7 +9,7 @@ import SegmentedControl from "@/components/shared/SegmentedControl";
 import ReviewsTable from "@/components/evaluator/ReviewsTable";
 
 /** Review statuses in workflow order (a draft never reaches the evaluator's list in practice, but is shown if assigned early) */
-const ORDER: StatusKey[] = ["in_progress", "submitted", "under_review", "returned", "approved"];
+const ORDER: StatusKey[] = ["in_progress", "submitted", "under_review", "returned", "approved", "issued"];
 type Filter = "all" | StatusKey;
 
 const EvaluatorAssignments = () => {

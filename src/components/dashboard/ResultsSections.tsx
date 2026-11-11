@@ -47,7 +47,7 @@ export const HowCalculated = ({ bands, labels }: { bands: LevelBand[]; labels: R
   </Collapsible>
 );
 
-/** النتائج حسب الدورة: cycle, status, overall result as a percentage only; an unapproved result is tagged تقديرية. */
+/** النتائج حسب الدورة: cycle, status, overall result as a percentage only; until issued the result is tagged تقديرية. */
 export const HistoryTable = () => {
   const { data, isLoading, isError, refetch } = useAssessmentHistory();
   return (
@@ -82,7 +82,7 @@ export const HistoryTable = () => {
                     <td className="px-5 py-3 md:px-6">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="tabular font-hrsd-bold text-ink">{formatNumber(row.scorePct)}%</span>
-                        {row.status !== "approved" && (
+                        {row.status !== "issued" && (
                           <span className="rounded-full bg-section-alt px-2.5 py-0.5 text-caption text-muted-foreground">{t.history_estimated}</span>
                         )}
                       </span>

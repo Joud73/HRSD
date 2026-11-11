@@ -7,6 +7,7 @@ import { reviewStatusKey } from "@/lib/status";
 import type { ReviewRow } from "@/services/evaluatorService";
 import DataTable, { type Column } from "@/components/shared/DataTable";
 import StatusBadge from "@/components/shared/StatusBadge";
+import { sortReviews } from "@/components/evaluator/reviewUtils";
 
 interface ReviewsTableProps {
   rows: ReviewRow[];
@@ -14,6 +15,9 @@ interface ReviewsTableProps {
   caption: string;
   empty: ReactNode;
 }
+
+/** Statuses whose review result means something: the evaluator has started judging items. */
+const REVIEWED = new Set(["under_review", "approved", "issued"]);
 
 /** Assigned assessments; a row opens /evaluator/assessments/:id. Shared by the dashboard and the full list. */
 const ReviewsTable = ({ rows, loading, caption, empty }: ReviewsTableProps) => {
@@ -24,8 +28,13 @@ const ReviewsTable = ({ rows, loading, caption, empty }: ReviewsTableProps) => {
       key: "organization",
       header: t.col_organization,
       cell: (r) => (
-        <div className="flex flex-col items-start">
-          <span className="font-hrsd-medium">{r.organizationName}</span>
+        <div className="flex flex-col items-start gap-0.5">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-hrsd-medium">{r.organizationName}</span>
+            {r.returnedAt && (r.status === "submitted" || r.status === "under_review") && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-caption font-hrsd-medium text-primary">{t.resubmitted_chip}</span>
+            )}
+          </span>
           <span className="tabular text-caption text-muted-foreground">{r.registrationNumber}</span>
         </div>
       ),
@@ -36,7 +45,12 @@ const ReviewsTable = ({ rows, loading, caption, empty }: ReviewsTableProps) => {
     {
       key: "score",
       header: t.col_score,
-      cell: (r) => <span className="tabular font-hrsd-medium">{formatNumber(r.scorePct)}%</span>,
+      cell: (r) =>
+        REVIEWED.has(r.status) ? (
+          <span className="tabular font-hrsd-medium">{formatNumber(r.reviewScorePct)}%</span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
     },
     {
       key: "submitted",
@@ -54,7 +68,7 @@ const ReviewsTable = ({ rows, loading, caption, empty }: ReviewsTableProps) => {
   return (
     <DataTable
       columns={columns}
-      rows={rows}
+      rows={sortReviews(rows)}
       loading={loading}
       getRowKey={(r) => r.assessmentId}
       onRowClick={(r) => navigate(`/evaluator/assessments/${r.assessmentId}`)}

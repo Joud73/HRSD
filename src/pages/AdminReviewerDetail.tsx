@@ -30,7 +30,7 @@ const crumbs = (name: string) => [
 ];
 
 /** Status groups counted in the header, in workflow order */
-const COUNTED: StatusKey[] = ["in_progress", "submitted", "returned", "approved"];
+const COUNTED: StatusKey[] = ["in_progress", "submitted", "returned", "approved", "issued"];
 
 const orDash = (v: string | null | undefined) => (v ? v : "-");
 

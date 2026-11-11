@@ -161,6 +161,7 @@ const EvidencePanel = ({ evidences, editable, uploading, onAttachFile, onAddLink
             <AlertDialogTitle className={dialogUi.title}>{t.evidence_delete_title}</AlertDialogTitle>
             <AlertDialogDescription className={dialogUi.description}>
               {t.evidence_delete_desc}
+              {evidences.length === 1 && ` ${t.evidence_delete_last}`}
               {pendingDelete && (
                 <span className="mt-2 block truncate font-hrsd-medium text-ink" dir="auto">
                   {evidenceName(pendingDelete)}

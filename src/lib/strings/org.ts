@@ -15,11 +15,11 @@ export const orgCopy = {
   // Journey
   journey_label: "مراحل رحلة التقييم",
   journey_steps: [
-    { title: "التقييم الذاتي", description: "تحدد المنظمة البنود وترفق الشواهد" },
+    { title: "التقييم الذاتي", description: "ترفق المنظمة شاهداً لكل بند متحقق" },
     { title: "إرسال للمراجعة", description: "ترسل المنظمة التقييم قبل الموعد النهائي" },
     { title: "المراجعة والتدقيق", description: "يتحقق المدقق من الشواهد" },
-    { title: "اعتماد النتائج", description: "تصدر النتيجة المعتمدة" },
-    { title: "خطة التحسين", description: "تصدر خطة التحسين والتقرير التعقيبي" },
+    { title: "اعتماد النتائج", description: "يعتمد المدقق التقييم، ثم الاعتماد النهائي" },
+    { title: "خطة التحسين", description: "تصدر النتائج وخطة التحسين والتقرير التعقيبي" },
   ],
 
   // Next action
@@ -32,8 +32,10 @@ export const orgCopy = {
   next_in_review: (date: string) => `تقييمك قيد المراجعة منذ ${date}. سيصلك إشعار عند صدور النتيجة.`,
   next_returned_title: "أُعيد التقييم للاستكمال",
   next_returned_action: "استكمال التقييم",
-  next_approved: "اعتُمدت نتيجة التقييم.",
-  next_approved_action: "عرض النتيجة",
+  next_approved: "اعتمد المدقق التقييم، وتصدر النتائج بعد الاعتماد النهائي.",
+  next_approved_action: "عرض النتائج",
+  next_issued: "صدرت نتائج التقييم وخطة التحسين.",
+  next_issued_action: "عرض النتائج",
   next_closed: "انتهت فترة التقييم الذاتي، ولم يُرسل التقييم.",
   next_not_open: (date: string) => `تبدأ فترة التقييم الذاتي في ${date}.`,
   no_cycle: "لا توجد دورة تقييم مفتوحة حالياً.",
@@ -42,12 +44,11 @@ export const orgCopy = {
   // Summary
   summary_label: "ملخص التقييم",
   progress_title: "إنجاز التقييم",
-  progress_items: (met: string, total: string) => `${met} من ${total} محدداً`,
+  progress_items: (met: string, total: string) => `${met} من ${total} محققاً`,
   progress_indicators: (n: string, m: string) => `المؤشرات المكتملة ${n} من ${m}`,
   progress_evidence: (k: string) => `الشواهد المرفقة ${k}`,
   result_title: "النتيجة التقديرية",
-  result_note: "تُحتسب البنود المحددة المرفق لها شاهد. تصبح النتيجة نهائية بعد اعتماد المراجعة.",
-  result_warning: (n: string) => `${n} محدد دون شاهد لا يُحتسب`,
+  result_note: "تُحتسب البنود المرفق لها شاهد. تصبح النتيجة نهائية بعد اعتماد المراجعة.",
 
   // Tracks
   tracks_title: "مسارات التقييم",
@@ -64,7 +65,7 @@ export const orgCopy = {
   // How the result is calculated
   how_title: "كيف تُحتسب النتيجة؟",
   how_lines: [
-    "يُحتسب البند عند تحديده وإرفاق شاهد واحد له على الأقل.",
+    "يُحتسب البند عند إرفاق شاهد واحد له على الأقل، ويلغى احتسابه بحذف آخر شاهد.",
     "نتيجة المؤشر نسبة بنوده المحتسبة، ويحدد الجدول مستواه.",
     "النتيجة التقديرية للتقييم نسبة البنود المحتسبة من جميع بنود الدورة.",
   ],

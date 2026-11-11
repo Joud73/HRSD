@@ -15,7 +15,7 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import { SearchField, Toolbar } from "@/components/admin/AdminParts";
 import ExportMenu from "@/components/admin/ExportMenu";
 
-const STATUS_ORDER: StatusKey[] = ["not_started", "in_progress", "submitted", "returned", "approved"];
+const STATUS_ORDER: StatusKey[] = ["not_started", "in_progress", "submitted", "returned", "approved", "issued"];
 type StatusFilter = "all" | "unassigned" | StatusKey;
 
 const AdminAssociations = () => {

@@ -1,7 +1,8 @@
--- Scoring verification for the approved rule (run on staging after migrations 7 and 8, as postgres in SQL Editor).
+-- Scoring verification for the approved rule (run on staging after migration 11, as postgres in SQL Editor).
+-- Since migration 11 an item is met only through its evidence: is_met is derived, so items_met = items_counted.
 -- Scenario on منظمة الاختبار أ (aaaaaaaa-0000-0000-0000-000000000001), indicator 1 (7 items) and indicator 2 (6 items):
 --   indicator 1: 7 items met, 7 with evidence            -> 100 %  level 4  مكتمل
---   indicator 2: 6 items met, only 3 with evidence       ->  50 %  level 1  بحاجة لتحسين كبير   (met without evidence does not count)
+--   indicator 2: 6 items ticked, only 3 with evidence    ->  50 %  level 1  بحاجة لتحسين كبير   (the 3 ticks without evidence are not met)
 --   indicator 3: nothing                                 ->   0 %  level 0  غير مكتمل
 -- Track 1 (13 indicators): avg_level = (4 + 1 + 0 * 11) / 13 = 0.38
 -- Everything is wrapped in a transaction and rolled back: nothing is left behind.
@@ -39,7 +40,7 @@ begin
    order by i.number limit 3;
 end $$;
 
--- Expected: (1, 7, 7, 7, 100, 4, 'مكتمل'), (2, 6, 6, 3, 50, 1, 'بحاجة لتحسين كبير'), (3, 6, 0, 0, 0, 0, 'غير مكتمل')
+-- Expected: (1, 7, 7, 7, 100, 4, 'مكتمل'), (2, 6, 3, 3, 50, 1, 'بحاجة لتحسين كبير'), (3, 6, 0, 0, 0, 0, 'غير مكتمل')
 select indicator_number, items_total, items_met, items_counted, score_pct, level, level_label
 from public.v_indicator_scores
 where organization_id = 'aaaaaaaa-0000-0000-0000-000000000001' and indicator_number <= 3
@@ -51,7 +52,7 @@ from public.v_track_scores
 where organization_id = 'aaaaaaaa-0000-0000-0000-000000000001'
 order by track_number;
 
--- Expected: items_total 378, items_met 13, items_counted 10, progress_pct 3, score_pct 3
+-- Expected: items_total 378, items_met 10, items_counted 10, progress_pct 3, score_pct 3
 select items_total, items_met, items_with_evidence, items_counted, progress_pct, score_pct, avg_level, indicators_started, indicators_complete
 from public.v_assessment_progress
 where organization_id = 'aaaaaaaa-0000-0000-0000-000000000001';

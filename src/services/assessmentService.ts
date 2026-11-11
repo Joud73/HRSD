@@ -1,11 +1,13 @@
 /**
  * Self-assessment of an organization in the open cycle: answers, evidences, scores and submission.
  * Every function works from an assessment id, so the organization and the supervisor (proxy entry)
- * share the same calls. Scores come only from the database views (migrations 7 and 8).
+ * share the same calls. Scores come only from the database views (migrations 7, 8 and 11b).
+ * An item is met only through its evidence: the database derives is_met, the client never sends it.
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { assessmentCopy as t } from "@/lib/copy";
+import { assessmentCopy as t, documentsCopy as d } from "@/lib/copy";
+import { formatNumber } from "@/lib/format";
 import { ServiceError } from "@/services/errors";
 
 type Views = Database["public"]["Views"];
@@ -40,6 +42,8 @@ export interface Assessment {
   submittedAt: string | null;
   returnedAt: string | null;
   approvedAt: string | null;
+  /** Final sign-off: results and documents visible to the organization from this moment */
+  issuedAt: string | null;
   returnNote: string | null;
   /** Admin extension for this organization (yyyy-mm-dd); null = the cycle's submission end */
   submissionDue: string | null;
@@ -55,12 +59,18 @@ export interface AssessmentHistoryRow {
   cycleStatus: CycleStatus;
   status: AssessmentStatus;
   approvedAt: string | null;
+  /** Issued: the frozen review result; otherwise the estimated self-assessment result */
   scorePct: number;
 }
 
 export interface ItemResponse {
+  /** Derived by the database: true while the item has at least one evidence */
   isMet: boolean;
   orgNote: string | null;
+  /** Evaluator verdict: true confirmed, false rejected, null pending (or no evidence) */
+  verified: boolean | null;
+  /** Internal: evaluator, supervisor and admin only */
+  evaluatorNote: string | null;
 }
 
 export interface Evidence {
@@ -90,6 +100,13 @@ export interface IndicatorScore {
   levelLabel: string;
   isComplete: boolean;
   isStarted: boolean;
+  /** Review basis: items with evidence the evaluator confirmed */
+  itemsReviewCounted: number;
+  itemsReviewPending: number;
+  itemsReviewRejected: number;
+  reviewScorePct: number;
+  reviewLevel: number;
+  reviewLevelLabel: string;
 }
 
 export interface TrackScore {
@@ -104,6 +121,11 @@ export interface TrackScore {
   /** Average of the indicators' score_pct (the track's estimated result) */
   scorePct: number;
   progressPct: number;
+  itemsReviewCounted: number;
+  itemsReviewPending: number;
+  /** Average of the indicators' review_score_pct */
+  reviewScorePct: number;
+  avgReviewLevel: number;
 }
 
 export interface AssessmentProgress {
@@ -116,6 +138,11 @@ export interface AssessmentProgress {
   itemsCounted: number;
   progressPct: number;
   scorePct: number;
+  itemsReviewCounted: number;
+  itemsReviewPending: number;
+  itemsReviewRejected: number;
+  reviewScorePct: number;
+  avgReviewLevel: number;
 }
 
 /** Mirrors the evidences bucket (20 MB, these MIME types). */
@@ -135,7 +162,7 @@ const SIGNED_URL_SECONDS = 10 * 60;
 const LINK_RE = /^https?:\/\/\S+$/i;
 
 /** Database, storage and RPC errors -> Arabic messages. Text checks run before the code check: some carry 42501. */
-function mapError(error: { message?: string; code?: string; details?: string | null } | null, fallback: string): ServiceError {
+export function mapError(error: { message?: string; code?: string; details?: string | null } | null, fallback: string): ServiceError {
   const text = `${error?.message ?? ""} ${error?.details ?? ""}`;
   if (text.includes("not allowed for this user at this time")) return new ServiceError(t.err_cannot_submit, error);
   if (text.includes("No open cycle")) return new ServiceError(t.err_period_closed, error);
@@ -143,6 +170,13 @@ function mapError(error: { message?: string; code?: string; details?: string | n
   if (text.includes("Only an administrator or a supervisor")) return new ServiceError(t.err_proxy_not_allowed, error);
   if (text.includes("Organization not found")) return new ServiceError(t.err_org_not_found, error);
   if (text.includes("Item is excluded")) return new ServiceError(t.err_item_excluded, error);
+  const pending = text.match(/(\d+) item\(s\) still await a verdict/);
+  if (pending) return new ServiceError(d.err_pending_verdicts(formatNumber(Number(pending[1]))), error);
+  if (text.includes("needs at least one evidence")) return new ServiceError(d.err_verdict_needs_evidence, error);
+  if (text.includes("A note is required")) return new ServiceError(t.err_return_note_required, error);
+  if (text.includes("Report number is stale")) return new ServiceError(d.err_stale_number, error);
+  if (text.includes("Both documents must be approved")) return new ServiceError(d.err_docs_not_approved, error);
+  if (/Only the assigned evaluator|Only the final sign-off|Evaluators cannot change/.test(text)) return new ServiceError(d.err_not_allowed, error);
   if (/payload too large|maximum allowed size/i.test(text)) return new ServiceError(t.err_file_too_large, error);
   if (/mime type|invalid_mime_type/i.test(text)) return new ServiceError(t.err_file_type, error);
   if (error?.code === "42501" || /row-level security|Unauthorized/i.test(text)) return new ServiceError(t.err_not_editable, error);
@@ -163,7 +197,7 @@ export function daysUntil(date: string): number {
 // ---------------------------------------------------------------
 
 const assessmentColumns =
-  "id, cycle_id, organization_id, status, submitted_at, returned_at, approved_at, return_note, submission_due, assessment_cycles!inner(id, name, status, submission_start, submission_end, review_start, review_end, approval_end)";
+  "id, cycle_id, organization_id, status, submitted_at, returned_at, approved_at, issued_at, return_note, submission_due, assessment_cycles!inner(id, name, status, submission_start, submission_end, review_start, review_end, approval_end)";
 
 type AssessmentRow = {
   id: string;
@@ -173,6 +207,7 @@ type AssessmentRow = {
   submitted_at: string | null;
   returned_at: string | null;
   approved_at: string | null;
+  issued_at: string | null;
   return_note: string | null;
   submission_due: string | null;
   assessment_cycles: {
@@ -195,6 +230,7 @@ const toAssessment = (r: AssessmentRow): Assessment => ({
   submittedAt: r.submitted_at,
   returnedAt: r.returned_at,
   approvedAt: r.approved_at,
+  issuedAt: r.issued_at,
   returnNote: r.return_note,
   submissionDue: r.submission_due,
   cycle: {
@@ -273,6 +309,18 @@ export async function listMyAssessmentHistory(): Promise<AssessmentHistoryRow[]>
   if (progressError) throw mapError(progressError, t.err_load);
   const byId = new Map(progress.map((p) => [p.assessment_id, p]));
 
+  // Issued cycles: the frozen review result (row-level security opens it to the organization once issued)
+  const issuedIds = data.filter((a) => a.status === "issued").map((a) => a.id);
+  const frozen = new Map<string, number>();
+  if (issuedIds.length > 0) {
+    const { data: overall, error: overallError } = await supabase
+      .from("v_assessment_results_overall")
+      .select("assessment_id, review_pct")
+      .in("assessment_id", issuedIds);
+    if (overallError) throw mapError(overallError, t.err_load);
+    for (const o of overall) if (o.assessment_id) frozen.set(o.assessment_id, o.review_pct ?? 0);
+  }
+
   return data
     .slice()
     .sort((a, b) => b.assessment_cycles.submission_start.localeCompare(a.assessment_cycles.submission_start))
@@ -283,7 +331,7 @@ export async function listMyAssessmentHistory(): Promise<AssessmentHistoryRow[]>
       cycleStatus: a.assessment_cycles.status,
       status: a.status,
       approvedAt: a.approved_at,
-      scorePct: byId.get(a.id)?.score_pct ?? 0,
+      scorePct: frozen.get(a.id) ?? byId.get(a.id)?.score_pct ?? 0,
     }));
 }
 
@@ -306,21 +354,50 @@ export function isEditable(assessment: Assessment, cycle: AssessmentCycle = asse
 // ---------------------------------------------------------------
 
 export async function listResponses(assessmentId: string): Promise<Map<string, ItemResponse>> {
-  const { data, error } = await supabase.from("item_responses").select("item_id, is_met, org_note").eq("assessment_id", assessmentId);
+  const { data, error } = await supabase
+    .from("item_responses")
+    .select("item_id, is_met, org_note, verified, evaluator_note")
+    .eq("assessment_id", assessmentId);
   if (error) throw mapError(error, t.err_load);
-  return new Map(data.map((r) => [r.item_id, { isMet: r.is_met, orgNote: r.org_note }]));
+  return new Map(
+    data.map((r) => [r.item_id, { isMet: r.is_met, orgNote: r.org_note, verified: r.verified, evaluatorNote: r.evaluator_note }])
+  );
 }
 
-/** Saves one item's answer; the note is left as is when `orgNote` is undefined. */
-export async function setItemMet(assessmentId: string, itemId: string, isMet: boolean, orgNote?: string | null): Promise<void> {
-  const row = {
-    assessment_id: assessmentId,
-    item_id: itemId,
-    is_met: isMet,
-    ...(orgNote !== undefined ? { org_note: orgNote?.trim() || null } : {}),
-  };
+/** Saves the organization's note on one item. Never sends is_met: the database derives it from the evidence. */
+export async function saveItemNote(assessmentId: string, itemId: string, orgNote: string | null): Promise<void> {
+  const row = { assessment_id: assessmentId, item_id: itemId, org_note: orgNote?.trim() || null };
   const { error } = await supabase.from("item_responses").upsert(row, { onConflict: "assessment_id,item_id" });
   if (error) throw mapError(error, t.err_save);
+}
+
+/**
+ * The assigned evaluator's verdict on one item with evidence: true confirmed, false rejected, null back to pending.
+ * The note is left as is when `evaluatorNote` is undefined. The evidence trigger guarantees the row exists,
+ * so an update that touches nothing was refused by row-level security.
+ */
+export async function setVerdict(
+  assessmentId: string,
+  itemId: string,
+  verified: boolean | null,
+  evaluatorNote?: string | null
+): Promise<void> {
+  const patch = { verified, ...(evaluatorNote !== undefined ? { evaluator_note: evaluatorNote?.trim() || null } : {}) };
+  const { data, error } = await supabase
+    .from("item_responses")
+    .update(patch)
+    .eq("assessment_id", assessmentId)
+    .eq("item_id", itemId)
+    .select("item_id");
+  if (error) throw mapError(error, t.err_save);
+  if (data.length === 0) throw new ServiceError(d.err_not_allowed);
+}
+
+/** Items with evidence that still await the evaluator's verdict (approval gate). */
+export async function getPendingVerdicts(assessmentId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("pending_verdicts", { p_assessment: assessmentId });
+  if (error) throw mapError(error, t.err_load);
+  return data ?? 0;
 }
 
 // ---------------------------------------------------------------
@@ -446,7 +523,10 @@ export async function submitAssessment(assessmentId: string): Promise<void> {
   if (error) throw mapError(error, t.err_cannot_submit);
 }
 
-/** Review transitions by the assigned evaluator: submitted -> under_review, under_review -> returned (note) or approved. */
+/**
+ * Review transitions by the assigned evaluator: submitted -> under_review, under_review -> returned (note) or approved
+ * (gate: no pending verdict). Issuance is not a transition: it goes through issue_results() (resultsService).
+ */
 export type ReviewTransition = "under_review" | "returned" | "approved";
 
 export async function transitionAssessment(assessmentId: string, to: ReviewTransition, note?: string): Promise<void> {
@@ -457,7 +537,17 @@ export async function transitionAssessment(assessmentId: string, to: ReviewTrans
   });
   if (!error) return;
   const text = `${error.message} ${error.details ?? ""}`;
-  if (text.includes("A note is required")) throw new ServiceError(t.err_return_note_required, error);
+  if (text.includes("Cycle is not open")) throw new ServiceError(t.err_cycle_not_open, error);
+  if (text.includes("not allowed for this user at this time")) throw new ServiceError(t.err_review_not_allowed, error);
+  throw mapError(error, t.err_review_failed);
+}
+
+/** Final sign-off sends an approved assessment back to the evaluator (approved -> under_review); the note is required. */
+export async function returnToEvaluator(assessmentId: string, note: string): Promise<void> {
+  if (!note.trim()) throw new ServiceError(t.err_return_note_required);
+  const { error } = await supabase.rpc("transition_assessment", { p_assessment: assessmentId, p_to: "under_review", p_note: note.trim() });
+  if (!error) return;
+  const text = `${error.message} ${error.details ?? ""}`;
   if (text.includes("Cycle is not open")) throw new ServiceError(t.err_cycle_not_open, error);
   if (text.includes("not allowed for this user at this time")) throw new ServiceError(t.err_review_not_allowed, error);
   throw mapError(error, t.err_review_failed);
@@ -482,6 +572,12 @@ const toIndicatorScore = (r: Views["v_indicator_scores"]["Row"]): IndicatorScore
   levelLabel: r.level_label ?? "",
   isComplete: r.is_complete ?? false,
   isStarted: r.is_started ?? false,
+  itemsReviewCounted: r.items_review_counted ?? 0,
+  itemsReviewPending: r.items_review_pending ?? 0,
+  itemsReviewRejected: r.items_review_rejected ?? 0,
+  reviewScorePct: r.review_score_pct ?? 0,
+  reviewLevel: r.review_level ?? 0,
+  reviewLevelLabel: r.review_level_label ?? "",
 });
 
 const toTrackScore = (r: Views["v_track_scores"]["Row"]): TrackScore => ({
@@ -495,6 +591,10 @@ const toTrackScore = (r: Views["v_track_scores"]["Row"]): TrackScore => ({
   itemsCounted: r.items_counted ?? 0,
   scorePct: r.avg_score_pct ?? 0,
   progressPct: r.progress_pct ?? 0,
+  itemsReviewCounted: r.items_review_counted ?? 0,
+  itemsReviewPending: r.items_review_pending ?? 0,
+  reviewScorePct: r.avg_review_score_pct ?? 0,
+  avgReviewLevel: r.avg_review_level ?? 0,
 });
 
 const toProgress = (r: Views["v_assessment_progress"]["Row"]): AssessmentProgress => ({
@@ -507,6 +607,11 @@ const toProgress = (r: Views["v_assessment_progress"]["Row"]): AssessmentProgres
   itemsCounted: r.items_counted ?? 0,
   progressPct: r.progress_pct ?? 0,
   scorePct: r.score_pct ?? 0,
+  itemsReviewCounted: r.items_review_counted ?? 0,
+  itemsReviewPending: r.items_review_pending ?? 0,
+  itemsReviewRejected: r.items_review_rejected ?? 0,
+  reviewScorePct: r.review_score_pct ?? 0,
+  avgReviewLevel: r.avg_review_level ?? 0,
 });
 
 export async function getIndicatorScores(assessmentId: string): Promise<IndicatorScore[]> {

@@ -48,6 +48,10 @@ export interface ReviewRow {
   reviewStart: string;
   progressPct: number;
   scorePct: number;
+  /** Review basis (confirmed items); shown once the review has started */
+  reviewScorePct: number;
+  /** Set when the assessment was returned at least once (the "أعيد إرساله" chip) */
+  returnedAt: string | null;
 }
 
 export interface EvaluatorProfileInput {
@@ -66,7 +70,7 @@ function mapError(error: PostgrestError): ServiceError {
   return new ServiceError(t.err_save_generic, error);
 }
 
-const emptyCounts = (): AssignmentCounts => ({ total: 0, draft: 0, submitted: 0, under_review: 0, returned: 0, approved: 0 });
+const emptyCounts = (): AssignmentCounts => ({ total: 0, draft: 0, submitted: 0, under_review: 0, returned: 0, approved: 0, issued: 0 });
 
 type ProfileRow = {
   user_id: string;
@@ -169,15 +173,18 @@ export async function listMyReviews(): Promise<ReviewRow[]> {
   const { data, error } = await supabase
     .from("assessment_reviews")
     .select(
-      "assigned_at, assessments!inner(id, status, submitted_at, organization_id, organizations(name, registration_number), assessment_cycles(name, review_start))"
+      "assigned_at, assessments!inner(id, status, submitted_at, returned_at, organization_id, organizations(name, registration_number), assessment_cycles(name, review_start))"
     )
     .eq("evaluator_id", me)
     .order("assigned_at", { ascending: false });
   if (error) throw error;
   const ids = data.map((r) => r.assessments.id);
-  const progress = new Map<string, { progress_pct: number | null; score_pct: number | null }>();
+  const progress = new Map<string, { progress_pct: number | null; score_pct: number | null; review_score_pct: number | null }>();
   if (ids.length > 0) {
-    const res = await supabase.from("v_assessment_progress").select("assessment_id, progress_pct, score_pct").in("assessment_id", ids);
+    const res = await supabase
+      .from("v_assessment_progress")
+      .select("assessment_id, progress_pct, score_pct, review_score_pct")
+      .in("assessment_id", ids);
     if (res.error) throw res.error;
     for (const p of res.data) if (p.assessment_id) progress.set(p.assessment_id, p);
   }
@@ -196,6 +203,8 @@ export async function listMyReviews(): Promise<ReviewRow[]> {
       reviewStart: a.assessment_cycles?.review_start ?? "",
       progressPct: p?.progress_pct ?? 0,
       scorePct: p?.score_pct ?? 0,
+      reviewScorePct: p?.review_score_pct ?? 0,
+      returnedAt: a.returned_at,
     };
   });
 }

@@ -45,14 +45,6 @@ const Dashboard = () => {
     }));
   }, [tool.data, trackScores.data, indicatorScores.data]);
 
-  const firstUncounted = useMemo(
-    () =>
-      [...(indicatorScores.data ?? [])]
-        .sort((a, b) => a.trackNumber - b.trackNumber || a.indicatorNumber - b.indicatorNumber)
-        .find((s) => s.itemsMet > s.itemsCounted),
-    [indicatorScores.data]
-  );
-
   const loading = current.isLoading || tool.isLoading || (!!id && (progress.isLoading || trackScores.isLoading || indicatorScores.isLoading));
   const failed = current.isError || tool.isError;
   const p = progress.data;
@@ -85,11 +77,11 @@ const Dashboard = () => {
             assessment={assessment}
             editable={editable}
             progress={p}
-            tracks={tracks.map((tr) => ({ number: tr.number, name: tr.name, itemsMet: tr.score?.itemsMet ?? 0, itemsTotal: tr.score?.itemsTotal ?? 0 }))}
+            tracks={tracks.map((tr) => ({ number: tr.number, name: tr.name, itemsCounted: tr.score?.itemsCounted ?? 0, itemsTotal: tr.score?.itemsTotal ?? 0 }))}
           />
           {assessment && p && (
             <>
-              <SummaryPanel progress={p} evidenceCount={evidences.data?.length ?? 0} firstUncounted={firstUncounted} />
+              <SummaryPanel progress={p} evidenceCount={evidences.data?.length ?? 0} />
               <TracksPanel tracks={tracks} levelLabels={labels} editable={editable} />
               <HowCalculated bands={bands} labels={labels} />
             </>

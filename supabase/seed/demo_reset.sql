@@ -3,14 +3,16 @@
 -- and org B (منظمة الاختبار ب) back to a fresh, empty draft (its evaluator assignment, if any, is kept).
 -- Prerequisite: supabase/seed/test_accounts.sql has run (org A, org.a and evaluator1 users, admin.test).
 -- Uploaded files: deleting an assessment removes its evidence rows, not the files in the private bucket.
--- Remove the files first through the Storage API (e2e/reset-demo.mjs does it, then runs this script).
+-- Remove the files first through the Storage API (e2e/reset-demo.mjs does it, with the issued document PDFs,
+-- then runs this script).
+-- Since migration 11 an item is met only through its evidence: items_met equals the evidence count (182 for org A).
 --
 -- Demo state:
 --   track 1: every item met with one link evidence, EXCEPT indicator 1 (first indicator of the track), left empty
---            for the live demo (tick + evidence -> label changes from غير مكتمل)
+--            for the live demo (add evidence -> label changes from غير مكتمل)
 --   track 2: every item met with one link evidence (complete, level 4)
---   track 3: first half of each indicator's items met with evidence, plus one item met WITHOUT evidence
---            (shows the warning in the submit dialog)
+--   track 3: first half of each indicator's items met with evidence, plus one response marked met WITHOUT
+--            evidence (kept from phase 3; the evidence trigger stores it as not met, so it does not count)
 --   tracks 4 and 5: empty
 -- Org B: draft with no responses or evidences.
 -- Both: HRSD profile fields and one delegate (test values), so the evaluator's organization card is complete.
@@ -36,7 +38,7 @@ begin
   end if;
   if v_cycle is null then raise exception 'No open cycle'; end if;
 
-  -- Fresh draft (responses, evidences, history and the review assignment go with the old row)
+  -- Fresh draft (responses, evidences, history and the review assignment go with the old row).
   delete from public.assessments where organization_id = v_org and cycle_id = v_cycle;
   insert into public.assessments (cycle_id, organization_id) values (v_cycle, v_org) returning id into v_a;
   insert into public.assessment_reviews (assessment_id, evaluator_id, assigned_by) values (v_a, v_eval, v_admin);

@@ -1,5 +1,6 @@
-// Staging only. Puts the demo back: removes the uploaded evidence files of org A and org B from the private
-// bucket (Storage API, service key read through the Supabase CLI and never printed), then runs
+// Staging only. Puts the demo back: removes the uploaded evidence files of org A and org B and their issued
+// document PDFs (documents/{assessment}/*) from the private buckets (Storage API, service key read through the
+// Supabase CLI and never printed), then runs
 // supabase/seed/demo_reset.sql (org A demo state, org B fresh draft) and prints the result.
 // Usage: node e2e/reset-demo.mjs
 import { execSync } from "node:child_process";
@@ -20,16 +21,35 @@ const list = json(
     `npx supabase db query --linked -o json "select coalesce(json_agg(e.storage_path), '[]')::text as paths from public.evidences e join public.assessments a on a.id = e.assessment_id join public.assessment_cycles c on c.id = a.cycle_id and c.status = 'open' where e.kind = 'file' and a.organization_id in ('${ORGS.join("','")}')"`
   )
 );
+const headers = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json" };
+const remove = async (bucket, prefixes) => {
+  if (prefixes.length === 0) return;
+  const res = await fetch(`${URL}/storage/v1/object/${bucket}`, { method: "DELETE", headers, body: JSON.stringify({ prefixes }) });
+  if (!res.ok) throw new Error(`storage delete ${bucket} ${res.status}`);
+};
+
 const paths = JSON.parse(list.rows[0].paths);
-if (paths.length > 0) {
-  const res = await fetch(`${URL}/storage/v1/object/evidences`, {
-    method: "DELETE",
-    headers: { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ prefixes: paths }),
+await remove("evidences", paths);
+console.log(`evidence files removed: ${paths.length}`);
+
+// Document PDFs: everything under each assessment's folder in the documents bucket
+const ids = json(
+  run(
+    `npx supabase db query --linked -o json "select coalesce(json_agg(a.id), '[]')::text as ids from public.assessments a join public.assessment_cycles c on c.id = a.cycle_id and c.status = 'open' where a.organization_id in ('${ORGS.join("','")}')"`
+  )
+);
+const docs = [];
+for (const id of JSON.parse(ids.rows[0].ids)) {
+  const res = await fetch(`${URL}/storage/v1/object/list/documents`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ prefix: `${id}/`, limit: 100 }),
   });
-  if (!res.ok) throw new Error(`storage delete ${res.status}`);
+  if (!res.ok) throw new Error(`storage list documents ${res.status}`);
+  for (const entry of await res.json()) if (entry.id) docs.push(`${id}/${entry.name}`);
 }
-console.log(`files removed: ${paths.length}`);
+await remove("documents", docs);
+console.log(`document files removed: ${docs.length}`);
 
 const result = json(run(`npx supabase db query --linked -o json -f supabase/seed/demo_reset.sql`));
 console.table(result.rows);

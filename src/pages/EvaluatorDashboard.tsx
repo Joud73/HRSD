@@ -8,6 +8,7 @@ import KpiCard from "@/components/shared/KpiCard";
 import EmptyState from "@/components/shared/EmptyState";
 import { SkeletonKpis, SkeletonPanel } from "@/components/shared/Skeletons";
 import ReviewsTable from "@/components/evaluator/ReviewsTable";
+import { sortReviews } from "@/components/evaluator/reviewUtils";
 
 const RECENT_COUNT = 5;
 
@@ -58,7 +59,7 @@ const EvaluatorDashboard = () => {
             <h2 id="recent-title" className="text-h3 text-ink">
               {t.recent_title}
             </h2>
-            <ReviewsTable rows={rows.slice(0, RECENT_COUNT)} caption={t.recent_title} empty={<EmptyState message={t.empty_assignments} />} />
+            <ReviewsTable rows={sortReviews(rows).slice(0, RECENT_COUNT)} caption={t.recent_title} empty={<EmptyState message={t.empty_assignments} />} />
           </section>
         </div>
       )}
