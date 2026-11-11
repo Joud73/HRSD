@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { copy, authCopy } from "@/lib/copy";
 import { transition } from "@/lib/motion";
@@ -59,6 +59,7 @@ const AutoHeight = ({ children }: { children: React.ReactNode }) => {
 /** Single sign-in page for every role: Nafath or email and password, in one card on the green band. */
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn } = useAuth();
   const reduced = useReducedMotion();
   const [step, setStep] = useState<"form" | "nafath">("form");
@@ -121,7 +122,10 @@ const Login = () => {
       }
 
       const role = await fetchUserRole(user.id);
-      navigate(getDefaultRouteForRole(role), { replace: true });
+      // A return path from a protected page: same-site paths only (never "//host" or a full URL)
+      const next = searchParams.get("next");
+      const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+      navigate(safeNext ?? getDefaultRouteForRole(role), { replace: true });
     } catch {
       setError(copy.login_error_generic);
     } finally {

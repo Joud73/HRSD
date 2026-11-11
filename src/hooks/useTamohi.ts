@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -146,4 +147,34 @@ export function useSetLessonDone(enrollmentId: string | undefined) {
     },
     onSettled: () => invalidateEnrollments(queryClient, enrollmentId),
   });
+}
+
+/**
+ * Personalisation for the signed-in user: organizations get their latest issued assessment, its
+ * recommendations (by program) and their enrollments (by program); other roles get none of it.
+ */
+export function useTamohiPersonal() {
+  const { userRole } = useAuth();
+  const isOrg = userRole === "organization";
+  const issued = useIssuedAssessment();
+  const assessmentId = issued.data?.id;
+  const recommendations = useRecommendations(assessmentId);
+  const enrollments = useMyEnrollments();
+  const recs = useMemo(() => recommendations.data ?? [], [recommendations.data]);
+  const byProgram = useMemo(() => new Map(recs.map((r) => [r.programId, r])), [recs]);
+  const enrollmentByProgram = useMemo(
+    () => new Map((enrollments.data ?? []).map((e) => [e.programId, e])),
+    [enrollments.data]
+  );
+  return {
+    isOrg,
+    issued: issued.data ?? null,
+    assessmentId,
+    recommendations: recs,
+    recommendationByProgram: byProgram,
+    enrollments: enrollments.data ?? [],
+    enrollmentByProgram,
+    loading: isOrg && (issued.isLoading || (!!assessmentId && recommendations.isLoading) || enrollments.isLoading),
+    error: issued.error ?? recommendations.error ?? enrollments.error ?? null,
+  };
 }

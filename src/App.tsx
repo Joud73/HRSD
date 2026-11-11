@@ -53,6 +53,10 @@ import AdminProfile from "./pages/AdminProfile";
 import EvaluatorProfile from "./pages/EvaluatorProfile";
 import IndividualAuth from "./pages/IndividualAuth";
 import NotFound from "./pages/NotFound";
+import TamohiShell from "@/components/tamohi/TamohiShell";
+import TamohiCatalog from "./pages/TamohiCatalog";
+import TamohiProgram from "./pages/TamohiProgram";
+import TamohiMyPath from "./pages/TamohiMyPath";
 
 const queryClient = new QueryClient();
 
@@ -85,6 +89,13 @@ const App = () => (
                 <Route path="/individuals-journey" element={guard(["individual"], <IndividualsJourney />)} />
                 <Route path="/individual-course/:courseId" element={guard(["individual"], <IndividualCourseDetail />)} />
                 <Route path="*" element={<NotFound />} />
+              </Route>
+
+              {/* طموحي: any signed-in role of the platform; my path is for organizations (the page redirects others) */}
+              <Route element={guard(["organization", "admin", "supervisor", "evaluator"], <TamohiShell />)}>
+                <Route path="/tamohi" element={<TamohiCatalog />} />
+                <Route path="/tamohi/programs/:code" element={<TamohiProgram />} />
+                <Route path="/tamohi/my-path" element={<TamohiMyPath />} />
               </Route>
 
               {/* Organization */}

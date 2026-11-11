@@ -88,6 +88,14 @@
     --neutral: 146 3% 55%; /* #8A918D */
     --neutral-foreground: 0 0% 100%;
 
+    /* Track colours (طموحي): meaning only, for track dots, card start edges, ring arcs and curriculum accents.
+       Each is >= 5.4:1 on white (AA for text). */
+    --track-1: 152 45% 32%; /* التوجه */
+    --track-2: 214 52% 40%; /* الفريق */
+    --track-3: 266 32% 46%; /* الشراكات */
+    --track-4: 340 40% 42%; /* البرامج */
+    --track-5: 24 30% 36%; /* التأثير */
+
     --destructive: 8 59% 44%;
     --destructive-foreground: 0 0% 100%;
 

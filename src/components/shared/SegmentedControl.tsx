@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { motion } from "motion/react";
 import { transition } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -6,7 +7,7 @@ interface SegmentedControlProps<T extends string> {
   value: T;
   onChange: (value: NoInfer<T>) => void;
   /** `activeClassName` replaces the primary fill of the selected pill (a status colour, for a verdict) */
-  options: readonly { value: NoInfer<T>; label: string; count?: number; activeClassName?: string }[];
+  options: readonly { value: NoInfer<T>; label: string; count?: number; activeClassName?: string; prefix?: ReactNode }[];
   /** Also the shared-layout id of the sliding pill: keep it unique per control on a page */
   label: string;
   className?: string;
@@ -62,7 +63,8 @@ function SegmentedControl<T extends string>({ value, onChange, options, label, c
                 className={cn("absolute inset-0 rounded-[6px]", opt.activeClassName ?? "bg-primary")}
               />
             )}
-            <span className="relative inline-flex items-center gap-1.5">
+            <span className="relative inline-flex items-center gap-1.5 whitespace-nowrap">
+              {opt.prefix}
               {opt.label}
               {opt.count !== undefined && <span className="tabular opacity-80">{opt.count}</span>}
             </span>

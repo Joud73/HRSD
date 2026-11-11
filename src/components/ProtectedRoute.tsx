@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { type AppRole, getDefaultRouteForRole } from "@/lib/roles";
 import { copy } from "@/lib/copy";
@@ -13,6 +13,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, loading, userRole, profileStatus } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -26,7 +27,8 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // Back to the requested page after signing in
+    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
 
   // Organization pending admin approval — redirect to pending page

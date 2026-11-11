@@ -46,6 +46,13 @@ export default {
           foreground: "hsl(var(--surface-foreground))",
         },
         ink: "hsl(var(--ink))",
+        track: {
+          1: "hsl(var(--track-1))",
+          2: "hsl(var(--track-2))",
+          3: "hsl(var(--track-3))",
+          4: "hsl(var(--track-4))",
+          5: "hsl(var(--track-5))",
+        },
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
@@ -95,6 +102,7 @@ export default {
       },
       maxWidth: {
         container: "1440px",
+        content: "1200px",
       },
       boxShadow: {
         // One shadow level, for floating layers only. Cards use a border.
