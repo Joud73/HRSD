@@ -164,4 +164,135 @@ Brief: `docs/tamohi-brief.md`. Branch `feat/tamohi`.
 - Critique fixes: duplicate track dot removed from path nodes; the three counts sit in one row at 390 instead of 2 + 1.
 - `tsc` 0 errors, lint 6 (baseline).
 
+## Step 4: tests, screenshots, demo state
+
+- [x] 4.1 `e2e/tamohi.spec.ts`
+- [x] 4.2 Whole suite, `tamohi_checks.sql`, `review_checks.sql`, `rls_checks.sql`, security advisors (below)
+- [x] 4.3 Screenshots at 1440 and 390, critiqued and fixed
+- [x] 4.4 Staging reset to the demo start state
+- [x] 4.5 Commit, push, PR (see the report)
+
+### Decisions (Step 4)
+- `tamohi.spec.ts` starting state in `beforeAll`: when org B is already issued (the suite runs `review.spec.ts` first) it only deletes org B's enrollments; otherwise it runs `reset-demo.mjs`, `demo_phase4.sql` and the issuance path of `review.spec.ts` itself (evaluator2 confirms the 3 pending items and approves, the supervisor issues). Both branches ran green: the suite (issued branch) and `tamohi.spec.ts` alone after a reset (issuance branch).
+- The brief's "mark two lessons (one gap)" cannot happen in org B's rank-1 program: org B has no evidence in track 4, so all 34 lessons of TMH-11 are gaps. The spec marks two gap lessons there ("2 من 34", my path "البنود المعالجة 2 من {total}", قيد التنفيذ, kept after reload), then one non-gap lesson in TMH-01 and checks that البنود المعالجة does not move while TMH-01 shows قيد التنفيذ with 1 done.
+- Found while reviewing the screenshots: the first version of the spec passed on the optimistic check while the TMH-01 insert never reached the database (the next `page.goto` cancelled it before it was sent). `markLesson` now waits for the 201 from `lesson_progress`, and the test asserts TMH-01's progress on my path. Database after the run: TMH-11 in_progress 2, TMH-01 in_progress 1.
+- Totals differ by one between runs on purpose: `review.spec.ts` rejects one of the 3 pending items (192 gap lessons in recommended programs), the standalone issuance confirms all 3 (191). The spec reads the total from `v_program_recommendations`.
+
+### Checks: e2e on staging (`npx playwright test e2e/demo-path.spec.ts e2e/review.spec.ts e2e/tamohi.spec.ts`, after `reset-demo.mjs`)
+Every test fails on console errors, page errors, failed requests or HTTP 4xx/5xx.
+```
+Running 16 tests using 1 worker
+  ✓   1 [chromium] › e2e\demo-path.spec.ts:103:3 › phase 3 demo path › org A: dashboard, track 1 indicator 1, PDF and link evidence, refresh keeps state
+  ✓   2 [chromium] › e2e\demo-path.spec.ts:139:3 › phase 3 demo path › admin: assign evaluator2 to org B, four roles, cycle scope tab
+  ✓   3 [chromium] › e2e\demo-path.spec.ts:171:3 › phase 3 demo path › supervisor: both organizations, proxy entry writes on org B's draft
+  ✓   4 [chromium] › e2e\demo-path.spec.ts:195:3 › phase 3 demo path › org B: sees the proxy entry, submits, under review, read only
+  ✓   5 [chromium] › e2e\demo-path.spec.ts:226:3 › phase 3 demo path › evaluator2: org B submitted, organization card, review period open
+  ✓   6 [chromium] › e2e\review.spec.ts:81:3 › phase 4 review path › evaluator2: approve waits for 3 verdicts, recording them generates both documents
+  ✓   7 [chromium] › e2e\review.spec.ts:124:3 › phase 4 review path › evaluator2: edits a task line of the plan, then approves
+  ✓   8 [chromium] › e2e\review.spec.ts:162:3 › phase 4 review path › supervisor: org B approved, issues the results with both PDFs
+  ✓   9 [chromium] › e2e\review.spec.ts:194:3 › phase 4 review path › org B: dashboard, results page with both PDFs and programs, no other organization's results
+  ✓  10 [chromium] › e2e\review.spec.ts:240:3 › phase 4 review path › evaluator1: cannot open org B's documents
+  ✓  11 [chromium] › e2e\tamohi.spec.ts:133:3 › tamohi › org B: results → first program → enroll → two gap lessons → my path; reload keeps it
+  ✓  12 [chromium] › e2e\tamohi.spec.ts:169:3 › tamohi › org B: a lesson that is not a gap does not move البنود المعالجة
+  ✓  13 [chromium] › e2e\tamohi.spec.ts:192:3 › tamohi › org B: catalog filters by track and search
+  ✓  14 [chromium] › e2e\tamohi.spec.ts:219:3 › tamohi › org A (not issued): catalog without personalisation, my path empty
+  ✓  15 [chromium] › e2e\tamohi.spec.ts:241:3 › tamohi › evaluator1: catalog and program without enroll actions; my path closed
+  ✓  16 [chromium] › e2e\tamohi.spec.ts:264:3 › tamohi › signed out: /tamohi goes to login and back
+  16 passed (4.1m)
+```
+`tamohi.spec.ts` alone after a reset (issuance branch): 6 passed.
+
+### Checks: `tamohi_checks.sql` on staging (13 PASS, 0 FAIL)
+| n | who | action | expected | actual | result |
+|---|---|---|---|---|---|
+| 1 | org B | select v_program_catalog | 15 programs, 378 lessons | 15, 378 | PASS |
+| 2 | org B | recommendations from issued results | 13, rank 1 at level 0 | 13, rank 1 TMH-11 level 0 | PASS |
+| 3 | org B | TMH-01 gap lessons | 7 of 38 | 7 of 38 | PASS |
+| 4 | org B | enroll in TMH-01 with status completed | enrolled | enrolled | PASS |
+| 5 | org B | record first lesson | in_progress, 1 done | in_progress, 1 done | PASS |
+| 6 | org B | update enrollment status by hand | 0 rows, still in_progress | 0 rows, in_progress | PASS |
+| 7 | org B | progress on a lesson of another program | error | new row violates row-level security policy for table "lesson_progress" | PASS |
+| 8 | org B | withdraw an in-progress enrollment | 0 rows | 0 rows | PASS |
+| 9 | org B | record all lessons | completed, completed_at set | completed, true | PASS |
+| 10 | org A | org B enrollments, recommendations, gaps | 0, 0, 0 | 0, 0, 0 | PASS |
+| 11 | org A | enroll org B | error | new row violates row-level security policy for table "program_enrollments" | PASS |
+| 12 | anon | select programs; program_lessons | denied; denied | denied; denied | PASS |
+| 13 | org B | recommendations and gaps while approved (not issued) | 0, 0 | 0, 0 | PASS |
+
+### Checks: `review_checks.sql` on staging (25 PASS, 0 FAIL)
+| n | who | action | expected | actual | result |
+|---|---|---|---|---|---|
+| 27 | org A | insert item_responses is_met = true, no evidence | is_met false | false | PASS |
+| 28 | org A | insert evidence on item | is_met true | true | PASS |
+| 29 | org A | delete last evidence | is_met false | false | PASS |
+| 30 | org A | evidence on 2 items, submit | 2 met, submitted | 2 met, submitted | PASS |
+| 31 | evaluator1 | transition under_review | under_review | under_review | PASS |
+| 32 | evaluator1 | verdict on item without evidence | error | A verdict needs at least one evidence on the item | PASS |
+| 33 | evaluator1 | approve with 2 pending verdicts | error: await a verdict | 2 item(s) still await a verdict | PASS |
+| 34 | evaluator1 | last verdict recorded | 2 docs, 1 strength, 377 opportunities, 377 tasks | 2 docs, 1 strength, 377 opportunities, 377 tasks | PASS |
+| 35 | evaluator1 | edit line text; change source | edited true; source error | edited true; error | PASS |
+| 36 | evaluator1 | insert line with source auto | source forced to manual | manual | PASS |
+| 37 | org A | select assessment_documents (draft) | 0 | 0 | PASS |
+| 38 | eval1 / org A | return, org adds evidence on verified item, resubmit | verified null, submitted, 1 pending | null, submitted, 1 pending | PASS |
+| 39 | evaluator1 | approve | approved, 61 results, 1 review_counted, docs approved, header review_pct 0 | approved, 61 results, 1 review_counted, docs approved, header 0 | PASS |
+| 40 | supervisor | return to evaluator without / with note | error; under_review, 0 results, docs draft | error; under_review, 0 results, docs draft | PASS |
+| 41 | evaluator1 | approve again | approved | approved | PASS |
+| 42 | supervisor | issue_results wrong / right number | error; issued, number set | error; issued, ت.م.TEST-0001\|26.11.11, issued_at true | PASS |
+| 43 | org A | select documents, lines, results after issuance | 2 docs, 756 lines, 61 results, review_pct 0 | 2 docs, 756 lines, 61 results, review_pct 0 | PASS |
+| 44 | evaluator2 | select org A documents and results | 0, 0 | 0, 0 | PASS |
+| 45 | admin / org A | program on indicator 1 (level 1) recommended | 1 | 1 | PASS |
+| 46 | anon | select programs; select assessment_documents | denied; denied | denied; denied | PASS |
+| 47 | supervisor | update document lines | 0 rows or error | 0 rows | PASS |
+| 48 | org A | issue_results | error | Only the final sign-off issues results | PASS |
+| 49 | supervisor | issue_results with a PDF outside the assessment folder | error: invalid entry | error | PASS |
+| 50 | supervisor | upload canonical / other name while approved | allowed; refused | allowed; refused | PASS |
+| 51 | supervisor | upload a PDF for an issued assessment | refused | refused | PASS |
+
+### Checks: `rls_checks.sql` on staging (25 PASS, 0 FAIL)
+| n | who | action | expected | actual | result |
+|---|---|---|---|---|---|
+| 1 | org A | select count(*) from items (open cycle tool) | 378 | 378 | PASS |
+| 2 | org A | ensure_my_assessment() | draft | draft | PASS |
+| 3 | org B | select assessments | A: 0, total: 1 (own) | A: 0, total: 1 | PASS |
+| 4 | org A | update profiles set organization_id = B | error | organization_id, status, email and registration_number can only be changed by an administr | PASS |
+| 5 | org A | update assessments set status = approved | 0 rows or error | 0 rows | PASS |
+| 6 | org A | insert item_responses, transition submitted | submitted | submitted | PASS |
+| 7 | org A | update item_responses after submit | 0 rows | 0 rows | PASS |
+| 8 | evaluator2 | select assessments | A: 0, total: 1 (org B) | A: 0, total: 1 | PASS |
+| 9 | evaluator1 | select count(*) from assessments | 1 | 1 | PASS |
+| 10 | evaluator1 | transition approved from submitted | error: not allowed | Transition submitted -> approved is not allowed for this user at this time | PASS |
+| 11 | evaluator1 | transition under_review before review_start | error: not allowed | Transition submitted -> under_review is not allowed for this user at this time | PASS |
+| 12 | admin | transition under_review without note | error: requires a note | Administrative override requires a note | PASS |
+| 13 | admin | transition under_review with note | under_review, 1 history row | under_review, 1 history row | PASS |
+| 14 | evaluator1 | update item_responses set is_met = false | 0 rows | Evaluators cannot change the organization answer | PASS |
+| 15 | evaluator1 | transition returned without note (review period) | error: note is required | A note is required when returning an assessment | PASS |
+| 16 | org B | upload into org A's evidences folder | error | new row violates row-level security policy for table "objects" | PASS |
+| 17 | org A | select assessment_status_history | own > 0, other 0 | own 2, other 0 | PASS |
+| 18 | anon | select from items | error: permission denied | permission denied for table items | PASS |
+| 20 | supervisor | insert item_responses on org B (draft) | allowed | allowed | PASS |
+| 21 | supervisor | update assessment_reviews (reassign org B) | 0 rows or error | 0 rows | PASS |
+| 22 | evaluator2 | insert item_responses on org B | error | new row violates row-level security policy for table "item_responses" | PASS |
+| 23 | evaluator1 | select delegates | org A: 1, org B: 0 | org A: 1, org B: 0 | PASS |
+| 24 | org A | select cycle_item_exclusions | 1 | 1 | PASS |
+| 25 | evaluator2 (unassigned) | select count(*) from assessments | 0 | 0 | PASS |
+| 26 | evaluator1 | transition returned with note (review period) | returned | returned | PASS |
+
+### Checks: security advisors: 0 ERROR, 47 WARN
+- 46 "SECURITY DEFINER function executable by anon / authenticated" (23 functions × 2): the 22 of phase 4 plus `sync_enrollment_status` (migration 14's trigger function; it cannot be called outside a trigger).
+- 1 leaked-password protection disabled in Auth (unchanged).
+
+### Screenshots (`e2e/screens/tamohi/`, gitignored), final state after the suite
+catalog-org-b-1440/390 (personalised: ring, top 3, enrolled TMH-11 and TMH-01), catalog-evaluator-1440/390 (plain: counts), program-org-b-1440/390 (TMH-11 enrolled 2 of 34, module 1 open with its first lesson expanded), program-evaluator-1440/390 (module 1 open, no actions), my-path-org-b-1440/390. No console, page or HTTP errors in any.
+Critique against the skill, fixed before finishing: filter bar sticky only from md (too tall at 390); الكتالوج active on program pages; no second track dot on path nodes; the three path counts in one row at 390. Kept: the recommendation bars read full for TMH-11/12/10 because every lesson of those programs is a gap for org B (true data, not decoration).
+
+### Demo state (11 Nov, after the final reset)
+`node e2e/reset-demo.mjs` (removed 2 document PDFs and 2 enrollments), then `demo_phase4.sql`: org B under review with evaluator2, 189 evidenced, 184 confirmed, 2 rejected, 3 pending, 0 documents; 0 enrollments; catalog 15 programs, 378 lessons.
+
+`tsc` 0 errors, lint 6 (baseline).
+
 ## Not finished
+- PR #2 (phase 4) is still open; this branch is based on its head, so the طموحي PR shows its commits until #2 is merged into staging.
+- Program texts (titles, subtitles, audience, outcomes, delivery) are the academy's draft for HRSD approval.
+- `e2e/.env` still lacks `E2E_EVALUATOR1_EMAIL` / `E2E_EVALUATOR2_EMAIL`; runs passed them inline.
+- Withdrawal (`withdraw`) is in the service and hook but has no button: the brief does not ask for one.
+- Security advisors: revoke EXECUTE from anon on the 23 helper/trigger functions; leaked-password protection.
